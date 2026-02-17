@@ -7,17 +7,19 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.anonymous.glomobile",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSMicrophoneUsageDescription": "Glō needs microphone access to make and receive calls."
+      }
     },
-
     "android": {
       "package": "com.anonymous.glomobile",
       "edgeToEdgeEnabled": true,
@@ -28,19 +30,19 @@
       "permissions": [
         "RECEIVE_BOOT_COMPLETED",
         "VIBRATE",
-        "WAKE_LOCK"
+        "WAKE_LOCK",
+        "RECORD_AUDIO"
       ]
     },
-
     "plugins": [
       "expo-secure-store",
       "expo-notifications"
     ],
-
     "extra": {
       "eas": {
-        "projectId": "REPLACE_LATER"
+        "projectId": "d8fefe39-990e-4c03-abe6-7163ba745309"
       }
-    }
+    },
+    "owner": "gloai"
   }
 }

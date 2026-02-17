@@ -1,15 +1,15 @@
 import * as SecureStore from "expo-secure-store";
 
-const TOKEN_KEY = "glo_jwt";
+const TOKEN_KEY = "glo_auth_token";
 
-export const saveToken = async (token) => {
-  await SecureStore.setItemAsync(TOKEN_KEY, token);
-};
-
-export const getToken = async () => {
+export async function getToken() {
   return await SecureStore.getItemAsync(TOKEN_KEY);
-};
+}
 
-export const clearToken = async () => {
+export async function saveToken(token) {
+  await SecureStore.setItemAsync(TOKEN_KEY, token);
+}
+
+export async function clearToken() {
   await SecureStore.deleteItemAsync(TOKEN_KEY);
-};
+}

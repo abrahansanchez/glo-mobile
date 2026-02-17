@@ -8,20 +8,26 @@ export default function IncomingCallScreen({ navigation, route }) {
   function handleManualAnswer() {
     console.log("[CALL] Answer manually clicked");
 
-    // 🔑 IMPORTANT: Navigate via the parent navigator (CallFlow)
-    navigation.replace("CallFlow", {
-      screen: "CallEnded",
-      params: { outcome: "manual" },
+    // ✅ CORRECT: Navigate through Dashboard → CallFlow → CallEnded
+    navigation.replace("Dashboard", {
+      screen: "CallFlow",
+      params: {
+        screen: "CallEnded",
+        params: { outcome: "manual" },
+      },
     });
   }
 
   function handleAIHandle() {
     console.log("[CALL] Let AI handle clicked");
 
-    // 🔑 IMPORTANT: Navigate via the parent navigator (CallFlow)
-    navigation.replace("CallFlow", {
-      screen: "CallEnded",
-      params: { outcome: "ai" },
+    // ✅ CORRECT: Navigate through Dashboard → CallFlow → CallEnded
+    navigation.replace("Dashboard", {
+      screen: "CallFlow",
+      params: {
+        screen: "CallEnded",
+        params: { outcome: "ai" },
+      },
     });
   }
 
@@ -89,3 +95,4 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 });
+``

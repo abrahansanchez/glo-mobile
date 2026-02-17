@@ -1,4 +1,5 @@
 import { View, Text, StyleSheet } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useEffect, useState } from "react";
 import api from "../config/api";
 import StatCard from "../components/StatCard";
@@ -40,25 +41,33 @@ export default function AnalyticsSummaryScreen() {
   const booked = analytics?.appointmentsBooked ?? 0;
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Analytics</Text>
+    <SafeAreaView style={styles.safe}>
+      <View style={styles.container}>
+        <Text style={styles.title}>Analytics</Text>
 
-      <View style={styles.row}>
-        <StatCard label="Total Calls" value={String(totalCalls)} />
-        <StatCard label="AI Handled" value={String(aiHandled)} />
-      </View>
+        <View style={styles.row}>
+          <StatCard label="Total Calls" value={String(totalCalls)} />
+          <StatCard label="AI Handled" value={String(aiHandled)} />
+        </View>
 
-      <View style={styles.row}>
-        <StatCard label="Missed Calls" value={String(missed)} />
-        <StatCard label="Booked" value={String(booked)} />
+        <View style={styles.row}>
+          <StatCard label="Missed Calls" value={String(missed)} />
+          <StatCard label="Booked" value={String(booked)} />
+        </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: "#fff",
+  },
   container: {
-    padding: 20,
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 16,
   },
   title: {
     fontSize: 34,

@@ -1,54 +1,60 @@
 import { useContext } from "react";
 import { View, Text } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
-import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import { AuthContext } from "../auth/authContext";
-import LoginScreen from "../screens/LoginScreen";
-import SubscriptionGateScreen from "../screens/SubscriptionGateScreen";
-import DashboardNavigator from "./DashboardNavigator";
-import IncomingCallScreen from "../screens/call/IncomingCallScreen";
-import { getSubscriptionError } from "../utils/subscriptionGuard";
+import { OnboardingContext } from "../onboarding/OnboardingContext";
 
-const RootStack = createNativeStackNavigator();
+import AuthNavigator from "./AuthNavigator";
+import OnboardingNavigator from "./OnboardingNavigator";
+import DashboardNavigator from "./DashboardNavigator";
+import SubscriptionGateScreen from "../screens/SubscriptionGateScreen";
 
 export default function AppNavigator() {
-  const { authenticated, loading } = useContext(AuthContext);
+  const { authenticated, loading: authLoading, barber, subscriptionStatus, subscriptionReason } = useContext(AuthContext);
+  const { loading: onboardingLoading, onboardingComplete } = useContext(OnboardingContext);
 
-  if (loading) {
+  // Show loading while any async state is being restored
+  if (authLoading || onboardingLoading) {
     return (
-      <View style={{ padding: 24 }}>
+      <View style={{ flex: 1, padding: 24, justifyContent: "center", alignItems: "center" }}>
         <Text>Loading...</Text>
       </View>
     );
   }
 
+  // If authenticated but barber not yet restored, show loading
+  if (authenticated && !barber) {
+    return (
+      <View style={{ flex: 1, padding: 24, justifyContent: "center", alignItems: "center" }}>
+        <Text>Restoring your profile...</Text>
+      </View>
+    );
+  }
+
+  // DEV: Log routing truth
+  if (__DEV__) {
+    console.log("[ROUTE_DECISION]", {
+      authenticated,
+      subscriptionStatus,
+      hasBarber: !!barber,
+      barberId: barber?.id || barber?._id,
+      onboardingComplete,
+    });
+  }
+
   return (
     <NavigationContainer>
-      <RootStack.Navigator screenOptions={{ headerShown: false }}>
-        {/* Auth */}
-        {!authenticated ? (
-          <RootStack.Screen name="Login" component={LoginScreen} />
-        ) : getSubscriptionError() ? (
-          <RootStack.Screen
-            name="SubscriptionGate"
-            component={SubscriptionGateScreen}
-            initialParams={{ reason: getSubscriptionError() }}
-          />
-        ) : (
-          <RootStack.Screen
-            name="Dashboard"
-            component={DashboardNavigator}
-          />
-        )}
-
-        {/* 🔔 Incoming Call Modal (overlays dashboard) */}
-        <RootStack.Screen
-          name="IncomingCall"
-          component={IncomingCallScreen}
-          options={{ presentation: "modal" }}
-        />
-      </RootStack.Navigator>
+      {!authenticated ? (
+        <AuthNavigator />
+      ) : subscriptionStatus === "required" ? (
+        <SubscriptionGateScreen reason={subscriptionReason} />
+      ) : !onboardingComplete ? (
+        <OnboardingNavigator />
+      ) : (
+        <DashboardNavigator />
+      )}
     </NavigationContainer>
   );
 }
+

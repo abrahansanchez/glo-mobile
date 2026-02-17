@@ -1,21 +1,50 @@
-import { useEffect, useState } from "react";
-import { View, Text, StyleSheet, Button } from "react-native";
+import { useEffect, useState, useContext } from "react";
+import { View, Text, StyleSheet, Button, Pressable, TouchableOpacity } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { showIncomingCall } from "../native/CallKit";
+
 import { useNavigation } from "@react-navigation/native";
+
+import { AuthContext } from "../auth/authContext";
+import { OnboardingContext } from "../onboarding/OnboardingContext";
 
 import api from "../config/api";
 import StatCard from "../components/StatCard";
 import LoadingState from "../components/LoadingState";
 
 export default function DashboardOverviewScreen() {
-  const navigation = useNavigation(); // ✅ added
+  const navigation = useNavigation();
+  const { authenticated, barber, subscriptionStatus, logout, setSubscriptionStatus } = useContext(AuthContext);
+  const { reset: restartOnboarding } = useContext(OnboardingContext);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [overview, setOverview] = useState(null);
   const [appointments, setAppointments] = useState([]);
 
   useEffect(() => {
+    // Guard: do not load if not authenticated, missing barber, or subscription required
+    if (!authenticated) {
+      console.log("[DashboardOverviewScreen] skipping load — not authenticated");
+      return;
+    }
+    if (!barber?.id && !barber?._id) {
+      console.log("[DashboardOverviewScreen] skipping load — missing barber");
+      return;
+    }
+    if (subscriptionStatus === "required") {
+      console.log("[DashboardOverviewScreen] skipping load — subscription required");
+      return;
+    }
+
+    // Double-check auth header exists
+    const authHeader = api.defaults.headers.common.Authorization;
+    if (!authHeader) {
+      console.log("[DashboardOverviewScreen] skipping load — missing auth header");
+      return;
+    }
+
     loadOverview();
-  }, []);
+  }, [authenticated, barber, subscriptionStatus]);
 
   async function loadOverview() {
     try {
@@ -40,7 +69,19 @@ export default function DashboardOverviewScreen() {
         "Overview load error:",
         err?.response?.data || err.message
       );
-      setError("Failed to load dashboard");
+      const code = err?.response?.data?.code || err?.response?.data?.error;
+      if (
+        code === "SUBSCRIPTION_REQUIRED" ||
+        code === "SUBSCRIPTION_PAST_DUE" ||
+        code === "INCOMPLETE"
+      ) {
+        // Inform app that subscription is required; AppNavigator will route.
+        try {
+          setSubscriptionStatus("required");
+        } catch (e) {}
+      } else {
+        setError("Failed to load dashboard");
+      }
       setAppointments([]);
     } finally {
       setLoading(false);
@@ -56,20 +97,43 @@ export default function DashboardOverviewScreen() {
     totalCalls > 0 ? Math.round((aiHandled / totalCalls) * 100) : 0;
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.safe}>
+      <View style={styles.container}>
       <Text style={styles.title}>Overview</Text>
+      {/* ===== DEV CONTROLS ===== */}
+      <View style={{ marginBottom: 16, gap: 10 }}>
+        <Pressable
+          onPress={async () => {
+            await restartOnboarding();
+          }}
+          style={styles.devPrimary}
+        >
+          <Text style={styles.devPrimaryText}>Restart Onboarding (Dev)</Text>
+        </Pressable>
 
-      {/* ===== TEMP TEST BUTTON (SAFE) ===== */}
+        <Pressable
+          onPress={async () => {
+            await logout();
+          }}
+          style={styles.devSecondary}
+        >
+          <Text style={styles.devSecondaryText}>Log Out</Text>
+        </Pressable>
+      </View>
+
+      {/* ===== CALLKIT TEST (TEMPORARY, SAFE) ===== */}
       <View style={{ marginBottom: 20 }}>
         <Button
-          title="Simulate Incoming Call"
-          onPress={() =>
-            navigation.navigate("IncomingCall", {
-              caller: "+1 (555) 123-4567",
-            })
-          }
+          title="Simulate System Call (CallKit)"
+          onPress={() => {
+            console.log("[TEST] Triggering CallKit from Dashboard");
+            showIncomingCall("Test Caller");
+          }}
         />
       </View>
+
+
+      
 
       {/* ===== STATS ===== */}
       <View style={styles.row}>
@@ -97,22 +161,31 @@ export default function DashboardOverviewScreen() {
       ) : (
         appointments.slice(0, 3).map((appt) => (
           <View key={appt._id} style={styles.apptCard}>
-            <Text style={styles.client}>
-              {appt.clientName || "Client"}
-            </Text>
-            <Text style={styles.meta}>
-              {new Date(appt.date).toLocaleString()}
-            </Text>
+            <Text style={styles.client}>{appt.clientName || "Client"}</Text>
+            <Text style={styles.meta}>{new Date(appt.date).toLocaleString()}</Text>
+            <TouchableOpacity
+              onPress={() => showIncomingCall("Test Caller")}
+              style={styles.simulateBtn}
+            >
+              <Text style={styles.simulateBtnText}>Simulate System Call</Text>
+            </TouchableOpacity>
           </View>
         ))
       )}
-    </View>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: "#fff",
+  },
   container: {
-    padding: 20,
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 16,
   },
   title: {
     fontSize: 34,
@@ -158,4 +231,28 @@ const styles = StyleSheet.create({
     padding: 20,
     color: "red",
   },
+  devPrimary: {
+    padding: 14,
+    borderRadius: 12,
+    backgroundColor: "#111",
+    alignItems: "center",
+  },
+  devPrimaryText: { color: "#fff", fontWeight: "800" },
+  devSecondary: {
+    padding: 14,
+    borderRadius: 12,
+    backgroundColor: "#eee",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#ccc",
+  },
+  devSecondaryText: { color: "#000", fontWeight: "800" },
+  simulateBtn: {
+    padding: 16,
+    backgroundColor: "black",
+    marginTop: 12,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  simulateBtnText: { color: "white", fontWeight: "600" },
 });

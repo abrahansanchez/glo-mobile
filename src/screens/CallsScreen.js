@@ -1,112 +1,164 @@
-import { View, Text, FlatList, StyleSheet } from "react-native";
-import { useEffect, useState } from "react";
-import api from "../config/api";
-import LoadingState from "../components/LoadingState";
+import React, { useState, useEffect } from "react";
+import { View, Text, Button, StyleSheet, TextInput, Alert, ScrollView } from "react-native";
+import { Audio } from "expo-av";
+import { useVoice } from "../voice/VoiceContext";
+import { initTwilioVoice, startCall, endCall } from "../voice/twilioVoiceService";
 
 export default function CallsScreen() {
-  const [loading, setLoading] = useState(true);
-  const [calls, setCalls] = useState([]);
+  const { status, token, identity, refreshToken } = useVoice();
+  const [to, setTo] = useState("");
+  const [twilioReady, setTwilioReady] = useState(false);
 
   useEffect(() => {
-    loadCalls();
-  }, []);
+    console.log("[VOICE] CallsScreen status:", status);
+  }, [status]);
 
-  async function loadCalls() {
-    try {
-      setLoading(true);
-      const res = await api.get("/dashboard/transcripts");
-      setCalls(Array.isArray(res.data) ? res.data : []);
-    } catch (err) {
-      console.log("Calls load error:", err?.response?.data || err.message);
-    } finally {
-      setLoading(false);
+  const ensureMicPermission = async () => {
+    const { status: micStatus } = await Audio.requestPermissionsAsync();
+    console.log("[MIC] permission status:", micStatus);
+
+    if (micStatus !== "granted") {
+      Alert.alert(
+        "Microphone Permission Required",
+        "Please allow microphone access in iOS Settings to initialize Twilio Voice and place calls."
+      );
+      return false;
     }
-  }
 
-  if (loading) {
-    return <LoadingState label="Loading calls..." />;
-  }
+    return true;
+  };
 
-  if (!calls.length) {
-    return (
-      <View style={styles.center}>
-        <Text style={styles.empty}>No recent calls</Text>
-      </View>
-    );
-  }
+  const handleInit = async () => {
+    try {
+      const hasMicPermission = await ensureMicPermission();
+      if (!hasMicPermission) {
+        return;
+      }
+
+      if (!token) {
+        Alert.alert("Error", "No voice token available. Please refresh.");
+        return;
+      }
+      await initTwilioVoice(token);
+      setTwilioReady(true);
+      Alert.alert("Twilio Voice", "Initialized ✅");
+    } catch (e) {
+      Alert.alert("Init failed", e?.message || "Unknown error");
+    }
+  };
+
+  const handleCall = async () => {
+    try {
+      const hasMicPermission = await ensureMicPermission();
+      if (!hasMicPermission) {
+        return;
+      }
+
+      if (!twilioReady) {
+        Alert.alert("Error", "Initialize Twilio Voice before starting a call.");
+        return;
+      }
+
+      if (!to.trim()) {
+        Alert.alert("Error", "Please enter a number (e.g., 8132207636 or +18132207636)");
+        return;
+      }
+      startCall(to);
+      Alert.alert("Calling", "Attempting to reach " + to + "...\n\nTap 'Hang Up' to end the call.");
+    } catch (e) {
+      Alert.alert("Call failed", e?.message || "Unknown error");
+    }
+  };
+
+  const handleHangup = async () => {
+    try {
+      endCall();
+      Alert.alert("Call", "Call ended");
+    } catch (e) {
+      Alert.alert("Hangup failed", e?.message || "Unknown error");
+    }
+  };
 
   return (
-    <FlatList
-      data={calls}
-      keyExtractor={(item) => item._id}
-      contentContainerStyle={{ padding: 16 }}
-      renderItem={({ item }) => (
-        <View style={styles.card}>
-          <Text style={styles.phone}>
-            {item.from || "Unknown caller"}
-          </Text>
+    <ScrollView contentContainerStyle={styles.container}>
+      <Text style={styles.title}>Calls (Phase A)</Text>
 
-          <Text style={styles.meta}>
-            {new Date(item.createdAt).toLocaleString()}
-          </Text>
+      <Text style={styles.subtitle}>Voice Token Status</Text>
+      <Text style={styles.line}>Voice status: {status}</Text>
+      <Text style={styles.line}>token present: {token ? "✅ true" : "❌ false"}</Text>
+      <Text style={styles.line}>identity: {identity || "none"}</Text>
+      <Text style={styles.line}>Twilio initialized: {twilioReady ? "✅ yes" : "❌ no"}</Text>
 
-          <View style={styles.row}>
-            <Text style={styles.badge}>
-              {item.handledBy === "ai" ? "AI" : "Human"}
-            </Text>
+      <View style={{ height: 20 }} />
 
-            {item.outcome && (
-              <Text style={styles.outcome}>{item.outcome}</Text>
-            )}
-          </View>
-        </View>
-      )}
-    />
+      <Button title="Refresh Voice Token" onPress={refreshToken} />
+      <View style={{ height: 12 }} />
+      <Button title="Initialize Twilio Voice" onPress={handleInit} />
+
+      <View style={{ height: 24 }} />
+
+      <Text style={styles.subtitle}>Make a Test Call</Text>
+      <TextInput
+        value={to}
+        onChangeText={setTo}
+        placeholder="Enter number (8132207636 or +1...)"
+        autoCapitalize="none"
+        keyboardType="phone-pad"
+        style={styles.input}
+      />
+
+      <View style={{ height: 12 }} />
+      <Button title="Start Outgoing Call" onPress={handleCall} />
+      <View style={{ height: 12 }} />
+      <Button title="Hang Up" onPress={handleHangup} color="red" />
+
+      <View style={{ height: 24 }} />
+      <Text style={styles.note}>
+        Phase A: Outgoing calls only (no VoIP push yet).{"\n"}
+        • Tap "Start Outgoing Call" to place a call{"\n"}
+        • Call will keep ringing until recipient answers or you tap "Hang Up"{"\n"}
+        • Watch terminal logs for [TWILIO_VOICE][EVENT] messages
+      </Text>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  center: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  empty: {
-    fontSize: 16,
-    color: "#777",
-  },
-  card: {
+  container: {
+    flexGrow: 1,
+    padding: 20,
+    paddingTop: 50,
     backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 16,
+  },
+  title: {
+    fontSize: 26,
+    fontWeight: "800",
     marginBottom: 12,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 3,
   },
-  phone: {
-    fontSize: 15,
-    fontWeight: "600",
+  subtitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    marginTop: 16,
+    marginBottom: 8,
+    color: "#333",
   },
-  meta: {
+  line: {
+    fontSize: 14,
+    color: "#222",
     marginTop: 4,
-    fontSize: 13,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 10,
+    padding: 12,
+    fontSize: 16,
+    marginTop: 8,
+  },
+  note: {
+    fontSize: 12,
     color: "#666",
-  },
-  row: {
-    marginTop: 10,
-    flexDirection: "row",
-    gap: 10,
-    alignItems: "center",
-  },
-  badge: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#0A84FF",
-  },
-  outcome: {
-    fontSize: 12,
-    color: "#555",
+    marginTop: 16,
+    lineHeight: 18,
   },
 });

@@ -15,9 +15,9 @@ export default function CallEndedScreen() {
 
       <Pressable
         style={styles.button}
-        onPress={() => navigation.navigate("Dashboard")}
+        onPress={() => navigation.goBack()}
       >
-        <Text style={styles.buttonText}>Back to Dashboard</Text>
+        <Text style={styles.buttonText}>Back</Text>
       </Pressable>
     </View>
   );

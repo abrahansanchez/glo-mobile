@@ -1,7 +1,10 @@
 import { useEffect } from 'react';
 import { AuthProvider } from "./src/auth/authContext";
 import AppNavigator from "./src/navigation/AppNavigator";
+import { VoiceProvider } from "./src/voice/VoiceContext";
 import { registerForPushNotifications } from "./src/notifications/pushNotifications";
+import { OnboardingProvider } from "./src/onboarding/OnboardingContext";
+import ErrorBoundary from "./src/components/ErrorBoundary";
 
 export default function App() {
 
@@ -18,7 +21,13 @@ export default function App() {
 
   return (
     <AuthProvider>
-      <AppNavigator />
+      <VoiceProvider>
+        <OnboardingProvider>
+          <ErrorBoundary>
+            <AppNavigator />
+          </ErrorBoundary>
+        </OnboardingProvider>
+      </VoiceProvider>
     </AuthProvider>
   );
 }
