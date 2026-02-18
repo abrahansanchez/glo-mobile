@@ -132,7 +132,8 @@ export function startCall(to) {
   
   try {
     // Use capital To: in connect params (required by Twilio SDK spec)
-    TwilioVoice.connect({ To: toE164 });
+    console.log("[TWILIO_VOICE] connect params:", { To: toE164, to: toE164 });
+    TwilioVoice.connect({ To: toE164, to: toE164 });
     console.log("[TWILIO_VOICE] connect() invoked");
   } catch (e) {
     console.log("[TWILIO_VOICE] startCall error:", e?.message || e);
@@ -170,4 +171,3 @@ export function cleanupEventListeners() {
   });
   activeListeners = [];
 }
-
