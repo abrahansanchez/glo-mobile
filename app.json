@@ -17,7 +17,11 @@
       "bundleIdentifier": "com.anonymous.glomobile",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSMicrophoneUsageDescription": "Glō needs microphone access to make and receive calls."
+        "NSMicrophoneUsageDescription": "Glō needs microphone access to make and receive calls.",
+        "UIBackgroundModes": [
+          "audio",
+          "voip"
+        ]
       }
     },
     "android": {

@@ -7,7 +7,8 @@ import { initTwilioVoice, startCall, endCall } from "../voice/twilioVoiceService
 export default function CallsScreen() {
   const { status, token, identity, refreshToken } = useVoice();
   const [to, setTo] = useState("");
-  const [twilioReady, setTwilioReady] = useState(false);
+  const [twilioInitialized, setTwilioInitialized] = useState(false);
+  const [deviceReadyFlag, setDeviceReadyFlag] = useState(false);
 
   useEffect(() => {
     console.log("[VOICE] CallsScreen status:", status);
@@ -30,6 +31,9 @@ export default function CallsScreen() {
 
   const handleInit = async () => {
     try {
+      setTwilioInitialized(false);
+      setDeviceReadyFlag(false);
+
       const hasMicPermission = await ensureMicPermission();
       if (!hasMicPermission) {
         return;
@@ -39,10 +43,26 @@ export default function CallsScreen() {
         Alert.alert("Error", "No voice token available. Please refresh.");
         return;
       }
-      await initTwilioVoice(token);
-      setTwilioReady(true);
+      await initTwilioVoice(token, {
+        onDeviceReady: () => {
+          console.log("[TWILIO_VOICE][UI] deviceReady callback fired");
+          setDeviceReadyFlag(true);
+        },
+        onDeviceNotReady: (payload) => {
+          console.log("[TWILIO_VOICE][UI] deviceNotReady callback payload:", payload);
+          setDeviceReadyFlag(false);
+          const errText =
+            payload?.err ||
+            payload?.error ||
+            (typeof payload === "string" ? payload : JSON.stringify(payload));
+          Alert.alert("Twilio Device Not Ready", errText || "Unknown Twilio device error");
+        },
+      });
+      setTwilioInitialized(true);
       Alert.alert("Twilio Voice", "Initialized ✅");
     } catch (e) {
+      setTwilioInitialized(false);
+      setDeviceReadyFlag(false);
       Alert.alert("Init failed", e?.message || "Unknown error");
     }
   };
@@ -54,8 +74,8 @@ export default function CallsScreen() {
         return;
       }
 
-      if (!twilioReady) {
-        Alert.alert("Error", "Initialize Twilio Voice before starting a call.");
+      if (!twilioInitialized || !deviceReadyFlag) {
+        Alert.alert("Error", "Twilio is not ready yet. Initialize first and wait for deviceReady.");
         return;
       }
 
@@ -63,7 +83,7 @@ export default function CallsScreen() {
         Alert.alert("Error", "Please enter a number (e.g., 8132207636 or +18132207636)");
         return;
       }
-      startCall(to);
+      await startCall(to);
       Alert.alert("Calling", "Attempting to reach " + to + "...\n\nTap 'Hang Up' to end the call.");
     } catch (e) {
       Alert.alert("Call failed", e?.message || "Unknown error");
@@ -79,6 +99,8 @@ export default function CallsScreen() {
     }
   };
 
+  const canStartCall = twilioInitialized && deviceReadyFlag;
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Calls (Phase A)</Text>
@@ -87,7 +109,8 @@ export default function CallsScreen() {
       <Text style={styles.line}>Voice status: {status}</Text>
       <Text style={styles.line}>token present: {token ? "✅ true" : "❌ false"}</Text>
       <Text style={styles.line}>identity: {identity || "none"}</Text>
-      <Text style={styles.line}>Twilio initialized: {twilioReady ? "✅ yes" : "❌ no"}</Text>
+      <Text style={styles.line}>Twilio initialized: {twilioInitialized ? "✅ yes" : "❌ no"}</Text>
+      <Text style={styles.line}>Twilio deviceReady: {deviceReadyFlag ? "✅ yes" : "❌ no"}</Text>
 
       <View style={{ height: 20 }} />
 
@@ -108,7 +131,7 @@ export default function CallsScreen() {
       />
 
       <View style={{ height: 12 }} />
-      <Button title="Start Outgoing Call" onPress={handleCall} />
+      <Button title="Start Outgoing Call" onPress={handleCall} disabled={!canStartCall} />
       <View style={{ height: 12 }} />
       <Button title="Hang Up" onPress={handleHangup} color="red" />
 
