@@ -74,8 +74,8 @@ export default function CallsScreen() {
         return;
       }
 
-      if (!twilioInitialized || !deviceReadyFlag) {
-        Alert.alert("Error", "Twilio is not ready yet. Initialize first and wait for deviceReady.");
+      if (!twilioInitialized) {
+        Alert.alert("Error", "Initialize Twilio Voice before starting a call.");
         return;
       }
 
@@ -99,7 +99,7 @@ export default function CallsScreen() {
     }
   };
 
-  const canStartCall = twilioInitialized && deviceReadyFlag;
+  const canStartCall = twilioInitialized;
 
   return (
     <ScrollView contentContainerStyle={styles.container}>

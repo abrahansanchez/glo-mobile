@@ -282,8 +282,11 @@ export async function startCall(to) {
     throw new Error("Missing phone number");
   }
 
-  if (!twilioInitialized || !deviceReadyFlag) {
-    throw new Error("Twilio Voice is not ready yet. Wait for deviceReady before calling.");
+  if (!twilioInitialized) {
+    throw new Error("Twilio Voice is not initialized yet.");
+  }
+  if (!deviceReadyFlag) {
+    console.log(`[TWILIO_VOICE] [${ts()}] WARNING: deviceReady never fired — attempting connect anyway`);
   }
   
   // Normalize to E.164
