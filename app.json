@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -18,10 +18,7 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSMicrophoneUsageDescription": "Glō needs microphone access to make and receive calls.",
-        "UIBackgroundModes": [
-          "audio",
-          "voip"
-        ]
+        "UIBackgroundModes": ["audio", "voip", "remote-notification"]
       }
     },
     "android": {
@@ -31,21 +28,11 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "permissions": [
-        "RECEIVE_BOOT_COMPLETED",
-        "VIBRATE",
-        "WAKE_LOCK",
-        "RECORD_AUDIO"
-      ]
+      "permissions": ["RECEIVE_BOOT_COMPLETED", "VIBRATE", "WAKE_LOCK", "RECORD_AUDIO"]
     },
-    "plugins": [
-      "expo-secure-store",
-      "expo-notifications"
-    ],
+    "plugins": ["expo-secure-store", "expo-notifications"],
     "extra": {
-      "eas": {
-        "projectId": "d8fefe39-990e-4c03-abe6-7163ba745309"
-      }
+      "eas": { "projectId": "d8fefe39-990e-4c03-abe6-7163ba745309" }
     },
     "owner": "gloai"
   }

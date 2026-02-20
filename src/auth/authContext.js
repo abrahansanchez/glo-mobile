@@ -3,6 +3,7 @@ import { getToken, saveToken, clearToken } from "./tokenStorage";
 import api from "../config/api";
 import { setOnUnauthorized, setOnSubscriptionRequired } from "./authEvents";
 import { saveBarber, getBarber, clearBarber } from "./barberStorage";
+import { initVoipPushAndRegisterOnce } from "../voice/voipPushService";
 
 export const AuthContext = createContext();
 
@@ -78,6 +79,8 @@ export function AuthProvider({ children }) {
     }
 
     setAuthenticated(true);
+    console.log("[VOIP] init triggered after login");
+    initVoipPushAndRegisterOnce();
   };
 
   const logout = async () => {
