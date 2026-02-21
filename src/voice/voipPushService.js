@@ -4,6 +4,7 @@ import { fetchVoiceToken } from "./voiceTokenService";
 
 let didInit = false;
 let listenersAttached = false;
+let deviceReadySeen = false;
 
 function attachTwilioVoipListenersOnce() {
   if (listenersAttached) {
@@ -12,6 +13,7 @@ function attachTwilioVoipListenersOnce() {
   listenersAttached = true;
 
   TwilioVoice.addEventListener("deviceReady", () => {
+    deviceReadySeen = true;
     console.log("[VOIP] ✅ deviceReady (VoIP push registered)");
   });
 
@@ -40,9 +42,6 @@ export async function initVoipPushAndRegisterOnce() {
     console.log("[VOIP] fetched voice jwt");
 
     attachTwilioVoipListenersOnce();
-    console.log("[VOIP] initializing Twilio Voice with access token");
-    await TwilioVoice.initWithToken(accessToken);
-    console.log("[VOIP] Twilio initWithToken invoked");
 
     if (Platform.OS === "ios") {
       console.log("[VOIP] configuring CallKit defaults");
@@ -52,6 +51,16 @@ export async function initVoipPushAndRegisterOnce() {
       });
       console.log("[VOIP] CallKit configured");
     }
+
+    console.log("[VOIP] initializing Twilio Voice with access token");
+    await TwilioVoice.initWithToken(accessToken);
+    console.log("[VOIP] Twilio initWithToken invoked");
+
+    setTimeout(() => {
+      if (!deviceReadySeen) {
+        console.log("[VOIP] ⚠️ deviceReady not fired yet (still waiting)");
+      }
+    }, 10000);
   } catch (error) {
     console.log("[VOIP] ❌ VoIP init failed", error?.message || error);
     throw error;
