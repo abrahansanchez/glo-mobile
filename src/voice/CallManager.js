@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { AppState } from "react-native";
 import api from "../config/api";
 import {
@@ -13,24 +13,10 @@ const CallManagerContext = createContext(null);
 export function CallManagerProvider({ children }) {
   const [incomingInvite, setIncomingInvite] = useState(null);
   const [actionInProgress, setActionInProgress] = useState(false);
-  const appStateRef = useRef(AppState.currentState);
-
-  useEffect(() => {
-    const subscription = AppState.addEventListener("change", (nextState) => {
-      appStateRef.current = nextState;
-      if (nextState !== "active") {
-        setIncomingInvite(null);
-      }
-    });
-
-    return () => {
-      subscription.remove();
-    };
-  }, []);
 
   useEffect(() => {
     const unsubscribeIncoming = onVoipIncomingInvite((payload) => {
-      if (appStateRef.current !== "active") {
+      if (AppState.currentState !== "active") {
         return;
       }
 

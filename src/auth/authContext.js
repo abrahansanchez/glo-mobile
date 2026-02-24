@@ -4,6 +4,7 @@ import api from "../config/api";
 import { setOnUnauthorized, setOnSubscriptionRequired } from "./authEvents";
 import { saveBarber, getBarber, clearBarber } from "./barberStorage";
 import { initVoipPushAndRegisterOnce } from "../voice/voipPushService";
+import { registerExpoPushTokenIfNeeded } from "../notifications/pushNotifications";
 
 export const AuthContext = createContext();
 
@@ -44,6 +45,9 @@ export function AuthProvider({ children }) {
         setAuthenticated(true);
         console.log("[VOIP] init triggered after auth restore");
         initVoipPushAndRegisterOnce();
+        registerExpoPushTokenIfNeeded().catch((error) => {
+          console.log("[PUSH] register after auth restore failed", error?.response?.data || error?.message || error);
+        });
       } catch (e) {
         await clearToken();
         await clearBarber();
@@ -83,6 +87,9 @@ export function AuthProvider({ children }) {
     setAuthenticated(true);
     console.log("[VOIP] init triggered after login");
     initVoipPushAndRegisterOnce();
+    registerExpoPushTokenIfNeeded().catch((error) => {
+      console.log("[PUSH] register after login failed", error?.response?.data || error?.message || error);
+    });
   };
 
   const logout = async () => {
