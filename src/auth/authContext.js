@@ -42,6 +42,8 @@ export function AuthProvider({ children }) {
 
         // treat token as valid for now; App will surface subscription issues later
         setAuthenticated(true);
+        console.log("[VOIP] init triggered after auth restore");
+        initVoipPushAndRegisterOnce();
       } catch (e) {
         await clearToken();
         await clearBarber();
