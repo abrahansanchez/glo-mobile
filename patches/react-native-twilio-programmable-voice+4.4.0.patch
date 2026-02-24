@@ -1,0 +1,26 @@
+diff --git a/node_modules/react-native-twilio-programmable-voice/ios/RNTwilioVoice/RNTwilioVoice.m b/node_modules/react-native-twilio-programmable-voice/ios/RNTwilioVoice/RNTwilioVoice.m
+index df4c381..39edba7 100644
+--- a/node_modules/react-native-twilio-programmable-voice/ios/RNTwilioVoice/RNTwilioVoice.m
++++ b/node_modules/react-native-twilio-programmable-voice/ios/RNTwilioVoice/RNTwilioVoice.m
+@@ -4,6 +4,7 @@
+ @import AVFoundation;
+ @import PushKit;
+ @import CallKit;
++@import UIKit;
+ @import TwilioVoice;
+ 
+ NSString * const kCachedDeviceToken = @"CachedDeviceToken";
+@@ -352,8 +353,11 @@ - (void)callInviteReceived:(TVOCallInvite *)callInvite {
+     if (callInvite.customParameters[kCallerNameCustomParameter]) {
+         from = callInvite.customParameters[kCallerNameCustomParameter];
+     }
+-    // Always report to CallKit
+-    [self reportIncomingCallFrom:from withUUID:callInvite.uuid];
++    if ([UIApplication sharedApplication].applicationState != UIApplicationStateActive) {
++        [self reportIncomingCallFrom:from withUUID:callInvite.uuid];
++    } else {
++        NSLog(@"[CALL_UI] foreground: skipping CallKit report, using in-app overlay only");
++    }
+     self.activeCallInvites[[callInvite.uuid UUIDString]] = callInvite;
+     if ([[NSProcessInfo processInfo] operatingSystemVersion].majorVersion < 13) {
+         [self incomingPushHandled];
