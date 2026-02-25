@@ -1,12 +1,68 @@
 import TwilioVoice from "react-native-twilio-programmable-voice";
-import { Platform } from "react-native";
+import { AppState, Platform } from "react-native";
 import { fetchVoiceToken } from "./voiceTokenService";
 
 let didInit = false;
 let listenersAttached = false;
 let deviceReadySeen = false;
+let appStateListenerAttached = false;
+let currentAppState = AppState.currentState || "active";
+let deviceReadyWatchdog = null;
+const queuedInvites = [];
 const incomingInviteSubscribers = new Set();
 const inviteCancelledSubscribers = new Set();
+
+function resolveCallSid(payload) {
+  return payload?.call_sid || payload?.callSid || payload?.CallSid || null;
+}
+
+function isForegroundAppState(state) {
+  return state === "active";
+}
+
+function logVoipDiag({ payload = null, hasInvite = false } = {}) {
+  const callSid = resolveCallSid(payload);
+  const isForeground = isForegroundAppState(currentAppState);
+  console.log("[VOIP_DIAG]", {
+    appState: currentAppState,
+    deviceReady: deviceReadySeen,
+    hasInvite,
+    callSid,
+    isForeground,
+  });
+}
+
+function attachAppStateDiagnosticsOnce() {
+  if (appStateListenerAttached) return;
+  appStateListenerAttached = true;
+
+  AppState.addEventListener("change", (nextState) => {
+    const prevState = currentAppState;
+    currentAppState = nextState;
+    console.log("[VOIP] app state transition", { from: prevState, to: nextState });
+    logVoipDiag();
+  });
+}
+
+function emitQueuedInvitesIfNeeded() {
+  if (!deviceReadySeen || queuedInvites.length === 0) return;
+
+  const queued = queuedInvites.splice(0, queuedInvites.length);
+  console.log("[VOIP] processing queued invites after deviceReady", { count: queued.length });
+  queued.forEach((payload) => emitIncomingInvite(payload));
+}
+
+function scheduleDeviceReadyWatchdog(timeoutMs = 10000) {
+  if (deviceReadyWatchdog) {
+    clearTimeout(deviceReadyWatchdog);
+  }
+  deviceReadyWatchdog = setTimeout(() => {
+    if (!deviceReadySeen) {
+      console.log("[VOIP] ⚠️ deviceReady did not fire within expected window");
+      logVoipDiag();
+    }
+  }, timeoutMs);
+}
 
 function emitIncomingInvite(payload) {
   incomingInviteSubscribers.forEach((subscriber) => {
@@ -37,24 +93,50 @@ function attachTwilioVoipListenersOnce() {
   TwilioVoice.addEventListener("deviceReady", () => {
     deviceReadySeen = true;
     console.log("[VOIP] ✅ deviceReady (VoIP push registered)");
+    logVoipDiag();
+    emitQueuedInvitesIfNeeded();
   });
 
   TwilioVoice.addEventListener("deviceNotReady", (payload) => {
+    deviceReadySeen = false;
     console.log("[VOIP] ❌ deviceNotReady", payload);
+    logVoipDiag();
   });
 
   TwilioVoice.addEventListener("deviceDidReceiveIncoming", (payload) => {
+    const callSid = resolveCallSid(payload);
+    const isForeground = isForegroundAppState(currentAppState);
+    const contextLabel = isForeground ? "foreground" : "background_or_locked";
     console.log("[VOIP] 📞 incoming call invite", payload);
+    console.log("[VOIP] incoming invite context", contextLabel);
+    console.log("[VOIP] invite call_sid mapping", {
+      call_sid: payload?.call_sid || null,
+      callSid: payload?.callSid || null,
+      CallSid: payload?.CallSid || null,
+      resolvedCallSid: callSid,
+    });
+    logVoipDiag({ payload, hasInvite: true });
+
+    if (!deviceReadySeen) {
+      queuedInvites.push(payload);
+      console.log("[VOIP] incoming invite queued until deviceReady", { queuedCount: queuedInvites.length, callSid });
+      return;
+    }
+
     emitIncomingInvite(payload);
   });
 
   TwilioVoice.addEventListener("callInviteCancelled", (payload) => {
     console.log("[VOIP] ❌ callInviteCancelled", payload);
+    logVoipDiag({ payload, hasInvite: false });
     emitInviteCancelled(payload);
   });
 }
 
 export async function initVoipPushAndRegisterOnce() {
+  attachAppStateDiagnosticsOnce();
+  attachTwilioVoipListenersOnce();
+
   if (didInit) {
     return;
   }
@@ -64,8 +146,6 @@ export async function initVoipPushAndRegisterOnce() {
     console.log("[VOIP] fetching voice jwt for Twilio init");
     const { token: accessToken } = await fetchVoiceToken();
     console.log("[VOIP] fetched voice jwt");
-
-    attachTwilioVoipListenersOnce();
 
     if (Platform.OS === "ios") {
       console.log("[VOIP] configuring CallKit defaults");
@@ -79,12 +159,7 @@ export async function initVoipPushAndRegisterOnce() {
     console.log("[VOIP] initializing Twilio Voice with access token");
     await TwilioVoice.initWithToken(accessToken);
     console.log("[VOIP] Twilio initWithToken invoked");
-
-    setTimeout(() => {
-      if (!deviceReadySeen) {
-        console.log("[VOIP] ⚠️ deviceReady not fired yet (still waiting)");
-      }
-    }, 10000);
+    scheduleDeviceReadyWatchdog(10000);
   } catch (error) {
     console.log("[VOIP] ❌ VoIP init failed", error?.message || error);
     throw error;
@@ -93,6 +168,10 @@ export async function initVoipPushAndRegisterOnce() {
 
 export function isVoipPushInitialized() {
   return didInit;
+}
+
+export function isVoipDeviceReady() {
+  return deviceReadySeen;
 }
 
 export function onVoipIncomingInvite(handler) {

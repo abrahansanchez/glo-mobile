@@ -1,10 +1,11 @@
-import { createContext, useEffect, useState } from "react";
+import { createContext, useCallback, useEffect, useState } from "react";
+import { AppState } from "react-native";
 import { getToken, saveToken, clearToken } from "./tokenStorage";
 import api from "../config/api";
 import { setOnUnauthorized, setOnSubscriptionRequired } from "./authEvents";
 import { saveBarber, getBarber, clearBarber } from "./barberStorage";
 import { initVoipPushAndRegisterOnce } from "../voice/voipPushService";
-import { registerExpoPushTokenIfNeeded } from "../notifications/pushNotifications";
+import { registerExpoPushTokenIfNeeded, setupPushTokenRefreshRegistration } from "../notifications/pushNotifications";
 
 export const AuthContext = createContext();
 
@@ -14,6 +15,18 @@ export function AuthProvider({ children }) {
   const [barber, setBarber] = useState(null);
   const [subscriptionStatus, setSubscriptionStatus] = useState("unknown");
   const [subscriptionReason, setSubscriptionReason] = useState(null);
+
+  const registerPushTokenWithContext = useCallback(async (reason) => {
+    try {
+      console.log(`[PUSH_REGISTER] trigger ${reason}`);
+      await registerExpoPushTokenIfNeeded();
+    } catch (error) {
+      console.log(
+        `[PUSH_REGISTER] trigger failed ${reason}`,
+        error?.response?.data || error?.message || error
+      );
+    }
+  }, []);
 
   // Restore session on app start
   useEffect(() => {
@@ -45,9 +58,7 @@ export function AuthProvider({ children }) {
         setAuthenticated(true);
         console.log("[VOIP] init triggered after auth restore");
         initVoipPushAndRegisterOnce();
-        registerExpoPushTokenIfNeeded().catch((error) => {
-          console.log("[PUSH] register after auth restore failed", error?.response?.data || error?.message || error);
-        });
+        registerPushTokenWithContext("auth_restore_success");
       } catch (e) {
         await clearToken();
         await clearBarber();
@@ -87,9 +98,7 @@ export function AuthProvider({ children }) {
     setAuthenticated(true);
     console.log("[VOIP] init triggered after login");
     initVoipPushAndRegisterOnce();
-    registerExpoPushTokenIfNeeded().catch((error) => {
-      console.log("[PUSH] register after login failed", error?.response?.data || error?.message || error);
-    });
+    registerPushTokenWithContext("login_success");
   };
 
   const logout = async () => {
@@ -126,6 +135,27 @@ export function AuthProvider({ children }) {
       setSubscriptionReason(code || "SUBSCRIPTION_REQUIRED");
     });
   }, [barber]);
+
+  useEffect(() => {
+    if (!authenticated) {
+      return undefined;
+    }
+
+    const appStateSub = AppState.addEventListener("change", (nextState) => {
+      if (nextState === "active") {
+        registerPushTokenWithContext("app_became_active");
+      }
+    });
+
+    const teardownPushTokenRefresh = setupPushTokenRefreshRegistration(() => {
+      registerPushTokenWithContext("token_refresh_event");
+    });
+
+    return () => {
+      appStateSub.remove();
+      teardownPushTokenRefresh();
+    };
+  }, [authenticated, registerPushTokenWithContext]);
 
   return (
     <AuthContext.Provider

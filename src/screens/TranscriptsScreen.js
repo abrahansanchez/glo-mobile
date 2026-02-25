@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { FlatList, Pressable, Text, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import api from "../config/api";
+import { normalizeTranscriptTimeline } from "../utils/transcriptTimeline";
 
 function getTranscriptId(item) {
   return item?._id || item?.id || null;
@@ -30,6 +30,10 @@ export default function TranscriptsScreen() {
         const list = Array.isArray(response.data)
           ? response.data
           : response.data?.transcripts || [];
+        list.forEach((item) => {
+          const mode = normalizeTranscriptTimeline(item).mode;
+          console.log(`[TRANSCRIPT_RENDER_MODE] ${mode}`);
+        });
         console.log(`[TRANSCRIPTS] loaded count=${list.length}`);
         setTranscripts(list);
       } catch (err) {
@@ -43,59 +47,62 @@ export default function TranscriptsScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={{ flex: 1 }}>
+      <View style={{ flex: 1 }}>
         <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
           <Text>Loading transcripts...</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (error) {
     return (
-      <SafeAreaView style={{ flex: 1 }}>
+      <View style={{ flex: 1 }}>
         <View style={{ flex: 1, justifyContent: "center", alignItems: "center", padding: 16 }}>
           <Text>{error}</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
-      <View style={{ flex: 1 }}>
-        <FlatList
-          data={transcripts}
-          keyExtractor={(item, index) => String(getTranscriptId(item) || index)}
-          contentContainerStyle={{ paddingTop: 16 }}
-          ListEmptyComponent={
-            <View style={{ padding: 16 }}>
-              <Text>No transcripts yet.</Text>
-            </View>
-          }
-          renderItem={({ item }) => {
-            const transcriptId = getTranscriptId(item);
-            return (
-              <Pressable
-                onPress={() => {
-                  if (!transcriptId) return;
-                  navigation.navigate("TranscriptDetail", { transcriptId });
-                }}
-                style={{
-                  paddingVertical: 12,
-                  paddingHorizontal: 16,
-                  borderBottomWidth: 1,
-                  borderBottomColor: "#ddd",
-                }}
-              >
-                <Text>Caller: {item?.callerNumber || item?.from || "Unknown"}</Text>
-                <Text>When: {formatDate(item?.callEndedAt || item?.createdAt)}</Text>
-                <Text>Intent/Outcome: {item?.intent || "-"} / {item?.outcome || "-"}</Text>
-              </Pressable>
-            );
-          }}
-        />
-      </View>
-    </SafeAreaView>
+    <FlatList
+      data={transcripts}
+      keyExtractor={(item, index) => String(getTranscriptId(item) || index)}
+      contentContainerStyle={{ padding: 16 }}
+      ListEmptyComponent={
+        <View style={{ padding: 16 }}>
+          <Text>No transcripts yet.</Text>
+        </View>
+      }
+      renderItem={({ item }) => {
+        const transcriptId = getTranscriptId(item);
+        const caller = item?.callerNumber || item?.from || "Unknown";
+        const normalized = normalizeTranscriptTimeline(item);
+        const previewEntry = normalized.timeline[0];
+        const previewText = previewEntry
+          ? `${previewEntry.role || "system"}: ${previewEntry.text || ""}`
+          : "No transcript preview";
+        return (
+          <Pressable
+            onPress={() => {
+              if (!transcriptId) return;
+              navigation.navigate("TranscriptDetail", { transcriptId });
+            }}
+            style={{
+              paddingVertical: 12,
+              paddingHorizontal: 16,
+              borderBottomWidth: 1,
+              borderBottomColor: "#ddd",
+            }}
+          >
+            <Text>Caller: {caller}</Text>
+            <Text>When: {formatDate(item?.callEndedAt || item?.createdAt)}</Text>
+            <Text>Intent/Outcome: {item?.intent || "-"} / {item?.outcome || "-"}</Text>
+            <Text numberOfLines={1}>Preview: {previewText}</Text>
+          </Pressable>
+        );
+      }}
+    />
   );
 }

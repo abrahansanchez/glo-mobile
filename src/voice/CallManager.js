@@ -1,8 +1,9 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { AppState } from "react-native";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { Alert, AppState } from "react-native";
 import api from "../config/api";
 import {
   acceptIncomingInvite,
+  isVoipDeviceReady,
   onVoipIncomingInvite,
   onVoipInviteCancelled,
   rejectOrIgnoreIncomingInvite,
@@ -13,10 +14,46 @@ const CallManagerContext = createContext(null);
 export function CallManagerProvider({ children }) {
   const [incomingInvite, setIncomingInvite] = useState(null);
   const [actionInProgress, setActionInProgress] = useState(false);
+  const appStateRef = useRef(AppState.currentState || "active");
+  const inFlightActionRef = useRef(null);
+
+  const getCallSid = useCallback((invite) => invite?.call_sid || invite?.callSid || invite?.CallSid || null, []);
+  const inviteKey = useCallback((invite) => getCallSid(invite) || invite?.from || invite?.call_from || "unknown", [getCallSid]);
+
+  const logVoipDiag = useCallback(
+    (invite, hasInvite) => {
+      const callSid = getCallSid(invite);
+      const state = appStateRef.current;
+      console.log("[VOIP_DIAG]", {
+        appState: state,
+        deviceReady: isVoipDeviceReady(),
+        hasInvite,
+        callSid,
+        isForeground: state === "active",
+      });
+    },
+    [getCallSid]
+  );
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      const previousState = appStateRef.current;
+      appStateRef.current = nextState;
+      console.log("[CALL_UI] app state transition", { from: previousState, to: nextState });
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
 
   useEffect(() => {
     const unsubscribeIncoming = onVoipIncomingInvite((payload) => {
-      if (AppState.currentState !== "active") {
+      const isForeground = appStateRef.current === "active";
+      console.log(`[CALL_UI_ROUTE] ${isForeground ? "foreground_overlay" : "background_native"}`);
+      logVoipDiag(payload, true);
+
+      if (!isForeground) {
         return;
       }
 
@@ -24,7 +61,8 @@ export function CallManagerProvider({ children }) {
       setIncomingInvite(payload || null);
     });
 
-    const unsubscribeCancelled = onVoipInviteCancelled(() => {
+    const unsubscribeCancelled = onVoipInviteCancelled((payload) => {
+      logVoipDiag(payload, false);
       setIncomingInvite(null);
     });
 
@@ -32,51 +70,84 @@ export function CallManagerProvider({ children }) {
       unsubscribeIncoming();
       unsubscribeCancelled();
     };
-  }, []);
+  }, [logVoipDiag]);
 
   const answerIncomingCall = useCallback(async () => {
     if (!incomingInvite || actionInProgress) {
       return;
     }
+    const actionKey = `answer:${inviteKey(incomingInvite)}`;
+    if (inFlightActionRef.current === actionKey) {
+      console.log("[CALL_UI] answer ignored: action already in flight", { actionKey });
+      return;
+    }
 
     console.log("[CALL_UI] Answer pressed");
+    inFlightActionRef.current = actionKey;
     setActionInProgress(true);
     try {
       await acceptIncomingInvite();
+      logVoipDiag(incomingInvite, false);
+      setIncomingInvite(null);
     } catch (error) {
       console.log("[CALL_UI] answer failed", error?.response?.data || error?.message || error);
+      Alert.alert("Unable to answer", "We could not answer the call. Please try again.");
     } finally {
-      setIncomingInvite(null);
       setActionInProgress(false);
+      inFlightActionRef.current = null;
     }
-  }, [actionInProgress, incomingInvite]);
+  }, [actionInProgress, incomingInvite, inviteKey, logVoipDiag]);
 
   const letAiHandleIncomingCall = useCallback(async () => {
     if (!incomingInvite || actionInProgress) {
       return;
     }
+    const actionKey = `ai:${inviteKey(incomingInvite)}`;
+    if (inFlightActionRef.current === actionKey) {
+      console.log("[CALL_UI] AI handle ignored: action already in flight", { actionKey });
+      return;
+    }
 
     console.log("[CALL_UI] Let AI Handle pressed");
+    inFlightActionRef.current = actionKey;
     setActionInProgress(true);
+    let aiTakeoverOk = false;
+    let backendStatus = null;
+    const callSid = getCallSid(incomingInvite);
+
     try {
-      await api.post("/voice/ai-takeover", {
-        callSid: incomingInvite?.call_sid || null,
+      const response = await api.post("/voice/ai-takeover", {
+        callSid,
         from: incomingInvite?.call_from || incomingInvite?.from || null,
         to: incomingInvite?.call_to || incomingInvite?.to || null,
       });
+      backendStatus = response?.status || 200;
+      aiTakeoverOk = true;
     } catch (error) {
+      backendStatus = error?.response?.status || null;
       console.log("[CALL_UI] ai takeover failed", error?.response?.data || error?.message || error);
+      Alert.alert("AI takeover failed", "Could not send this call to AI. You can try again or answer the call.");
+    } finally {
+      console.log("[AI_HANDLE_RESULT]", { ok: aiTakeoverOk, status: backendStatus, callSid });
+    }
+
+    if (!aiTakeoverOk) {
+      setActionInProgress(false);
+      inFlightActionRef.current = null;
+      return;
     }
 
     try {
       await rejectOrIgnoreIncomingInvite();
+      logVoipDiag(incomingInvite, false);
+      setIncomingInvite(null);
     } catch (error) {
       console.log("[CALL_UI] local invite dismiss failed", error?.message || error);
     } finally {
-      setIncomingInvite(null);
       setActionInProgress(false);
+      inFlightActionRef.current = null;
     }
-  }, [actionInProgress, incomingInvite]);
+  }, [actionInProgress, getCallSid, incomingInvite, inviteKey, logVoipDiag]);
 
   const value = useMemo(
     () => ({

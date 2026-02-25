@@ -81,12 +81,27 @@ export async function registerExpoPushTokenIfNeeded() {
     return token;
   }
 
-  try {
-    const response = await api.post('/push/register', { token });
-    console.log('[PUSH] register response:', response?.data);
-  } catch (error) {
-    console.log('[PUSH] register failed:', error?.response?.data || error?.message || error);
-    throw error;
+  const maxRetries = 2;
+  const attemptCount = maxRetries + 1;
+  for (let attempt = 1; attempt <= attemptCount; attempt += 1) {
+    try {
+      console.log(`[PUSH_REGISTER] attempt ${attempt}`);
+      const response = await api.post('/push/register', { token });
+      console.log('[PUSH] register response:', response?.data);
+      console.log('[PUSH_REGISTER] success');
+      break;
+    } catch (error) {
+      console.log('[PUSH_REGISTER] failed', {
+        attempt,
+        error: error?.response?.data || error?.message || error,
+      });
+
+      if (attempt >= attemptCount) {
+        throw error;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, attempt * 500));
+    }
   }
 
   await SecureStore.setItemAsync(EXPO_PUSH_TOKEN_KEY, token);
@@ -95,11 +110,32 @@ export async function registerExpoPushTokenIfNeeded() {
   return token;
 }
 
+export function setupPushTokenRefreshRegistration(onPushTokenRefresh) {
+  if (typeof Notifications.addPushTokenListener !== 'function') {
+    console.log('[PUSH] addPushTokenListener unavailable on this SDK runtime');
+    return () => {};
+  }
+
+  const subscription = Notifications.addPushTokenListener((tokenInfo) => {
+    console.log('[PUSH] token refresh event', { hasToken: !!tokenInfo?.data });
+    if (typeof onPushTokenRefresh === 'function') {
+      onPushTokenRefresh(tokenInfo?.data || null);
+    }
+  });
+
+  return () => {
+    try {
+      subscription?.remove?.();
+    } catch (error) {
+      console.log('[PUSH] token listener cleanup error', error?.message || error);
+    }
+  };
+}
+
 export function setupForegroundPushLogging() {
   if (!notificationHandlerConfigured) {
     Notifications.setNotificationHandler({
       handleNotification: async () => ({
-        shouldShowAlert: true,
         shouldShowBanner: true,
         shouldShowList: true,
         shouldPlaySound: true,
@@ -110,12 +146,20 @@ export function setupForegroundPushLogging() {
   }
 
   const sub1 = Notifications.addNotificationReceivedListener((n) => {
+    const data = n?.request?.content?.data || {};
+    const mappedCallSid = data?.call_sid || data?.callSid || data?.CallSid || null;
     console.log(
       '[PUSH] received (foreground):',
       n?.request?.content?.title,
       n?.request?.content?.body,
-      n?.request?.content?.data
+      data
     );
+    console.log('[PUSH] call_sid mapping', {
+      call_sid: data?.call_sid || null,
+      callSid: data?.callSid || null,
+      CallSid: data?.CallSid || null,
+      mappedCallSid,
+    });
   });
 
   const sub2 = Notifications.addNotificationResponseReceivedListener((r) => {
