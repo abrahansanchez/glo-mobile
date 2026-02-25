@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { ScrollView, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import api from "../config/api";
 
 function normalizeLines(transcript) {
@@ -51,37 +52,43 @@ export default function TranscriptDetailScreen({ route }) {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <Text>Loading transcript...</Text>
-      </View>
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+          <Text>Loading transcript...</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   if (error) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", padding: 16 }}>
-        <Text>{error}</Text>
-      </View>
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", padding: 16 }}>
+          <Text>{error}</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <ScrollView contentContainerStyle={{ padding: 16, gap: 8 }}>
-      <Text>Caller: {detail?.callerNumber || detail?.from || "Unknown"}</Text>
-      <Text>Call SID: {detail?.callSid || "-"}</Text>
-      <Text>Intent: {detail?.intent || "-"}</Text>
-      <Text>Outcome: {detail?.outcome || "-"}</Text>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 16, gap: 8 }}>
+        <Text>Caller: {detail?.callerNumber || detail?.from || "Unknown"}</Text>
+        <Text>Call SID: {detail?.callSid || "-"}</Text>
+        <Text>Intent: {detail?.intent || "-"}</Text>
+        <Text>Outcome: {detail?.outcome || "-"}</Text>
 
-      <Text style={{ marginTop: 10, fontWeight: "700" }}>Transcript</Text>
-      {lines.length === 0 ? (
-        <Text>No transcript lines.</Text>
-      ) : (
-        lines.map((line, index) => (
-          <Text key={`line-${index}`} style={{ marginBottom: 6 }}>
-            {lineText(line, index)}
-          </Text>
-        ))
-      )}
-    </ScrollView>
+        <Text style={{ marginTop: 10, fontWeight: "700" }}>Transcript</Text>
+        {lines.length === 0 ? (
+          <Text>No transcript lines.</Text>
+        ) : (
+          lines.map((line, index) => (
+            <Text key={`line-${index}`} style={{ marginBottom: 6 }}>
+              {lineText(line, index)}
+            </Text>
+          ))
+        )}
+      </ScrollView>
+    </SafeAreaView>
   );
 }
