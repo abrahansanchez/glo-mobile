@@ -5,7 +5,11 @@ import api from "../config/api";
 import { setOnUnauthorized, setOnSubscriptionRequired } from "./authEvents";
 import { saveBarber, getBarber, clearBarber } from "./barberStorage";
 import { initVoipPushAndRegisterOnce } from "../voice/voipPushService";
-import { registerExpoPushTokenIfNeeded, setupPushTokenRefreshRegistration } from "../notifications/pushNotifications";
+import {
+  registerExpoPushTokenIfNeeded,
+  registerProvidedExpoPushTokenIfNeeded,
+  setupPushTokenRefreshRegistration,
+} from "../notifications/pushNotifications";
 
 export const AuthContext = createContext();
 
@@ -16,9 +20,14 @@ export function AuthProvider({ children }) {
   const [subscriptionStatus, setSubscriptionStatus] = useState("unknown");
   const [subscriptionReason, setSubscriptionReason] = useState(null);
 
-  const registerPushTokenWithContext = useCallback(async (reason) => {
+  const registerPushTokenWithContext = useCallback(async (reason, providedToken = null) => {
     try {
       console.log(`[PUSH_REGISTER] trigger ${reason}`);
+      if (providedToken) {
+        await registerProvidedExpoPushTokenIfNeeded(providedToken);
+        return;
+      }
+
       await registerExpoPushTokenIfNeeded();
     } catch (error) {
       console.log(
@@ -147,8 +156,8 @@ export function AuthProvider({ children }) {
       }
     });
 
-    const teardownPushTokenRefresh = setupPushTokenRefreshRegistration(() => {
-      registerPushTokenWithContext("token_refresh_event");
+    const teardownPushTokenRefresh = setupPushTokenRefreshRegistration((refreshedToken) => {
+      registerPushTokenWithContext("token_refresh_event", refreshedToken);
     });
 
     return () => {

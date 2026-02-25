@@ -7,6 +7,13 @@ import api from '../config/api';
 const EXPO_PUSH_TOKEN_KEY = 'expoPushToken';
 const EXPO_PUSH_PROJECT_ID_KEY = 'expoPushProjectId';
 let notificationHandlerConfigured = false;
+let registerInFlightKey = null;
+let registerInFlightPromise = null;
+const EXPO_TOKEN_PATTERN = /^(ExponentPushToken|ExpoPushToken)\[[^\]]+\]$/;
+
+function isValidExpoPushToken(token) {
+  return typeof token === 'string' && EXPO_TOKEN_PATTERN.test(token);
+}
 
 /**
  * Registers the device for push notifications.
@@ -67,12 +74,11 @@ export async function registerForPushNotifications() {
   }
 }
 
-export async function registerExpoPushTokenIfNeeded() {
-  const tokenResult = await registerForPushNotifications();
-  if (!tokenResult?.token) {
+async function registerTokenWithBackend(token, projectId) {
+  if (!isValidExpoPushToken(token)) {
+    console.log('[PUSH_REGISTER] skipped invalid expo token format');
     return null;
   }
-  const { token, projectId } = tokenResult;
 
   const lastRegisteredToken = await SecureStore.getItemAsync(EXPO_PUSH_TOKEN_KEY);
   const lastRegisteredProjectId = await SecureStore.getItemAsync(EXPO_PUSH_PROJECT_ID_KEY);
@@ -81,33 +87,75 @@ export async function registerExpoPushTokenIfNeeded() {
     return token;
   }
 
-  const maxRetries = 2;
-  const attemptCount = maxRetries + 1;
-  for (let attempt = 1; attempt <= attemptCount; attempt += 1) {
-    try {
-      console.log(`[PUSH_REGISTER] attempt ${attempt}`);
-      const response = await api.post('/push/register', { token });
-      console.log('[PUSH] register response:', response?.data);
-      console.log('[PUSH_REGISTER] success');
-      break;
-    } catch (error) {
-      console.log('[PUSH_REGISTER] failed', {
-        attempt,
-        error: error?.response?.data || error?.message || error,
-      });
-
-      if (attempt >= attemptCount) {
-        throw error;
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, attempt * 500));
-    }
+  const registrationKey = `${token}|${projectId || ''}`;
+  if (registerInFlightPromise && registerInFlightKey === registrationKey) {
+    console.log('[PUSH_REGISTER] dedupe in-flight registration', { registrationKey });
+    return registerInFlightPromise;
   }
 
-  await SecureStore.setItemAsync(EXPO_PUSH_TOKEN_KEY, token);
-  await SecureStore.setItemAsync(EXPO_PUSH_PROJECT_ID_KEY, projectId || '');
-  console.log('[PUSH] token registered with backend');
-  return token;
+  const maxRetries = 2;
+  const attemptCount = maxRetries + 1;
+
+  registerInFlightKey = registrationKey;
+  registerInFlightPromise = (async () => {
+    for (let attempt = 1; attempt <= attemptCount; attempt += 1) {
+      try {
+        console.log(`[PUSH_REGISTER] attempt ${attempt}`);
+        const response = await api.post('/push/register', { token });
+        console.log('[PUSH] register response:', response?.data);
+        console.log('[PUSH_REGISTER] success');
+        break;
+      } catch (error) {
+        console.log('[PUSH_REGISTER] failed', {
+          attempt,
+          error: error?.response?.data || error?.message || error,
+        });
+
+        if (attempt >= attemptCount) {
+          throw error;
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, attempt * 500));
+      }
+    }
+
+    await SecureStore.setItemAsync(EXPO_PUSH_TOKEN_KEY, token);
+    await SecureStore.setItemAsync(EXPO_PUSH_PROJECT_ID_KEY, projectId || '');
+    console.log('[PUSH] token registered with backend');
+    return token;
+  })();
+
+  try {
+    return await registerInFlightPromise;
+  } finally {
+    registerInFlightPromise = null;
+    registerInFlightKey = null;
+  }
+}
+
+export async function registerExpoPushTokenIfNeeded() {
+  const tokenResult = await registerForPushNotifications();
+  if (!tokenResult?.token) {
+    return null;
+  }
+  const { token, projectId } = tokenResult;
+  return registerTokenWithBackend(token, projectId);
+}
+
+export async function registerProvidedExpoPushTokenIfNeeded(token) {
+  if (!token) {
+    return null;
+  }
+  if (!isValidExpoPushToken(token)) {
+    console.log('[PUSH_REGISTER] token_refresh_event ignored non-Expo token');
+    return null;
+  }
+
+  const projectId =
+    Constants.easConfig?.projectId ??
+    Constants.expoConfig?.extra?.eas?.projectId;
+
+  return registerTokenWithBackend(token, projectId);
 }
 
 export function setupPushTokenRefreshRegistration(onPushTokenRefresh) {
@@ -117,9 +165,15 @@ export function setupPushTokenRefreshRegistration(onPushTokenRefresh) {
   }
 
   const subscription = Notifications.addPushTokenListener((tokenInfo) => {
-    console.log('[PUSH] token refresh event', { hasToken: !!tokenInfo?.data });
-    if (typeof onPushTokenRefresh === 'function') {
-      onPushTokenRefresh(tokenInfo?.data || null);
+    const maybeToken = tokenInfo?.data || null;
+    const isExpo = isValidExpoPushToken(maybeToken);
+
+    console.log('[PUSH] token refresh event', { hasToken: !!maybeToken, isExpo });
+
+    if (isExpo && typeof onPushTokenRefresh === 'function') {
+      onPushTokenRefresh(maybeToken);
+    } else {
+      console.log('[PUSH] token refresh ignored (not an Expo token)');
     }
   });
 

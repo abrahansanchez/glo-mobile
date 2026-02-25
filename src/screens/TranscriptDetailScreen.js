@@ -72,9 +72,9 @@ export default function TranscriptDetailScreen({ route }) {
         {normalizedTranscript.timeline.length === 0 ? (
           <Text>No transcript lines.</Text>
         ) : (
-          normalizedTranscript.timeline.map((line, index) => (
-            <Text key={`line-${index}`} style={{ marginBottom: 6 }}>
-              {`${line.role || "system"}: ${line.text || ""}`}
+          normalizedTranscript.timeline.map((line) => (
+            <Text key={line.id} style={{ marginBottom: 6 }}>
+              {`${line.role}: ${line.text}`}
             </Text>
           ))
         )}

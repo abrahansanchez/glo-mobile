@@ -5,6 +5,7 @@ import { fetchVoiceToken } from "./voiceTokenService";
 let didInit = false;
 let listenersAttached = false;
 let deviceReadySeen = false;
+let initRetryAttempted = false;
 let appStateListenerAttached = false;
 let currentAppState = AppState.currentState || "active";
 let deviceReadyWatchdog = null;
@@ -52,14 +53,25 @@ function emitQueuedInvitesIfNeeded() {
   queued.forEach((payload) => emitIncomingInvite(payload));
 }
 
-function scheduleDeviceReadyWatchdog(timeoutMs = 10000) {
+function scheduleDeviceReadyWatchdog(accessToken, timeoutMs = 10000) {
   if (deviceReadyWatchdog) {
     clearTimeout(deviceReadyWatchdog);
   }
-  deviceReadyWatchdog = setTimeout(() => {
+  deviceReadyWatchdog = setTimeout(async () => {
     if (!deviceReadySeen) {
       console.log("[VOIP] ⚠️ deviceReady did not fire within expected window");
       logVoipDiag();
+
+      if (!initRetryAttempted) {
+        initRetryAttempted = true;
+        console.log("[VOIP] retrying initWithToken once due to missing deviceReady");
+        try {
+          const retryResult = await TwilioVoice.initWithToken(accessToken);
+          console.log("[VOIP] retry initWithToken resolved", retryResult || {});
+        } catch (error) {
+          console.log("[VOIP] ❌ retry initWithToken failed", error?.message || error, error);
+        }
+      }
     }
   }, timeoutMs);
 }
@@ -102,6 +114,22 @@ function attachTwilioVoipListenersOnce() {
     console.log("[VOIP] ❌ deviceNotReady", payload);
     logVoipDiag();
   });
+
+  try {
+    TwilioVoice.addEventListener("registered", () => {
+      console.log("[VOIP] ✅ registered for invites");
+    });
+  } catch (error) {
+    console.log("[VOIP] registered listener unavailable", error?.message || error);
+  }
+
+  try {
+    TwilioVoice.addEventListener("registrationFailed", (payload) => {
+      console.log("[VOIP] ❌ registrationFailed", payload);
+    });
+  } catch (error) {
+    console.log("[VOIP] registrationFailed listener unavailable", error?.message || error);
+  }
 
   TwilioVoice.addEventListener("deviceDidReceiveIncoming", (payload) => {
     const callSid = resolveCallSid(payload);
@@ -157,9 +185,16 @@ export async function initVoipPushAndRegisterOnce() {
     }
 
     console.log("[VOIP] initializing Twilio Voice with access token");
-    await TwilioVoice.initWithToken(accessToken);
-    console.log("[VOIP] Twilio initWithToken invoked");
-    scheduleDeviceReadyWatchdog(10000);
+    console.log("[VOIP] initWithToken starting");
+    try {
+      const result = await TwilioVoice.initWithToken(accessToken);
+      console.log("[VOIP] initWithToken resolved", result || {});
+    } catch (error) {
+      console.log("[VOIP] ❌ initWithToken threw", error?.message || error, error);
+      throw error;
+    }
+
+    scheduleDeviceReadyWatchdog(accessToken, 10000);
   } catch (error) {
     console.log("[VOIP] ❌ VoIP init failed", error?.message || error);
     throw error;
