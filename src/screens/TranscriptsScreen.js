@@ -1,109 +1,84 @@
-import { View, Text, FlatList, StyleSheet } from "react-native";
 import { useEffect, useState } from "react";
+import { FlatList, Pressable, Text, View } from "react-native";
+import { useNavigation } from "@react-navigation/native";
 import api from "../config/api";
-import LoadingState from "../components/LoadingState";
+
+function getTranscriptId(item) {
+  return item?._id || item?.id || null;
+}
+
+function formatDate(value) {
+  if (!value) return "";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value);
+  return d.toLocaleString();
+}
 
 export default function TranscriptsScreen() {
+  const navigation = useNavigation();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [transcripts, setTranscripts] = useState([]);
 
   useEffect(() => {
-    loadTranscripts();
+    (async () => {
+      try {
+        setLoading(true);
+        setError("");
+        const response = await api.get("/dashboard/transcripts");
+        const list = Array.isArray(response.data)
+          ? response.data
+          : response.data?.transcripts || [];
+        console.log(`[TRANSCRIPTS] loaded count=${list.length}`);
+        setTranscripts(list);
+      } catch (err) {
+        console.log("[TRANSCRIPTS] load failed", err?.response?.data || err?.message || err);
+        setError("Failed to load transcripts");
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, []);
 
-  async function loadTranscripts() {
-    try {
-      setLoading(true);
-
-      const res = await api.get("/dashboard/transcripts");
-
-      // Backend returns { transcripts, page, total, ... }
-      const list = Array.isArray(res.data?.transcripts)
-        ? res.data.transcripts
-        : [];
-
-      setTranscripts(list);
-    } catch (err) {
-      console.log(
-        "Transcripts load error:",
-        err?.response?.data || err.message
-      );
-      setTranscripts([]);
-    } finally {
-      setLoading(false);
-    }
-  }
-
   if (loading) {
-    return <LoadingState label="Loading transcripts..." />;
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <Text>Loading transcripts...</Text>
+      </View>
+    );
   }
 
-  if (!transcripts.length) {
+  if (error) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.empty}>No transcripts found</Text>
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", padding: 16 }}>
+        <Text>{error}</Text>
       </View>
     );
   }
 
   return (
-    <FlatList
-      data={transcripts}
-      keyExtractor={(item) => item._id}
-      contentContainerStyle={{ padding: 16 }}
-      renderItem={({ item }) => (
-        <View style={styles.card}>
-          <Text style={styles.intent}>
-            Intent: {item.intent || "Unknown"}
-          </Text>
-
-          <Text style={styles.meta}>
-            {new Date(item.createdAt).toLocaleString()}
-          </Text>
-
-          {item.outcome && (
-            <Text style={styles.outcome}>
-              Outcome: {item.outcome}
-            </Text>
-          )}
-        </View>
-      )}
-    />
+    <View style={{ flex: 1, padding: 16 }}>
+      <FlatList
+        data={transcripts}
+        keyExtractor={(item, index) => String(getTranscriptId(item) || index)}
+        ListEmptyComponent={<Text>No transcripts yet.</Text>}
+        renderItem={({ item }) => {
+          const transcriptId = getTranscriptId(item);
+          return (
+            <Pressable
+              onPress={() => {
+                if (!transcriptId) return;
+                navigation.navigate("TranscriptDetail", { transcriptId });
+              }}
+              style={{ paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#ddd" }}
+            >
+              <Text>Caller: {item?.callerNumber || item?.from || "Unknown"}</Text>
+              <Text>When: {formatDate(item?.callEndedAt || item?.createdAt)}</Text>
+              <Text>Intent/Outcome: {item?.intent || "-"} / {item?.outcome || "-"}</Text>
+            </Pressable>
+          );
+        }}
+      />
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  center: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  empty: {
-    fontSize: 16,
-    color: "#777",
-  },
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 3,
-  },
-  intent: {
-    fontSize: 15,
-    fontWeight: "600",
-  },
-  meta: {
-    marginTop: 6,
-    fontSize: 13,
-    color: "#666",
-  },
-  outcome: {
-    marginTop: 6,
-    fontSize: 13,
-    color: "#555",
-  },
-});

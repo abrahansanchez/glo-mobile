@@ -7,6 +7,8 @@ import CallsScreen from "../screens/CallsScreen";
 import AppointmentsScreen from "../screens/AppointmentsScreen";
 import VoicemailsScreen from "../screens/VoicemailsScreen";
 import AnalyticsSummaryScreen from "../screens/AnalyticsSummaryScreen";
+import TranscriptsScreen from "../screens/TranscriptsScreen";
+import TranscriptDetailScreen from "../screens/TranscriptDetailScreen";
 import CallNavigator from "./CallNavigator";
 import SettingsScreen from "../screens/SettingsScreen";
 import AccountScreen from "../screens/settings/AccountScreen";
@@ -21,6 +23,7 @@ function DashboardTabs() {
       <Tab.Screen name="Calls" component={CallsScreen} />
       <Tab.Screen name="Appointments" component={AppointmentsScreen} />
       <Tab.Screen name="Voicemails" component={VoicemailsScreen} />
+      <Tab.Screen name="Transcripts" component={TranscriptsScreen} />
       <Tab.Screen name="Analytics" component={AnalyticsSummaryScreen} />
       <Tab.Screen name="Settings" component={SettingsScreen} />
     </Tab.Navigator>
@@ -34,6 +37,7 @@ export default function DashboardNavigator() {
       <Stack.Screen name="DashboardTabs" component={DashboardTabs} />
 
       <Stack.Screen name="Account" component={AccountScreen} />
+      <Stack.Screen name="TranscriptDetail" component={TranscriptDetailScreen} />
 
       {/* Call flow (modal-style) */}
       <Stack.Screen name="CallFlow" component={CallNavigator} />
