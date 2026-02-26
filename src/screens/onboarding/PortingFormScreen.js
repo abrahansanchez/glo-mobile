@@ -19,6 +19,12 @@ export default function PortingFormScreen({ navigation, route }) {
   const { setLocalStep } = useContext(OnboardingContext);
   const [form, setForm] = useState({
     phoneNumber: "",
+    businessName: "",
+    authorizedName: "",
+    serviceStreet: "",
+    serviceCity: "",
+    serviceState: "",
+    serviceZip: "",
     carrier: "",
     accountNumber: "",
     pin: "",
@@ -55,6 +61,12 @@ export default function PortingFormScreen({ navigation, route }) {
     if (!source || typeof source !== "object") return null;
     return {
       phoneNumber: source.phoneNumber || source.phone || "",
+      businessName: source.businessName || source.companyName || "",
+      authorizedName: source.authorizedName || source.contactName || "",
+      serviceStreet: source.serviceStreet || source.address1 || source.street || "",
+      serviceCity: source.serviceCity || source.city || "",
+      serviceState: source.serviceState || source.state || "",
+      serviceZip: source.serviceZip || source.zip || "",
       carrier: source.carrier || "",
       accountNumber: source.accountNumber || "",
       pin: source.pin || source.passcode || "",
@@ -72,12 +84,42 @@ export default function PortingFormScreen({ navigation, route }) {
     setLoading(true);
     setError("");
     try {
+      if (!form.phoneNumber || !form.businessName || !form.authorizedName) {
+        setError("Phone number, business name, and authorized name are required.");
+        setLoading(false);
+        return;
+      }
+      if (!form.serviceStreet || !form.serviceCity || !form.serviceState || !form.serviceZip) {
+        setError("Complete service address is required.");
+        setLoading(false);
+        return;
+      }
+      if (!form.carrier || !form.accountNumber) {
+        setError("Carrier name and account number are required.");
+        setLoading(false);
+        return;
+      }
+
       await setLocalStep("porting_form");
-      await api.post("/phone/porting/start", {
+      const payload = {
         ...form,
+        contactName: form.authorizedName || form.contactName,
+        billingZip: form.serviceZip || form.billingZip,
+        serviceAddress: {
+          street: form.serviceStreet,
+          city: form.serviceCity,
+          state: form.serviceState,
+          zip: form.serviceZip,
+        },
         idempotencyKey: `porting-${Date.now()}`,
-      });
-      navigation.navigate("PortingStatus");
+      };
+      const response = await api.post("/phone/porting/start", payload);
+      const portingId =
+        response?.data?.portingId ||
+        response?.data?.id ||
+        response?.data?._id ||
+        null;
+      navigation.navigate("PortingStatus", { portingId });
     } catch (e) {
       setError(e?.response?.data?.message || "Failed to submit port request");
     } finally {
@@ -102,12 +144,16 @@ export default function PortingFormScreen({ navigation, route }) {
 
         {[
           ["phoneNumber", "Phone Number"],
+          ["businessName", "Business Name"],
+          ["authorizedName", "Authorized Name"],
+          ["serviceStreet", "Service Street"],
+          ["serviceCity", "Service City"],
+          ["serviceState", "Service State"],
+          ["serviceZip", "Service ZIP"],
           ["carrier", "Carrier"],
           ["accountNumber", "Account Number"],
           ["pin", "PIN / Passcode"],
-          ["billingZip", "Billing ZIP"],
-          ["contactName", "Authorized Contact Name"],
-          ["contactEmail", "Authorized Contact Email"],
+          ["contactEmail", "Authorized Contact Email (optional)"],
         ].map(([key, label]) => (
           <View key={key}>
             <Text style={styles.label}>{label}</Text>

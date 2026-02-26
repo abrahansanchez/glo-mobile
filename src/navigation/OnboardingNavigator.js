@@ -10,6 +10,7 @@ import TrialStartScreen from "../screens/onboarding/TrialStartScreen";
 import PortingFormScreen from "../screens/onboarding/PortingFormScreen";
 import PortingTrackerScreen from "../screens/onboarding/PortingTrackerScreen";
 import PortingStatusScreen from "../screens/onboarding/PortingStatusScreen";
+import PortingDocumentsScreen from "../screens/onboarding/PortingDocumentsScreen";
 import GoLiveChecklistScreen from "../screens/onboarding/GoLiveChecklistScreen";
 import { STEPS } from "../onboarding/stepKeys";
 
@@ -36,6 +37,8 @@ export default function OnboardingNavigator() {
         return "PortingStatus";
       case "go_live_checklist":
         return "GoLiveChecklist";
+      case "porting_documents":
+        return "PortingDocuments";
       case STEPS.WELCOME:
       default:
         return "Welcome";
@@ -55,6 +58,7 @@ export default function OnboardingNavigator() {
       <Stack.Screen name="PortingForm" component={PortingFormScreen} />
       <Stack.Screen name="PortingTracker" component={PortingTrackerScreen} />
       <Stack.Screen name="PortingStatus" component={PortingStatusScreen} />
+      <Stack.Screen name="PortingDocuments" component={PortingDocumentsScreen} />
       <Stack.Screen name="GoLiveChecklist" component={GoLiveChecklistScreen} />
     </Stack.Navigator>
   );

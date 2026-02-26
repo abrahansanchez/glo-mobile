@@ -13,6 +13,7 @@ import CallNavigator from "./CallNavigator";
 import SettingsScreen from "../screens/SettingsScreen";
 import AccountScreen from "../screens/settings/AccountScreen";
 import PortingStatusScreen from "../screens/onboarding/PortingStatusScreen";
+import PortingDocumentsScreen from "../screens/onboarding/PortingDocumentsScreen";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -56,6 +57,7 @@ export default function DashboardNavigator() {
 
       <Stack.Screen name="Account" component={AccountScreen} />
       <Stack.Screen name="PortingStatus" component={PortingStatusScreen} />
+      <Stack.Screen name="PortingDocuments" component={PortingDocumentsScreen} />
       <Stack.Screen name="TranscriptDetail" component={TranscriptDetailScreen} />
 
       {/* Call flow (modal-style) */}

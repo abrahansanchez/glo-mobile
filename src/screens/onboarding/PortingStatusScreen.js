@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { View, Text, Pressable, StyleSheet, Linking } from "react-native";
+import { View, Text, Pressable, StyleSheet, Linking, ScrollView, RefreshControl } from "react-native";
 import api from "../../config/api";
 import OnboardingHeader from "../../onboarding/OnboardingHeader";
+import { useFocusEffect } from "@react-navigation/native";
 
 const STATUS_STEPS = [
   { key: "draft", label: "Draft" },
@@ -21,6 +22,7 @@ function formatDate(value) {
 
 export default function PortingStatusScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [statusPayload, setStatusPayload] = useState(null);
   const [error, setError] = useState("");
 
@@ -33,7 +35,7 @@ export default function PortingStatusScreen({ navigation }) {
   );
 
   async function loadStatus() {
-    setLoading(true);
+    setLoading((prev) => (refreshing ? prev : true));
     setError("");
     try {
       const response = await api.get("/phone/porting/status");
@@ -49,8 +51,28 @@ export default function PortingStatusScreen({ navigation }) {
     loadStatus();
   }, []);
 
+  useFocusEffect(
+    React.useCallback(() => {
+      loadStatus();
+    }, [])
+  );
+
+  async function onPullRefresh() {
+    setRefreshing(true);
+    await loadStatus();
+    setRefreshing(false);
+  }
+
+  const docs = statusPayload?.documents || {};
+  const loaUploaded = Boolean(docs?.loa || statusPayload?.loaUploaded || statusPayload?.loaUrl);
+  const billUploaded = Boolean(docs?.bill || statusPayload?.billUploaded || statusPayload?.billUrl);
+  const portingId = statusPayload?.portingId || statusPayload?.id || statusPayload?._id || null;
+
   return (
-    <View style={styles.container}>
+    <ScrollView
+      contentContainerStyle={styles.container}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onPullRefresh} />}
+    >
       <OnboardingHeader />
       <Text style={styles.title}>Porting Status</Text>
       <Text style={styles.subtitle}>Current status: {status}</Text>
@@ -58,6 +80,8 @@ export default function PortingStatusScreen({ navigation }) {
       <View style={styles.metaCard}>
         <Text style={styles.metaText}>Submitted: {formatDate(statusPayload?.submittedAt)}</Text>
         <Text style={styles.metaText}>Updated: {formatDate(statusPayload?.updatedAt)}</Text>
+        <Text style={styles.metaText}>LOA: {loaUploaded ? "Uploaded" : "Missing"}</Text>
+        <Text style={styles.metaText}>Bill: {billUploaded ? "Uploaded" : "Missing"}</Text>
       </View>
 
       <View style={styles.timeline}>
@@ -88,6 +112,13 @@ export default function PortingStatusScreen({ navigation }) {
         <Text style={styles.primaryText}>{loading ? "Refreshing..." : "Refresh"}</Text>
       </Pressable>
 
+      <Pressable
+        style={styles.secondaryBtn}
+        onPress={() => navigation.navigate("PortingDocuments", { portingId })}
+      >
+        <Text style={styles.secondaryText}>Upload documents</Text>
+      </Pressable>
+
       {status === "rejected" ? (
         <>
           <Pressable
@@ -110,7 +141,7 @@ export default function PortingStatusScreen({ navigation }) {
       <Pressable style={styles.secondaryBtn} onPress={() => navigation.navigate("DashboardTabs")}>
         <Text style={styles.secondaryText}>Back to dashboard</Text>
       </Pressable>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -135,4 +166,3 @@ const styles = StyleSheet.create({
   secondaryText: { textDecorationLine: "underline", fontWeight: "700", color: "#111827" },
   error: { color: "#b00020", fontWeight: "700", marginBottom: 8 },
 });
-

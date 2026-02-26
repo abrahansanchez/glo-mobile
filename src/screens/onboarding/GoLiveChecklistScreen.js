@@ -24,6 +24,18 @@ const BLOCKER_UI = {
     actionText: "Start porting",
     action: "startPorting",
   },
+  PORTING_DOCS_REQUIRED: {
+    title: "Upload required documents",
+    description: "Upload your LOA and recent bill to continue porting.",
+    actionText: "Upload documents",
+    action: "uploadDocs",
+  },
+  PORTING_REJECTED: {
+    title: "Porting needs changes",
+    description: "Your carrier rejected the request. Fix details and resubmit.",
+    actionText: "Fix & resubmit",
+    action: "fixResubmit",
+  },
 };
 
 function mapStepToRoute(step) {
@@ -106,6 +118,14 @@ export default function GoLiveChecklistScreen({ navigation }) {
     }
     if (action === "goPortStatus") {
       navigation.navigate("PortingStatus");
+      return;
+    }
+    if (action === "uploadDocs") {
+      navigation.navigate("PortingDocuments");
+      return;
+    }
+    if (action === "fixResubmit") {
+      navigation.navigate("PortingForm");
       return;
     }
     if (action === "startPorting") {
