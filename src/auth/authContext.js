@@ -1,4 +1,4 @@
-import { createContext, useCallback, useEffect, useState } from "react";
+import { createContext, useCallback, useEffect, useRef, useState } from "react";
 import { AppState } from "react-native";
 import { getToken, saveToken, clearToken } from "./tokenStorage";
 import api from "../config/api";
@@ -20,63 +20,65 @@ export function AuthProvider({ children }) {
   const [subscriptionStatus, setSubscriptionStatus] = useState("unknown");
   const [subscriptionReason, setSubscriptionReason] = useState(null);
   const [stripeCustomerId, setStripeCustomerId] = useState(null);
+  const refreshInFlightRef = useRef(null);
 
   const refreshSession = useCallback(async (reason = "manual") => {
     if (!authenticated && reason !== "auth_restore") {
       return null;
     }
 
-    console.log(`[AUTH_REFRESH] start reason=${reason}`);
-    let payload = null;
-    let response = null;
+    if (refreshInFlightRef.current) {
+      return refreshInFlightRef.current;
+    }
 
-    try {
-      response = await api.get("/auth/me");
-      payload = response?.data || {};
-    } catch (firstError) {
+    console.log(`[AUTH_REFRESH] start reason=${reason}`);
+    refreshInFlightRef.current = (async () => {
       try {
-        response = await api.get("/barbers/me");
-        payload = response?.data || {};
-      } catch (secondError) {
+        const response = await api.get("/billing/status");
+        const payload = response?.data || {};
+
+        const nextSubscriptionStatus =
+          payload?.subscriptionStatus ||
+          payload?.subscription?.status ||
+          (payload?.isSubscribed === true ? "active" : "unknown");
+        const nextStripeCustomerId =
+          payload?.stripeCustomerId ||
+          payload?.subscription?.stripeCustomerId ||
+          barber?.stripeCustomerId ||
+          null;
+
+        setSubscriptionStatus(nextSubscriptionStatus || "unknown");
+        setStripeCustomerId(nextStripeCustomerId);
+        setSubscriptionReason(null);
+
+        if (barber && nextStripeCustomerId && !barber?.stripeCustomerId) {
+          const nextBarber = { ...barber, stripeCustomerId: nextStripeCustomerId };
+          setBarber(nextBarber);
+          await saveBarber(nextBarber);
+        }
+
+        console.log(
+          `[AUTH_REFRESH] resolved subscriptionStatus=${nextSubscriptionStatus || "unknown"} stripeCustomerId=${!!nextStripeCustomerId}`
+        );
+        return {
+          subscriptionStatus: nextSubscriptionStatus || "unknown",
+          stripeCustomerId: nextStripeCustomerId,
+          raw: payload,
+        };
+      } catch (error) {
         console.log(
           "[AUTH_REFRESH] failed",
-          secondError?.response?.data || secondError?.message || secondError
+          error?.response?.data || error?.message || error
         );
         return null;
       }
+    })();
+
+    try {
+      return await refreshInFlightRef.current;
+    } finally {
+      refreshInFlightRef.current = null;
     }
-
-    const barberPayload = payload?.barber || payload?.data?.barber || payload?.user || payload?.data || null;
-    const nextBarber = barberPayload && (barberPayload.id || barberPayload._id) ? barberPayload : barber;
-    const nextSubscriptionStatus =
-      payload?.subscriptionStatus ||
-      payload?.subscription?.status ||
-      payload?.barber?.subscriptionStatus ||
-      nextBarber?.subscriptionStatus ||
-      "unknown";
-    const nextStripeCustomerId =
-      payload?.stripeCustomerId ||
-      payload?.subscription?.stripeCustomerId ||
-      payload?.barber?.stripeCustomerId ||
-      nextBarber?.stripeCustomerId ||
-      null;
-
-    if (nextBarber) {
-      setBarber(nextBarber);
-      await saveBarber(nextBarber);
-    }
-    setSubscriptionStatus(nextSubscriptionStatus);
-    setStripeCustomerId(nextStripeCustomerId);
-    setSubscriptionReason(null);
-
-    console.log(
-      `[AUTH_REFRESH] resolved subscriptionStatus=${nextSubscriptionStatus} stripeCustomerId=${!!nextStripeCustomerId}`
-    );
-    return {
-      subscriptionStatus: nextSubscriptionStatus,
-      stripeCustomerId: nextStripeCustomerId,
-      raw: payload,
-    };
   }, [authenticated, barber]);
 
   const registerPushTokenWithContext = useCallback(async (reason, providedToken = null) => {
