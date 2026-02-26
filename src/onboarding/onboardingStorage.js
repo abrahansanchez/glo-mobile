@@ -32,7 +32,13 @@ export async function setStoredStep(barberId, step) {
 export async function getOnboardingData(barberId) {
   if (!barberId) return {};
   const data = await SecureStore.getItemAsync(keyFor(BASE_DATA, barberId));
-  return data ? JSON.parse(data) : {};
+  if (!data) return {};
+  try {
+    return JSON.parse(data);
+  } catch (error) {
+    console.log("[ONBOARDING_STORAGE] invalid onboarding data JSON, resetting cache");
+    return {};
+  }
 }
 
 export async function setOnboardingData(barberId, data) {

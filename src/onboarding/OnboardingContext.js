@@ -1,4 +1,4 @@
-import React, { createContext, useEffect, useMemo, useState, useContext } from "react";
+import React, { createContext, useEffect, useMemo, useState, useContext, useCallback } from "react";
 import {
   isComplete,
   getStoredStep,
@@ -89,7 +89,7 @@ export function OnboardingProvider({ children }) {
     })();
   }, [barberId]);
 
-  async function postOnboardingStep(step) {
+  const postOnboardingStep = useCallback(async (step) => {
     if (!barberId) return;
     if (!STEP_VALUES.has(step)) return;
     try {
@@ -113,9 +113,9 @@ export function OnboardingProvider({ children }) {
     } catch (error) {
       console.log("[ONBOARDING] step post failed", { step, error: error?.response?.data || error?.message || error });
     }
-  }
+  }, [barberId]);
 
-  async function markComplete() {
+  const markComplete = useCallback(async () => {
     if (!barberId) {
       if (__DEV__) console.log("[Onboarding] skipping markComplete — barberId not yet available");
       return;
@@ -127,14 +127,33 @@ export function OnboardingProvider({ children }) {
       if (__DEV__) console.log(`Onboarding: markComplete for barberId=${barberId}`);
     } catch (e) {}
     await persistComplete(barberId, true);
-  }
+  }, [barberId]);
 
-  async function updateStep(step, data = {}, options = {}) {
+  const updateData = useCallback(async (newData) => {
+    if (!barberId) {
+      if (__DEV__) console.log("[Onboarding] skipping updateData — barberId not yet available");
+      return;
+    }
+    const updated = { ...onboardingData, ...newData };
+    setData(updated);
+    try {
+      if (__DEV__) console.log(`Onboarding:updateData ${barberId}`);
+    } catch (e) {}
+    await persistData(barberId, updated);
+  }, [barberId, onboardingData]);
+
+  const updateStep = useCallback(async (step, data = {}, options = {}) => {
     const shouldPost = options?.post !== false;
     if (!barberId) {
       if (__DEV__) console.log("[Onboarding] skipping updateStep — barberId not yet available");
       return;
     }
+
+    // Guard to prevent same-step effect loops in onboarding screens.
+    if (step === onboardingStep && Object.keys(data || {}).length === 0) {
+      return;
+    }
+
     setStep(step);
     try {
       // DEV-only condensed log
@@ -147,26 +166,13 @@ export function OnboardingProvider({ children }) {
     if (shouldPost) {
       await postOnboardingStep(step);
     }
-  }
+  }, [barberId, onboardingStep, postOnboardingStep, updateData]);
 
-  async function setLocalStep(step) {
+  const setLocalStep = useCallback(async (step) => {
     setStep(step);
-  }
+  }, []);
 
-  async function updateData(newData) {
-    if (!barberId) {
-      if (__DEV__) console.log("[Onboarding] skipping updateData — barberId not yet available");
-      return;
-    }
-    const updated = { ...onboardingData, ...newData };
-    setData(updated);
-    try {
-      if (__DEV__) console.log(`Onboarding:updateData ${barberId}`);
-    } catch (e) {}
-    await persistData(barberId, updated);
-  }
-
-  async function reset() {
+  const reset = useCallback(async () => {
     if (!barberId) {
       if (__DEV__) console.log("[Onboarding] skipping reset — barberId not yet available");
       return;
@@ -179,7 +185,7 @@ export function OnboardingProvider({ children }) {
         console.log(`Onboarding:reset ${barberId} (clearing local keys)`);
     } catch (e) {}
     await persistReset(barberId);
-  }
+  }, [barberId]);
 
   const value = useMemo(
     () => ({
@@ -195,7 +201,19 @@ export function OnboardingProvider({ children }) {
       updateData,
       reset,
     }),
-    [loading, onboardingComplete, onboardingStep, onboardingStepMap, onboardingData]
+    [
+      loading,
+      onboardingComplete,
+      onboardingStep,
+      onboardingStepMap,
+      onboardingData,
+      postOnboardingStep,
+      markComplete,
+      updateStep,
+      setLocalStep,
+      updateData,
+      reset,
+    ]
   );
 
   return (
