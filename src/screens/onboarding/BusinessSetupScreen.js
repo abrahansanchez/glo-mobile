@@ -6,7 +6,7 @@ import OnboardingHeader from "../../onboarding/OnboardingHeader";
 import { STEPS } from "../../onboarding/stepKeys";
 
 export default function BusinessSetupScreen({ navigation }) {
-  const { updateStep, updateData, onboardingData } = useContext(OnboardingContext);
+  const { updateStep, setLocalStep, updateData, onboardingData } = useContext(OnboardingContext);
 
   const [shopName, setShopName] = useState(onboardingData?.shopName || "");
   const [city, setCity] = useState(onboardingData?.city || "");
@@ -29,8 +29,8 @@ export default function BusinessSetupScreen({ navigation }) {
   );
 
   useEffect(() => {
-    updateStep(STEPS.BUSINESS_SNAPSHOT);
-  }, [updateStep]);
+    setLocalStep(STEPS.BUSINESS_SNAPSHOT);
+  }, [setLocalStep]);
 
   function getDeviceTimezone() {
     try {

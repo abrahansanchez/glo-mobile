@@ -5,15 +5,15 @@ import OnboardingHeader from "../../onboarding/OnboardingHeader";
 import { STEPS } from "../../onboarding/stepKeys";
 
 export default function PhoneSignupScreen({ navigation }) {
-  const { updateStep } = useContext(OnboardingContext);
+  const { updateStep, setLocalStep } = useContext(OnboardingContext);
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
   const [stage, setStage] = useState("PHONE"); // PHONE -> OTP
   const [error, setError] = useState("");
 
   useEffect(() => {
-    updateStep(STEPS.ACCOUNT);
-  }, [updateStep]);
+    setLocalStep(STEPS.ACCOUNT);
+  }, [setLocalStep]);
 
   function handleSendOtp() {
     setError("");

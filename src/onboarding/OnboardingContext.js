@@ -1,4 +1,4 @@
-import React, { createContext, useEffect, useMemo, useState, useContext, useCallback } from "react";
+import React, { createContext, useEffect, useMemo, useState, useContext, useCallback, useRef } from "react";
 import {
   isComplete,
   getStoredStep,
@@ -46,6 +46,16 @@ export function OnboardingProvider({ children }) {
   const [onboardingData, setData] = useState({});
   const { barber } = useContext(AuthContext);
   const barberId = barber?.id || barber?._id || null;
+  const onboardingStepRef = useRef(STEPS.WELCOME);
+  const onboardingDataRef = useRef({});
+
+  useEffect(() => {
+    onboardingStepRef.current = onboardingStep;
+  }, [onboardingStep]);
+
+  useEffect(() => {
+    onboardingDataRef.current = onboardingData || {};
+  }, [onboardingData]);
 
   useEffect(() => {
     (async () => {
@@ -134,13 +144,14 @@ export function OnboardingProvider({ children }) {
       if (__DEV__) console.log("[Onboarding] skipping updateData — barberId not yet available");
       return;
     }
-    const updated = { ...onboardingData, ...newData };
+    const updated = { ...(onboardingDataRef.current || {}), ...(newData || {}) };
     setData(updated);
+    onboardingDataRef.current = updated;
     try {
       if (__DEV__) console.log(`Onboarding:updateData ${barberId}`);
     } catch (e) {}
     await persistData(barberId, updated);
-  }, [barberId, onboardingData]);
+  }, [barberId]);
 
   const updateStep = useCallback(async (step, data = {}, options = {}) => {
     const shouldPost = options?.post !== false;
@@ -150,7 +161,7 @@ export function OnboardingProvider({ children }) {
     }
 
     // Guard to prevent same-step effect loops in onboarding screens.
-    if (step === onboardingStep && Object.keys(data || {}).length === 0) {
+    if (step === onboardingStepRef.current && Object.keys(data || {}).length === 0) {
       return;
     }
 
@@ -166,7 +177,7 @@ export function OnboardingProvider({ children }) {
     if (shouldPost) {
       await postOnboardingStep(step);
     }
-  }, [barberId, onboardingStep, postOnboardingStep, updateData]);
+  }, [barberId, postOnboardingStep, updateData]);
 
   const setLocalStep = useCallback(async (step) => {
     setStep(step);

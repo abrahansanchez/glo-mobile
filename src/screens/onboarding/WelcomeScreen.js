@@ -8,12 +8,12 @@ import api from "../../config/api";
 import { STEPS } from "../../onboarding/stepKeys";
 
 export default function WelcomeScreen({ navigation }) {
-  const { updateStep } = useContext(OnboardingContext);
+  const { updateStep, setLocalStep } = useContext(OnboardingContext);
   const { logout } = useContext(AuthContext);
 
   useEffect(() => {
-    updateStep(STEPS.WELCOME);
-  }, [updateStep]);
+    setLocalStep(STEPS.WELCOME);
+  }, [setLocalStep]);
 
   const handleDevReset = async () => {
     if (!__DEV__) return;
