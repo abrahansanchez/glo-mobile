@@ -1,4 +1,4 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -15,7 +15,7 @@ import { OnboardingContext } from "../../onboarding/OnboardingContext";
 import api from "../../config/api";
 import OnboardingHeader from "../../onboarding/OnboardingHeader";
 
-export default function PortingFormScreen({ navigation }) {
+export default function PortingFormScreen({ navigation, route }) {
   const { setLocalStep } = useContext(OnboardingContext);
   const [form, setForm] = useState({
     phoneNumber: "",
@@ -28,6 +28,41 @@ export default function PortingFormScreen({ navigation }) {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    hydratePrefill();
+  }, []);
+
+  async function hydratePrefill() {
+    const fromRoute = normalizePrefill(route?.params?.prefill);
+    if (fromRoute) {
+      setForm((prev) => ({ ...prev, ...fromRoute }));
+      return;
+    }
+    try {
+      const response = await api.get("/phone/porting/status");
+      const payload = response.data || {};
+      const prefill = normalizePrefill(payload?.details || payload?.request || payload);
+      if (prefill) {
+        setForm((prev) => ({ ...prev, ...prefill }));
+      }
+    } catch {
+      // best effort only
+    }
+  }
+
+  function normalizePrefill(source) {
+    if (!source || typeof source !== "object") return null;
+    return {
+      phoneNumber: source.phoneNumber || source.phone || "",
+      carrier: source.carrier || "",
+      accountNumber: source.accountNumber || "",
+      pin: source.pin || source.passcode || "",
+      billingZip: source.billingZip || source.zip || "",
+      contactName: source.contactName || source.authorizedName || "",
+      contactEmail: source.contactEmail || source.email || "",
+    };
+  }
 
   function setField(key, value) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -42,7 +77,7 @@ export default function PortingFormScreen({ navigation }) {
         ...form,
         idempotencyKey: `porting-${Date.now()}`,
       });
-      navigation.navigate("PortingTracker");
+      navigation.navigate("PortingStatus");
     } catch (e) {
       setError(e?.response?.data?.message || "Failed to submit port request");
     } finally {

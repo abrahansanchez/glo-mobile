@@ -8,7 +8,7 @@ import { resetAppState } from "../../utils/devReset";
 
 export default function AccountScreen() {
   const { barber, logout, subscriptionStatus, stripeCustomerId } = useContext(AuthContext);
-  const canManageBilling = Boolean(stripeCustomerId);
+  const canManageBilling = typeof stripeCustomerId === "string" && stripeCustomerId.startsWith("cus_");
 
   async function openBillingPortal() {
     if (!canManageBilling) {
@@ -26,6 +26,10 @@ export default function AccountScreen() {
       const code = e?.response?.data?.error || e?.response?.data?.code;
       if (code === "BILLING_NOT_AVAILABLE" || code === "NO_STRIPE_CUSTOMER") {
         Alert.alert("Billing", "Billing portal is not available yet. Please try again shortly.");
+        return;
+      }
+      if (code === "CONFIG_MISSING_RETURN_URL" || /stripe|return[_\s-]?url/i.test(String(e?.response?.data?.message || ""))) {
+        Alert.alert("Billing", "Billing is temporarily unavailable. Try again later.");
         return;
       }
       Alert.alert("Billing", e?.response?.data?.error || e?.response?.data?.message || "Failed to open billing portal");

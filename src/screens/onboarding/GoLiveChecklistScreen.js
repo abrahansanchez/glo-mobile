@@ -5,6 +5,27 @@ import api from "../../config/api";
 import OnboardingHeader from "../../onboarding/OnboardingHeader";
 import { STEPS } from "../../onboarding/stepKeys";
 
+const BLOCKER_UI = {
+  ONBOARDING_INCOMPLETE: {
+    title: "Finish setup",
+    description: "Complete your business setup to go live.",
+    actionText: "Continue onboarding",
+    action: "resumeOnboarding",
+  },
+  PORTING_SUBMITTED: {
+    title: "Porting in progress",
+    description: "Your carrier transfer is submitted. You can use the app while this completes.",
+    actionText: "View port status",
+    action: "goPortStatus",
+  },
+  PORTING_REQUIRED: {
+    title: "Port your number",
+    description: "Start porting to use your existing business number with Glo.",
+    actionText: "Start porting",
+    action: "startPorting",
+  },
+};
+
 function mapStepToRoute(step) {
   switch (step) {
     case STEPS.ACCOUNT:
@@ -78,6 +99,20 @@ export default function GoLiveChecklistScreen({ navigation }) {
     }
   }
 
+  async function handleBlockerAction(action) {
+    if (action === "resumeOnboarding") {
+      await handleFinishSetup();
+      return;
+    }
+    if (action === "goPortStatus") {
+      navigation.navigate("PortingStatus");
+      return;
+    }
+    if (action === "startPorting") {
+      navigation.navigate("PortingForm");
+    }
+  }
+
   const checklistItems = Object.entries(readiness);
 
   return (
@@ -102,12 +137,28 @@ export default function GoLiveChecklistScreen({ navigation }) {
       {!!error ? <Text style={styles.error}>{error}</Text> : null}
       {blockers.length > 0 ? (
         <View style={styles.blockers}>
-          <Text style={styles.blockerTitle}>Blockers</Text>
-          {blockers.map((b, idx) => (
-            <Text key={`bl-${idx}`} style={styles.blockerText}>
-              • {b}
-            </Text>
-          ))}
+          <Text style={styles.blockerTitle}>Action items</Text>
+          {blockers.map((rawBlocker, idx) => {
+            const code = String(rawBlocker || "");
+            const ui = BLOCKER_UI[code] || {
+              title: "Action needed",
+              description: "There is one remaining setup item to resolve.",
+              actionText: "Review setup",
+              action: "resumeOnboarding",
+            };
+            return (
+              <View key={`bl-${idx}`} style={styles.blockerCard}>
+                <Text style={styles.blockerCardTitle}>{ui.title}</Text>
+                <Text style={styles.blockerText}>{ui.description}</Text>
+                <Pressable
+                  style={styles.blockerBtn}
+                  onPress={() => handleBlockerAction(ui.action)}
+                >
+                  <Text style={styles.blockerBtnText}>{ui.actionText}</Text>
+                </Pressable>
+              </View>
+            );
+          })}
         </View>
       ) : null}
 
@@ -159,7 +210,25 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   blockerTitle: { fontWeight: "800", marginBottom: 4 },
-  blockerText: { color: "#78350f" },
+  blockerText: { color: "#78350f", marginTop: 2 },
+  blockerCard: {
+    marginTop: 10,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: "#f59e0b",
+    borderRadius: 10,
+    backgroundColor: "#fff",
+  },
+  blockerCardTitle: { fontWeight: "800", color: "#78350f" },
+  blockerBtn: {
+    marginTop: 8,
+    alignSelf: "flex-start",
+    backgroundColor: "#111827",
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  blockerBtnText: { color: "#fff", fontWeight: "700", fontSize: 12 },
   primaryBtn: {
     marginTop: 14,
     backgroundColor: "#000",

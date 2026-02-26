@@ -125,6 +125,8 @@ export default function DashboardOverviewScreen() {
     navigation.navigate("Appointments", {
       focusDate,
       focusAppointmentId,
+      initialView: "day",
+      date: focusDate,
       focusRequestAt: Date.now(),
     });
   }
@@ -182,7 +184,10 @@ export default function DashboardOverviewScreen() {
           <Pressable key={appt._id} style={styles.apptCard} onPress={() => handleAppointmentPress(appt)}>
             <Text style={styles.client}>{appt.clientName || "Client"}</Text>
             <Text style={styles.meta}>{new Date(getAppointmentDate(appt)).toLocaleString()}</Text>
-            <Text style={styles.tapHint}>Tap to view</Text>
+            <View style={styles.tapRow}>
+              <Text style={styles.tapHint}>Tap to view details</Text>
+              <Text style={styles.chevron}>›</Text>
+            </View>
           </Pressable>
         ))
       )}
@@ -260,5 +265,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#9ca3af",
     fontWeight: "600",
+  },
+  tapRow: {
+    marginTop: 8,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  chevron: {
+    color: "#9ca3af",
+    fontSize: 18,
+    fontWeight: "700",
   },
 });

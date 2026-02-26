@@ -90,16 +90,16 @@ export default function AppointmentsScreen({ route }) {
   }, [selectedRange.start.getTime(), selectedRange.end.getTime()]);
 
   useEffect(() => {
-    const focusDate = route?.params?.focusDate;
+    const focusDate = route?.params?.focusDate || route?.params?.date;
     const focusId = route?.params?.focusAppointmentId;
     if (!focusDate) return;
     const parsed = new Date(focusDate);
     if (Number.isNaN(parsed.getTime())) return;
-    setViewMode("day");
+    setViewMode(route?.params?.initialView || "day");
     setAnchorDate(parsed);
     setFocusAppointmentId(focusId || null);
     setFocusDateLabel(parsed.toLocaleDateString());
-  }, [route?.params?.focusDate, route?.params?.focusAppointmentId, route?.params?.focusRequestAt]);
+  }, [route?.params?.focusDate, route?.params?.date, route?.params?.initialView, route?.params?.focusAppointmentId, route?.params?.focusRequestAt]);
 
   useEffect(() => {
     if (!focusAppointmentId || appointments.length === 0) return;

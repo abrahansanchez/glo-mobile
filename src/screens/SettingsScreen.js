@@ -63,6 +63,10 @@ export default function SettingsScreen({ navigation }) {
         Alert.alert("Billing", "Billing portal is not available yet. Please try again shortly.");
         return;
       }
+      if (code === "CONFIG_MISSING_RETURN_URL" || /stripe|return[_\s-]?url/i.test(String(e?.response?.data?.message || ""))) {
+        Alert.alert("Billing", "Billing is temporarily unavailable. Try again later.");
+        return;
+      }
       Alert.alert(
         "Billing",
         e?.response?.data?.error ||
@@ -95,7 +99,7 @@ export default function SettingsScreen({ navigation }) {
     sub?.stripeCustomerId ||
     sub?.subscription?.stripeCustomerId ||
     null;
-  const canManageBilling = Boolean(effectiveStripeCustomerId);
+  const canManageBilling = typeof effectiveStripeCustomerId === "string" && effectiveStripeCustomerId.startsWith("cus_");
 
   return (
     <ScreenContainer>
@@ -140,6 +144,10 @@ export default function SettingsScreen({ navigation }) {
 
         <Pressable style={styles.rowButton} onPress={() => navigation.navigate("Account")}>
           <Text style={styles.rowText}>Account</Text>
+        </Pressable>
+
+        <Pressable style={styles.rowButton} onPress={() => navigation.navigate("PortingStatus")}>
+          <Text style={styles.rowText}>Porting Status</Text>
         </Pressable>
 
         <Pressable
