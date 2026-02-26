@@ -1,6 +1,6 @@
 // src/screens/AppointmentsScreen.js
 import { View, Text, FlatList, StyleSheet, Pressable } from "react-native";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import api from "../config/api";
 import LoadingState from "../components/LoadingState";
 import ScreenContainer from "../components/layout/ScreenContainer";
@@ -79,6 +79,8 @@ export default function AppointmentsScreen({ route }) {
   const [isFallbackList, setIsFallbackList] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [focusAppointmentId, setFocusAppointmentId] = useState(null);
+  const [focusDateLabel, setFocusDateLabel] = useState("");
+  const listRef = useRef(null);
 
   const timezone = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone || "Local time", []);
   const selectedRange = useMemo(() => getRangeForMode(anchorDate, viewMode), [anchorDate, viewMode]);
@@ -93,9 +95,27 @@ export default function AppointmentsScreen({ route }) {
     if (!focusDate) return;
     const parsed = new Date(focusDate);
     if (Number.isNaN(parsed.getTime())) return;
+    setViewMode("day");
     setAnchorDate(parsed);
     setFocusAppointmentId(focusId || null);
-  }, [route?.params?.focusDate, route?.params?.focusAppointmentId]);
+    setFocusDateLabel(parsed.toLocaleDateString());
+  }, [route?.params?.focusDate, route?.params?.focusAppointmentId, route?.params?.focusRequestAt]);
+
+  useEffect(() => {
+    if (!focusAppointmentId || appointments.length === 0) return;
+    const index = appointments.findIndex((item) => item?._id === focusAppointmentId);
+    if (index < 0) return;
+
+    const scroll = () =>
+      listRef.current?.scrollToIndex?.({
+        index,
+        animated: true,
+        viewPosition: 0.2,
+      });
+
+    const timeoutId = setTimeout(scroll, 120);
+    return () => clearTimeout(timeoutId);
+  }, [appointments, focusAppointmentId]);
 
   async function loadAppointments() {
     setLoading(true);
@@ -196,6 +216,9 @@ export default function AppointmentsScreen({ route }) {
         {isFallbackList ? (
           <Text style={styles.fallbackText}>Showing upcoming list (range view fallback).</Text>
         ) : null}
+        {!!focusDateLabel ? (
+          <Text style={styles.focusInfo}>Focused date: {focusDateLabel}</Text>
+        ) : null}
       </View>
 
       {!appointments.length ? (
@@ -206,11 +229,20 @@ export default function AppointmentsScreen({ route }) {
         </View>
       ) : (
         <FlatList
+          ref={listRef}
           data={appointments}
           keyExtractor={(item) => item._id || `${appointmentStartAt(item) || "unknown"}-${item?.clientName || ""}`}
           contentContainerStyle={{ paddingBottom: 16 }}
           refreshing={refreshing}
           onRefresh={loadAppointments}
+          onScrollToIndexFailed={({ index }) => {
+            setTimeout(() => {
+              listRef.current?.scrollToOffset?.({
+                offset: Math.max(0, index * 110),
+                animated: true,
+              });
+            }, 200);
+          }}
           renderItem={({ item }) => (
             <View style={[styles.card, focusAppointmentId === item?._id && styles.focusCard]}>
               <Text style={styles.client}>{item.clientName || item.customerName || "Client"}</Text>
@@ -306,6 +338,12 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontSize: 12,
     color: "#92400e",
+  },
+  focusInfo: {
+    marginTop: 6,
+    fontSize: 12,
+    color: "#2563eb",
+    fontWeight: "600",
   },
   center: {
     flex: 1,
