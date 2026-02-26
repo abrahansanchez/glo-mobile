@@ -1,6 +1,5 @@
 import { useEffect, useState, useContext } from "react";
-import { View, Text, StyleSheet, Button, Pressable, TouchableOpacity } from "react-native";
-import { showIncomingCall } from "../native/CallKit";
+import { View, Text, StyleSheet, Pressable } from "react-native";
 
 import { useNavigation } from "@react-navigation/native";
 
@@ -108,6 +107,24 @@ export default function DashboardOverviewScreen() {
   const aiPct =
     totalCalls > 0 ? Math.round((aiHandled / totalCalls) * 100) : 0;
 
+  function getAppointmentDate(appointment) {
+    return (
+      appointment?.startAt ||
+      appointment?.date ||
+      appointment?.scheduledAt ||
+      appointment?.createdAt ||
+      null
+    );
+  }
+
+  function handleAppointmentPress(appointment) {
+    const focusDate = getAppointmentDate(appointment);
+    const focusAppointmentId = appointment?._id || null;
+
+    // Overview lives in tabs, so this switches to Schedule tab and forwards focus params.
+    navigation.navigate("Appointments", { focusDate, focusAppointmentId });
+  }
+
   return (
     <ScreenContainer>
       <View style={styles.container}>
@@ -132,20 +149,6 @@ export default function DashboardOverviewScreen() {
           <Text style={styles.devSecondaryText}>Log Out</Text>
         </Pressable>
       </View>
-
-      {/* ===== CALLKIT TEST (TEMPORARY, SAFE) ===== */}
-      <View style={{ marginBottom: 20 }}>
-        <Button
-          title="Simulate System Call (CallKit)"
-          onPress={() => {
-            console.log("[TEST] Triggering CallKit from Dashboard");
-            showIncomingCall("Test Caller");
-          }}
-        />
-      </View>
-
-
-      
 
       {/* ===== STATS ===== */}
       <View style={styles.row}>
@@ -172,16 +175,11 @@ export default function DashboardOverviewScreen() {
         <Text style={styles.empty}>No upcoming appointments</Text>
       ) : (
         appointments.slice(0, 3).map((appt) => (
-          <View key={appt._id} style={styles.apptCard}>
+          <Pressable key={appt._id} style={styles.apptCard} onPress={() => handleAppointmentPress(appt)}>
             <Text style={styles.client}>{appt.clientName || "Client"}</Text>
-            <Text style={styles.meta}>{new Date(appt.date).toLocaleString()}</Text>
-            <TouchableOpacity
-              onPress={() => showIncomingCall("Test Caller")}
-              style={styles.simulateBtn}
-            >
-              <Text style={styles.simulateBtnText}>Simulate System Call</Text>
-            </TouchableOpacity>
-          </View>
+            <Text style={styles.meta}>{new Date(getAppointmentDate(appt)).toLocaleString()}</Text>
+            <Text style={styles.tapHint}>Tap to view</Text>
+          </Pressable>
         ))
       )}
       </View>
@@ -253,12 +251,10 @@ const styles = StyleSheet.create({
     borderColor: "#ccc",
   },
   devSecondaryText: { color: "#000", fontWeight: "800" },
-  simulateBtn: {
-    padding: 16,
-    backgroundColor: "black",
-    marginTop: 12,
-    borderRadius: 8,
-    alignItems: "center",
+  tapHint: {
+    marginTop: 8,
+    fontSize: 12,
+    color: "#9ca3af",
+    fontWeight: "600",
   },
-  simulateBtnText: { color: "white", fontWeight: "600" },
 });

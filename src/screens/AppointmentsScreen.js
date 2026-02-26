@@ -71,13 +71,14 @@ function formatLocalDateTime(value) {
   return d.toLocaleString();
 }
 
-export default function AppointmentsScreen() {
+export default function AppointmentsScreen({ route }) {
   const [loading, setLoading] = useState(true);
   const [appointments, setAppointments] = useState([]);
   const [viewMode, setViewMode] = useState("week");
   const [anchorDate, setAnchorDate] = useState(new Date());
   const [isFallbackList, setIsFallbackList] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [focusAppointmentId, setFocusAppointmentId] = useState(null);
 
   const timezone = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone || "Local time", []);
   const selectedRange = useMemo(() => getRangeForMode(anchorDate, viewMode), [anchorDate, viewMode]);
@@ -85,6 +86,16 @@ export default function AppointmentsScreen() {
   useEffect(() => {
     loadAppointments();
   }, [selectedRange.start.getTime(), selectedRange.end.getTime()]);
+
+  useEffect(() => {
+    const focusDate = route?.params?.focusDate;
+    const focusId = route?.params?.focusAppointmentId;
+    if (!focusDate) return;
+    const parsed = new Date(focusDate);
+    if (Number.isNaN(parsed.getTime())) return;
+    setAnchorDate(parsed);
+    setFocusAppointmentId(focusId || null);
+  }, [route?.params?.focusDate, route?.params?.focusAppointmentId]);
 
   async function loadAppointments() {
     setLoading(true);
@@ -201,7 +212,7 @@ export default function AppointmentsScreen() {
           refreshing={refreshing}
           onRefresh={loadAppointments}
           renderItem={({ item }) => (
-            <View style={styles.card}>
+            <View style={[styles.card, focusAppointmentId === item?._id && styles.focusCard]}>
               <Text style={styles.client}>{item.clientName || item.customerName || "Client"}</Text>
               <Text style={styles.meta}>{formatLocalDateTime(appointmentStartAt(item))}</Text>
               <Text style={styles.badges}>
@@ -316,6 +327,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 10,
     elevation: 3,
+  },
+  focusCard: {
+    borderWidth: 2,
+    borderColor: "#2563eb",
   },
   client: {
     fontSize: 16,
