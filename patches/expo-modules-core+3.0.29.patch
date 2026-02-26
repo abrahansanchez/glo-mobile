@@ -1,0 +1,18 @@
+diff --git a/node_modules/expo-modules-core/src/sweet/setUpJsLogger.fx.ts b/node_modules/expo-modules-core/src/sweet/setUpJsLogger.fx.ts
+index a76a08d..2c6f7d1 100644
+--- a/node_modules/expo-modules-core/src/sweet/setUpJsLogger.fx.ts
++++ b/node_modules/expo-modules-core/src/sweet/setUpJsLogger.fx.ts
+@@ -7,7 +7,12 @@ type LogListener = {
+   eventName: string;
+ };
+ 
+-if (__DEV__ && (Platform.OS === 'android' || Platform.OS === 'ios') && NativeJSLogger) {
++if (
++  __DEV__ &&
++  (Platform.OS === 'android' || Platform.OS === 'ios') &&
++  NativeJSLogger &&
++  typeof (NativeJSLogger as any).addListener === 'function'
++) {
+   const onNewException: LogListener = {
+     eventName: 'ExpoModulesCoreJSLogger.onNewError',
+     action: console.error,
