@@ -7,9 +7,14 @@ import api from "../../config/api";
 import { resetAppState } from "../../utils/devReset";
 
 export default function AccountScreen() {
-  const { barber, logout, subscriptionStatus } = useContext(AuthContext);
+  const { barber, logout, subscriptionStatus, stripeCustomerId } = useContext(AuthContext);
+  const canManageBilling = Boolean(stripeCustomerId);
 
   async function openBillingPortal() {
+    if (!canManageBilling) {
+      Alert.alert("Billing", "Billing portal will be available after your billing profile is created.");
+      return;
+    }
     try {
       const res = await api.post("/billing/portal");
       const url = res.data?.url;
@@ -18,6 +23,11 @@ export default function AccountScreen() {
       if (!canOpen) return Alert.alert("Billing", "Unable to open billing portal on this device.");
       await Linking.openURL(url);
     } catch (e) {
+      const code = e?.response?.data?.error || e?.response?.data?.code;
+      if (code === "BILLING_NOT_AVAILABLE" || code === "NO_STRIPE_CUSTOMER") {
+        Alert.alert("Billing", "Billing portal is not available yet. Please try again shortly.");
+        return;
+      }
       Alert.alert("Billing", e?.response?.data?.error || e?.response?.data?.message || "Failed to open billing portal");
     }
   }
@@ -48,7 +58,10 @@ export default function AccountScreen() {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Subscription</Text>
           <Text style={styles.text}>Status: <Text style={styles.bold}>{String(subscriptionStatus)}</Text></Text>
-          <Pressable style={styles.btn} onPress={openBillingPortal}>
+          {!canManageBilling ? (
+            <Text style={styles.helperText}>Billing portal will unlock after Stripe customer setup completes.</Text>
+          ) : null}
+          <Pressable style={[styles.btn, !canManageBilling && styles.btnDisabled]} onPress={openBillingPortal} disabled={!canManageBilling}>
             <Text style={styles.btnText}>Manage Billing</Text>
           </Pressable>
         </View>
@@ -87,7 +100,9 @@ const styles = StyleSheet.create({
   text: { fontSize: 14, color: "#111", marginBottom: 6 },
   bold: { fontWeight: "900" },
   btn: { marginTop: 10, backgroundColor: "#000", paddingVertical: 12, borderRadius: 12, alignItems: "center" },
+  btnDisabled: { opacity: 0.5 },
   btnText: { color: "#fff", fontWeight: "900" },
+  helperText: { fontSize: 12, color: "#6b7280", marginTop: 2 },
   logoutBtn: { backgroundColor: "#eee" },
   logoutText: { color: "#b00" },
   devBtn: { backgroundColor: "#f5f5f5" },

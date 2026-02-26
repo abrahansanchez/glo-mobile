@@ -19,6 +19,65 @@ export function AuthProvider({ children }) {
   const [barber, setBarber] = useState(null);
   const [subscriptionStatus, setSubscriptionStatus] = useState("unknown");
   const [subscriptionReason, setSubscriptionReason] = useState(null);
+  const [stripeCustomerId, setStripeCustomerId] = useState(null);
+
+  const refreshSession = useCallback(async (reason = "manual") => {
+    if (!authenticated && reason !== "auth_restore") {
+      return null;
+    }
+
+    console.log(`[AUTH_REFRESH] start reason=${reason}`);
+    let payload = null;
+    let response = null;
+
+    try {
+      response = await api.get("/auth/me");
+      payload = response?.data || {};
+    } catch (firstError) {
+      try {
+        response = await api.get("/barbers/me");
+        payload = response?.data || {};
+      } catch (secondError) {
+        console.log(
+          "[AUTH_REFRESH] failed",
+          secondError?.response?.data || secondError?.message || secondError
+        );
+        return null;
+      }
+    }
+
+    const barberPayload = payload?.barber || payload?.data?.barber || payload?.user || payload?.data || null;
+    const nextBarber = barberPayload && (barberPayload.id || barberPayload._id) ? barberPayload : barber;
+    const nextSubscriptionStatus =
+      payload?.subscriptionStatus ||
+      payload?.subscription?.status ||
+      payload?.barber?.subscriptionStatus ||
+      nextBarber?.subscriptionStatus ||
+      "unknown";
+    const nextStripeCustomerId =
+      payload?.stripeCustomerId ||
+      payload?.subscription?.stripeCustomerId ||
+      payload?.barber?.stripeCustomerId ||
+      nextBarber?.stripeCustomerId ||
+      null;
+
+    if (nextBarber) {
+      setBarber(nextBarber);
+      await saveBarber(nextBarber);
+    }
+    setSubscriptionStatus(nextSubscriptionStatus);
+    setStripeCustomerId(nextStripeCustomerId);
+    setSubscriptionReason(null);
+
+    console.log(
+      `[AUTH_REFRESH] resolved subscriptionStatus=${nextSubscriptionStatus} stripeCustomerId=${!!nextStripeCustomerId}`
+    );
+    return {
+      subscriptionStatus: nextSubscriptionStatus,
+      stripeCustomerId: nextStripeCustomerId,
+      raw: payload,
+    };
+  }, [authenticated, barber]);
 
   const registerPushTokenWithContext = useCallback(async (reason, providedToken = null) => {
     try {
@@ -68,6 +127,7 @@ export function AuthProvider({ children }) {
         console.log("[VOIP] init triggered after auth restore");
         initVoipPushAndRegisterOnce();
         registerPushTokenWithContext("auth_restore_success");
+        await refreshSession("auth_restore");
       } catch (e) {
         await clearToken();
         await clearBarber();
@@ -77,11 +137,12 @@ export function AuthProvider({ children }) {
         setBarber(null);
         setAuthenticated(false);
         setSubscriptionStatus("unknown");
+        setStripeCustomerId(null);
       } finally {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [refreshSession, registerPushTokenWithContext]);
 
   const login = async (email, password) => {
     const response = await api.post("/auth/login", {
@@ -105,9 +166,12 @@ export function AuthProvider({ children }) {
     }
 
     setAuthenticated(true);
+    setSubscriptionStatus("unknown");
+    setStripeCustomerId(barberObj?.stripeCustomerId || null);
     console.log("[VOIP] init triggered after login");
     initVoipPushAndRegisterOnce();
     registerPushTokenWithContext("login_success");
+    await refreshSession("login_success");
   };
 
   const logout = async () => {
@@ -121,6 +185,7 @@ export function AuthProvider({ children }) {
     setAuthenticated(false);
     setSubscriptionStatus("unknown");
     setSubscriptionReason(null);
+    setStripeCustomerId(null);
   };
 
   // When API detects a 401, it emits an unauthorized event — handle it here
@@ -135,6 +200,7 @@ export function AuthProvider({ children }) {
       setAuthenticated(false);
       setSubscriptionStatus("unknown");
       setSubscriptionReason(null);
+      setStripeCustomerId(null);
     });
 
     setOnSubscriptionRequired((code) => {
@@ -174,9 +240,11 @@ export function AuthProvider({ children }) {
         barber,
         subscriptionStatus,
         subscriptionReason,
+        stripeCustomerId,
         login,
         logout,
         setSubscriptionStatus,
+        refreshSession,
       }}
     >
       {children}

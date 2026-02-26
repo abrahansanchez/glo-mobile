@@ -44,7 +44,7 @@ export function OnboardingProvider({ children }) {
   const [onboardingStep, setStep] = useState(STEPS.WELCOME);
   const [onboardingStepMap, setOnboardingStepMap] = useState({});
   const [onboardingData, setData] = useState({});
-  const { barber } = useContext(AuthContext);
+  const { barber, refreshSession } = useContext(AuthContext);
   const barberId = barber?.id || barber?._id || null;
   const onboardingStepRef = useRef(STEPS.WELCOME);
   const onboardingDataRef = useRef({});
@@ -139,7 +139,12 @@ export function OnboardingProvider({ children }) {
       if (__DEV__) console.log(`Onboarding: markComplete for barberId=${barberId}`);
     } catch (e) {}
     await persistComplete(barberId, true);
-  }, [barberId]);
+    try {
+      await refreshSession?.("onboarding_completed");
+    } catch (error) {
+      console.log("[ONBOARDING] refreshSession after complete failed", error?.message || error);
+    }
+  }, [barberId, refreshSession]);
 
   const updateData = useCallback(async (newData) => {
     if (!barberId) {
@@ -163,7 +168,11 @@ export function OnboardingProvider({ children }) {
     }
 
     // Guard to prevent same-step effect loops in onboarding screens.
-    if (step === onboardingStepRef.current && Object.keys(data || {}).length === 0) {
+    if (
+      step === onboardingStepRef.current &&
+      Object.keys(data || {}).length === 0 &&
+      !shouldPost
+    ) {
       return;
     }
 

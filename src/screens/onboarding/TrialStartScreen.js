@@ -1,12 +1,14 @@
 import React, { useContext, useState } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { OnboardingContext } from "../../onboarding/OnboardingContext";
+import { AuthContext } from "../../auth/authContext";
 import api from "../../config/api";
 import OnboardingHeader from "../../onboarding/OnboardingHeader";
 import { STEPS } from "../../onboarding/stepKeys";
 
 export default function TrialStartScreen({ navigation }) {
   const { updateStep } = useContext(OnboardingContext);
+  const { refreshSession } = useContext(AuthContext);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
@@ -22,6 +24,7 @@ export default function TrialStartScreen({ navigation }) {
         { headers: { "Idempotency-Key": idempotencyKey } }
       );
       await updateStep(STEPS.TRIAL_START);
+      await refreshSession?.("trial_started");
       setSuccess(true);
     } catch (e) {
       setError(e?.response?.data?.message || "Failed to start trial");

@@ -5,7 +5,7 @@ import { AuthContext } from "../auth/authContext";
 import ScreenContainer from "../components/layout/ScreenContainer";
 
 export default function SettingsScreen({ navigation }) {
-  const { logout } = useContext(AuthContext);
+  const { logout, stripeCustomerId } = useContext(AuthContext);
 
   const [loading, setLoading] = useState(true);
   const [sub, setSub] = useState(null);
@@ -36,6 +36,11 @@ export default function SettingsScreen({ navigation }) {
   }
 
   async function openBillingPortal() {
+    if (!canManageBilling) {
+      Alert.alert("Billing", "Billing portal will be available after your billing profile is created.");
+      return;
+    }
+
     try {
       const res = await api.post("/billing/portal");
 
@@ -53,6 +58,11 @@ export default function SettingsScreen({ navigation }) {
 
       await Linking.openURL(url);
     } catch (e) {
+      const code = e?.response?.data?.error || e?.response?.data?.code;
+      if (code === "BILLING_NOT_AVAILABLE" || code === "NO_STRIPE_CUSTOMER") {
+        Alert.alert("Billing", "Billing portal is not available yet. Please try again shortly.");
+        return;
+      }
       Alert.alert(
         "Billing",
         e?.response?.data?.error ||
@@ -80,6 +90,12 @@ export default function SettingsScreen({ navigation }) {
     sub?.subscription?.canceledAt ||
     sub?.subscription?.startedAt ||
     null;
+  const effectiveStripeCustomerId =
+    stripeCustomerId ||
+    sub?.stripeCustomerId ||
+    sub?.subscription?.stripeCustomerId ||
+    null;
+  const canManageBilling = Boolean(effectiveStripeCustomerId);
 
   return (
     <ScreenContainer>
@@ -104,7 +120,17 @@ export default function SettingsScreen({ navigation }) {
           </>
         )}
 
-        <Pressable style={styles.btn} onPress={openBillingPortal}>
+        {!canManageBilling ? (
+          <Text style={styles.helperText}>
+            Billing portal will unlock after Stripe customer setup completes.
+          </Text>
+        ) : null}
+
+        <Pressable
+          style={[styles.btn, !canManageBilling && styles.btnDisabled]}
+          onPress={openBillingPortal}
+          disabled={!canManageBilling}
+        >
           <Text style={styles.btnText}>Manage Billing</Text>
         </Pressable>
       </View>
@@ -157,7 +183,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: "center",
   },
+  btnDisabled: { opacity: 0.5 },
   btnText: { color: "#fff", fontWeight: "900" },
+  helperText: { fontSize: 12, color: "#6b7280", marginBottom: 2 },
   logoutBtn: { backgroundColor: "#eee" },
   logoutText: { color: "#b00" },
   rowButton: { paddingVertical: 12 },
