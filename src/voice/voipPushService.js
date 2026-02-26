@@ -53,6 +53,14 @@ function emitQueuedInvitesIfNeeded() {
   queued.forEach((payload) => emitIncomingInvite(payload));
 }
 
+function markDeviceReadyAndFlush(source) {
+  if (deviceReadySeen) return;
+  deviceReadySeen = true;
+  console.log(`[VOIP] ✅ device ready via ${source}`);
+  logVoipDiag();
+  emitQueuedInvitesIfNeeded();
+}
+
 function scheduleDeviceReadyWatchdog(accessToken, timeoutMs = 10000) {
   if (deviceReadyWatchdog) {
     clearTimeout(deviceReadyWatchdog);
@@ -68,6 +76,9 @@ function scheduleDeviceReadyWatchdog(accessToken, timeoutMs = 10000) {
         try {
           const retryResult = await TwilioVoice.initWithToken(accessToken);
           console.log("[VOIP] retry initWithToken resolved", retryResult || {});
+          if (retryResult?.initialized) {
+            markDeviceReadyAndFlush("retry_init_result");
+          }
         } catch (error) {
           console.log("[VOIP] ❌ retry initWithToken failed", error?.message || error, error);
         }
@@ -103,10 +114,8 @@ function attachTwilioVoipListenersOnce() {
   listenersAttached = true;
 
   TwilioVoice.addEventListener("deviceReady", () => {
-    deviceReadySeen = true;
     console.log("[VOIP] ✅ deviceReady (VoIP push registered)");
-    logVoipDiag();
-    emitQueuedInvitesIfNeeded();
+    markDeviceReadyAndFlush("deviceReady_event");
   });
 
   TwilioVoice.addEventListener("deviceNotReady", (payload) => {
@@ -118,6 +127,7 @@ function attachTwilioVoipListenersOnce() {
   try {
     TwilioVoice.addEventListener("registered", () => {
       console.log("[VOIP] ✅ registered for invites");
+      markDeviceReadyAndFlush("registered_event");
     });
   } catch (error) {
     console.log("[VOIP] registered listener unavailable", error?.message || error);
@@ -189,6 +199,9 @@ export async function initVoipPushAndRegisterOnce() {
     try {
       const result = await TwilioVoice.initWithToken(accessToken);
       console.log("[VOIP] initWithToken resolved", result || {});
+      if (result?.initialized) {
+        markDeviceReadyAndFlush("init_result");
+      }
     } catch (error) {
       console.log("[VOIP] ❌ initWithToken threw", error?.message || error, error);
       throw error;
