@@ -107,6 +107,7 @@ export function OnboardingProvider({ children }) {
         step,
         completed: true,
       });
+      console.log(`[ONBOARDING_STEP] posted step=${step} ok=true`);
 
       const parsed = parseOnboardingStatus(response.data);
       if (parsed.step) {
@@ -121,6 +122,7 @@ export function OnboardingProvider({ children }) {
         setOnboardingStepMap(parsed.stepMap);
       }
     } catch (error) {
+      console.log(`[ONBOARDING_STEP] posted step=${step} ok=false`);
       console.log("[ONBOARDING] step post failed", { step, error: error?.response?.data || error?.message || error });
     }
   }, [barberId]);

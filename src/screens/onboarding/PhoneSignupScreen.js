@@ -1,5 +1,16 @@
 import React, { useContext, useEffect, useState } from "react";
-import { View, Text, TextInput, Pressable, StyleSheet } from "react-native";
+import {
+  View,
+  Text,
+  TextInput,
+  Pressable,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  TouchableWithoutFeedback,
+  Keyboard,
+} from "react-native";
 import { OnboardingContext } from "../../onboarding/OnboardingContext";
 import OnboardingHeader from "../../onboarding/OnboardingHeader";
 import { STEPS } from "../../onboarding/stepKeys";
@@ -25,7 +36,7 @@ export default function PhoneSignupScreen({ navigation }) {
     setStage("OTP");
   }
 
-  function handleVerifyOtp() {
+  async function handleVerifyOtp() {
     setError("");
     if (!otp || otp.length < 4) {
       setError("Enter a valid code");
@@ -33,58 +44,70 @@ export default function PhoneSignupScreen({ navigation }) {
     }
     // Placeholder: real verify later -> should authenticate user
     // For now, we continue onboarding after login is handled separately
-    updateStep(STEPS.ACCOUNT);
+    await updateStep(STEPS.ACCOUNT);
     navigation.navigate("BusinessSnapshot");
   }
 
   return (
-    <View style={styles.container}>
-      <OnboardingHeader />
-      <Text style={styles.title}>Create Your Glō Workspace</Text>
+    <KeyboardAvoidingView
+      style={styles.safe}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={24}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={styles.container}
+        >
+          <OnboardingHeader />
+          <Text style={styles.title}>Create Your Glō Workspace</Text>
 
-      {stage === "PHONE" ? (
-        <>
-          <Text style={styles.label}>Phone Number</Text>
-          <TextInput
-            value={phone}
-            onChangeText={setPhone}
-            placeholder="(555) 555-5555"
-            keyboardType="phone-pad"
-            style={styles.input}
-          />
-          {!!error && <Text style={styles.error}>{error}</Text>}
+          {stage === "PHONE" ? (
+            <>
+              <Text style={styles.label}>Phone Number</Text>
+              <TextInput
+                value={phone}
+                onChangeText={setPhone}
+                placeholder="(555) 555-5555"
+                keyboardType="phone-pad"
+                style={styles.input}
+              />
+              {!!error && <Text style={styles.error}>{error}</Text>}
 
-          <Pressable style={styles.button} onPress={handleSendOtp}>
-            <Text style={styles.buttonText}>Send Code</Text>
-          </Pressable>
-        </>
-      ) : (
-        <>
-          <Text style={styles.label}>Enter Code</Text>
-          <TextInput
-            value={otp}
-            onChangeText={setOtp}
-            placeholder="123456"
-            keyboardType="number-pad"
-            style={styles.input}
-          />
-          {!!error && <Text style={styles.error}>{error}</Text>}
+              <Pressable style={styles.button} onPress={handleSendOtp}>
+                <Text style={styles.buttonText}>Send Code</Text>
+              </Pressable>
+            </>
+          ) : (
+            <>
+              <Text style={styles.label}>Enter Code</Text>
+              <TextInput
+                value={otp}
+                onChangeText={setOtp}
+                placeholder="123456"
+                keyboardType="number-pad"
+                style={styles.input}
+              />
+              {!!error && <Text style={styles.error}>{error}</Text>}
 
-          <Pressable style={styles.button} onPress={handleVerifyOtp}>
-            <Text style={styles.buttonText}>Verify</Text>
-          </Pressable>
+              <Pressable style={styles.button} onPress={handleVerifyOtp}>
+                <Text style={styles.buttonText}>Verify</Text>
+              </Pressable>
 
-          <Pressable style={styles.linkBtn} onPress={() => setStage("PHONE")}>
-            <Text style={styles.link}>Change phone number</Text>
-          </Pressable>
-        </>
-      )}
-    </View>
+              <Pressable style={styles.linkBtn} onPress={() => setStage("PHONE")}>
+                <Text style={styles.link}>Change phone number</Text>
+              </Pressable>
+            </>
+          )}
+        </ScrollView>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, justifyContent: "center" },
+  safe: { flex: 1, backgroundColor: "#fff" },
+  container: { flexGrow: 1, padding: 24, justifyContent: "center", paddingBottom: 140 },
   title: { fontSize: 24, fontWeight: "900", marginBottom: 20 },
   label: { fontWeight: "700", marginBottom: 6 },
   input: { borderWidth: 1, borderColor: "#ccc", borderRadius: 12, padding: 12, marginBottom: 12 },

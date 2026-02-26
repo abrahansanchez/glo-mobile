@@ -3,25 +3,49 @@ import { View, Text, Pressable, StyleSheet } from "react-native";
 import { OnboardingContext } from "../../onboarding/OnboardingContext";
 import api from "../../config/api";
 import OnboardingHeader from "../../onboarding/OnboardingHeader";
+import { STEPS } from "../../onboarding/stepKeys";
 
-export default function GoLiveChecklistScreen() {
+function mapStepToRoute(step) {
+  switch (step) {
+    case STEPS.ACCOUNT:
+      return "Account";
+    case STEPS.BUSINESS_SNAPSHOT:
+      return "BusinessSnapshot";
+    case STEPS.NUMBER_STRATEGY:
+      return "NumberStrategy";
+    case STEPS.TRIAL_START:
+      return "TrialStart";
+    case STEPS.WELCOME:
+    default:
+      return "Welcome";
+  }
+}
+
+export default function GoLiveChecklistScreen({ navigation }) {
   const { setLocalStep, markComplete } = useContext(OnboardingContext);
   const [ready, setReady] = useState(false);
   const [readiness, setReadiness] = useState({});
   const [blockers, setBlockers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const trialStarted = Boolean(readiness?.trialStarted);
 
   async function loadChecklist() {
+    console.log("[LAUNCH_CHECKLIST] fetching");
     setLoading(true);
     setError("");
     try {
       await setLocalStep("go_live_checklist");
       const response = await api.get("/launch/checklist");
       const payload = response.data || {};
-      setReadiness(payload.readiness || payload.checklist || {});
-      setBlockers(Array.isArray(payload.blockers) ? payload.blockers : []);
+      const nextReadiness = payload.readiness || payload.checklist || {};
+      const nextBlockers = Array.isArray(payload.blockers) ? payload.blockers : [];
+      setReadiness(nextReadiness);
+      setBlockers(nextBlockers);
       setReady(Boolean(payload.launchReady));
+      console.log(
+        `[LAUNCH_CHECKLIST] loaded launchReady=${Boolean(payload.launchReady)} blockers=${nextBlockers.join(",") || "none"}`
+      );
     } catch (e) {
       setError(e?.response?.data?.message || "Failed to load checklist");
       setReady(false);
@@ -37,7 +61,21 @@ export default function GoLiveChecklistScreen() {
   }, []);
 
   async function handleGoLive() {
+    if (!trialStarted) return;
+    console.log("[NAV] GoToDashboard allowed trialStarted=true");
     await markComplete();
+  }
+
+  async function handleFinishSetup() {
+    try {
+      const response = await api.get("/onboarding/status");
+      const payload = response.data || {};
+      const nextStep = payload?.nextStep || payload?.currentStep || STEPS.WELCOME;
+      console.log(`[ONBOARDING_RESUME] nextStep=${nextStep}`);
+      navigation.navigate(mapStepToRoute(String(nextStep).toLowerCase()));
+    } catch (e) {
+      setError(e?.response?.data?.message || "Failed to resume onboarding");
+    }
   }
 
   const checklistItems = Object.entries(readiness);
@@ -46,7 +84,9 @@ export default function GoLiveChecklistScreen() {
     <View style={styles.container}>
       <OnboardingHeader />
       <Text style={styles.title}>You’re Almost Live</Text>
-      <Text style={styles.subtitle}>{ready ? "All systems ready." : "Complete these items to go live."}</Text>
+      <Text style={styles.subtitle}>
+        {ready ? "All systems ready." : "Complete these items to go live."}
+      </Text>
 
       {checklistItems.length === 0 && !loading ? (
         <Text style={styles.empty}>Checklist unavailable right now.</Text>
@@ -75,8 +115,18 @@ export default function GoLiveChecklistScreen() {
         <Text style={styles.secondaryText}>{loading ? "Refreshing..." : "Refresh Checklist"}</Text>
       </Pressable>
 
-      <Pressable style={[styles.primaryBtn, !ready && styles.primaryDisabled]} onPress={handleGoLive} disabled={!ready}>
-        <Text style={styles.primaryText}>Enter Dashboard</Text>
+      <Pressable
+        style={[styles.primaryBtn, !trialStarted && styles.primaryDisabled]}
+        onPress={handleGoLive}
+        disabled={!trialStarted}
+      >
+        <Text style={styles.primaryText}>
+          {trialStarted ? "Go to Dashboard" : "Start trial to continue"}
+        </Text>
+      </Pressable>
+
+      <Pressable style={styles.secondaryBtn} onPress={handleFinishSetup}>
+        <Text style={styles.secondaryText}>Finish Setup</Text>
       </Pressable>
     </View>
   );

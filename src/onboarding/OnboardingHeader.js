@@ -1,6 +1,7 @@
 import React, { useContext } from "react";
 import { View, Pressable, Text, StyleSheet, Alert } from "react-native";
 import { useNavigation } from "@react-navigation/native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AuthContext } from "../auth/authContext";
 import { OnboardingContext } from "./OnboardingContext";
 
@@ -16,6 +17,7 @@ export default function OnboardingHeader({
 }) {
   const navigation = useNavigation();
   const canGoBack = navigation.canGoBack();
+  const insets = useSafeAreaInsets();
 
   const { logout } = useContext(AuthContext);
   const { reset: resetOnboarding } = useContext(OnboardingContext);
@@ -57,7 +59,7 @@ export default function OnboardingHeader({
   }
 
   return (
-    <View style={styles.row}>
+    <View style={[styles.row, { paddingTop: Math.max(insets.top, 12) }]}>
       {/* Back (only if stack can go back) */}
       {canGoBack ? (
         <Pressable onPress={() => navigation.goBack()} style={styles.btn}>
@@ -88,7 +90,6 @@ export default function OnboardingHeader({
 
 const styles = StyleSheet.create({
   row: {
-    paddingTop: 12,
     paddingHorizontal: 18,
     flexDirection: "row",
     alignItems: "center",

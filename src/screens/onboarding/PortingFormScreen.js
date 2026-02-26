@@ -1,5 +1,16 @@
 import React, { useContext, useState } from "react";
-import { View, Text, TextInput, Pressable, StyleSheet, ScrollView } from "react-native";
+import {
+  View,
+  Text,
+  TextInput,
+  Pressable,
+  StyleSheet,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
+} from "react-native";
 import { OnboardingContext } from "../../onboarding/OnboardingContext";
 import api from "../../config/api";
 import OnboardingHeader from "../../onboarding/OnboardingHeader";
@@ -40,11 +51,19 @@ export default function PortingFormScreen({ navigation }) {
   }
 
   return (
-    <View style={styles.safe}>
-      <OnboardingHeader />
-      <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Port Your Number</Text>
-        <Text style={styles.subtitle}>Usually 3-10 business days depending on your carrier.</Text>
+    <KeyboardAvoidingView
+      style={styles.safe}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={24}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={styles.container}
+        >
+          <OnboardingHeader />
+          <Text style={styles.title}>Port Your Number</Text>
+          <Text style={styles.subtitle}>Usually 3-10 business days depending on your carrier.</Text>
 
         {[
           ["phoneNumber", "Phone Number"],
@@ -67,23 +86,24 @@ export default function PortingFormScreen({ navigation }) {
           </View>
         ))}
 
-        {!!error ? <Text style={styles.error}>{error}</Text> : null}
+          {!!error ? <Text style={styles.error}>{error}</Text> : null}
 
-        <Pressable style={[styles.primaryBtn, loading && styles.disabled]} disabled={loading} onPress={submitPorting}>
-          <Text style={styles.primaryText}>{loading ? "Submitting..." : "Submit Port Request"}</Text>
-        </Pressable>
+          <Pressable style={[styles.primaryBtn, loading && styles.disabled]} disabled={loading} onPress={submitPorting}>
+            <Text style={styles.primaryText}>{loading ? "Submitting..." : "Submit Port Request"}</Text>
+          </Pressable>
 
-        <Pressable style={styles.secondaryBtn} onPress={() => navigation.navigate("TrialStart")}>
-          <Text style={styles.secondaryText}>I'll do this later</Text>
-        </Pressable>
-      </ScrollView>
-    </View>
+          <Pressable style={styles.secondaryBtn} onPress={() => navigation.navigate("TrialStart")}>
+            <Text style={styles.secondaryText}>I'll do this later</Text>
+          </Pressable>
+        </ScrollView>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#fff" },
-  container: { paddingHorizontal: 20, paddingBottom: 24, paddingTop: 8 },
+  container: { paddingHorizontal: 20, paddingBottom: 140, paddingTop: 8 },
   title: { fontSize: 26, fontWeight: "900", marginBottom: 6 },
   subtitle: { color: "#4b5563", marginBottom: 14 },
   label: { fontWeight: "700", marginBottom: 6, marginTop: 8 },
