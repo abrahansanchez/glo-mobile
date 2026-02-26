@@ -87,8 +87,11 @@ export default function BusinessSetupScreen({ navigation }) {
       businessDays,
     });
 
-    await updateStep(STEPS.BUSINESS_SNAPSHOT);
-    navigation.navigate("NumberStrategy");
+    const result = await updateStep(STEPS.BUSINESS_SNAPSHOT);
+    if (result?.complete) return;
+    if (canNavigateTo("NumberStrategy")) {
+      navigation.navigate("NumberStrategy");
+    }
   }
 
   return (
@@ -313,4 +316,8 @@ const styles = StyleSheet.create({
     }
 
     return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+  }
+  function canNavigateTo(routeName) {
+    const routeNames = navigation?.getState?.()?.routeNames || [];
+    return routeNames.includes(routeName);
   }

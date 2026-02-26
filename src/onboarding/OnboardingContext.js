@@ -121,9 +121,11 @@ export function OnboardingProvider({ children }) {
       if (parsed.stepMap && typeof parsed.stepMap === "object") {
         setOnboardingStepMap(parsed.stepMap);
       }
+      return parsed;
     } catch (error) {
       console.log(`[ONBOARDING_STEP] posted step=${step} ok=false`);
       console.log("[ONBOARDING] step post failed", { step, error: error?.response?.data || error?.message || error });
+      return null;
     }
   }, [barberId]);
 
@@ -186,8 +188,9 @@ export function OnboardingProvider({ children }) {
       await updateData(data);
     }
     if (shouldPost) {
-      await postOnboardingStep(step);
+      return await postOnboardingStep(step);
     }
+    return null;
   }, [barberId, postOnboardingStep, updateData]);
 
   const setLocalStep = useCallback(async (step) => {

@@ -53,7 +53,14 @@ export default function TrialStartScreen({ navigation }) {
         <Text style={styles.buttonText}>{loading ? "Starting..." : "Start Free Trial"}</Text>
       </Pressable>
 
-      <Pressable style={styles.secondaryBtn} onPress={() => navigation.navigate("GoLiveChecklist")}>
+      <Pressable
+        style={styles.secondaryBtn}
+        onPress={() => {
+          if (canNavigateTo("GoLiveChecklist")) {
+            navigation.navigate("GoLiveChecklist");
+          }
+        }}
+      >
         <Text style={styles.secondaryText}>Continue</Text>
       </Pressable>
 
@@ -89,3 +96,7 @@ const styles = StyleSheet.create({
   success: { color: "#065f46", fontWeight: "700", marginBottom: 10 },
   error: { color: "#b00020", fontWeight: "700", marginBottom: 10 },
 });
+  function canNavigateTo(routeName) {
+    const routeNames = navigation?.getState?.()?.routeNames || [];
+    return routeNames.includes(routeName);
+  }

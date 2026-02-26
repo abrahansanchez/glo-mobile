@@ -44,8 +44,11 @@ export default function PhoneSignupScreen({ navigation }) {
     }
     // Placeholder: real verify later -> should authenticate user
     // For now, we continue onboarding after login is handled separately
-    await updateStep(STEPS.ACCOUNT);
-    navigation.navigate("BusinessSnapshot");
+    const result = await updateStep(STEPS.ACCOUNT);
+    if (result?.complete) return;
+    if (canNavigateTo("BusinessSnapshot")) {
+      navigation.navigate("BusinessSnapshot");
+    }
   }
 
   return (
@@ -117,3 +120,7 @@ const styles = StyleSheet.create({
   linkBtn: { marginTop: 14, alignItems: "center" },
   link: { color: "#111", textDecorationLine: "underline", fontWeight: "700" },
 });
+  function canNavigateTo(routeName) {
+    const routeNames = navigation?.getState?.()?.routeNames || [];
+    return routeNames.includes(routeName);
+  }

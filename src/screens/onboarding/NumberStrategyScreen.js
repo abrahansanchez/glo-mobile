@@ -17,11 +17,16 @@ export default function NumberStrategyScreen({ navigation }) {
     try {
       await api.post("/phone/number-strategy", { strategy: choice });
       await updateData({ numberStrategy: choice });
-      await updateStep(STEPS.NUMBER_STRATEGY);
+      const result = await updateStep(STEPS.NUMBER_STRATEGY);
+      if (result?.complete) return;
       if (choice === "port_existing") {
-        navigation.navigate("PortingForm");
+        if (canNavigateTo("PortingForm")) {
+          navigation.navigate("PortingForm");
+        }
       } else {
-        navigation.navigate("TrialStart");
+        if (canNavigateTo("TrialStart")) {
+          navigation.navigate("TrialStart");
+        }
       }
     } catch (e) {
       setError(e?.response?.data?.message || "Failed to save number strategy");
@@ -87,3 +92,7 @@ const styles = StyleSheet.create({
   buttonText: { color: "#fff", fontWeight: "900" },
   error: { color: "#b00020", fontWeight: "700", marginBottom: 8 },
 });
+  function canNavigateTo(routeName) {
+    const routeNames = navigation?.getState?.()?.routeNames || [];
+    return routeNames.includes(routeName);
+  }

@@ -63,8 +63,11 @@ export default function WelcomeScreen({ navigation }) {
       <Pressable
         style={[styles.button, styles.primary]}
         onPress={async () => {
-          await updateStep(STEPS.WELCOME);
-          navigation.navigate("Account");
+          const result = await updateStep(STEPS.WELCOME);
+          if (result?.complete) return;
+          if (canNavigateTo("Account")) {
+            navigation.navigate("Account");
+          }
         }}
       >
         <Text style={styles.primaryText}>Get Started</Text>
@@ -96,3 +99,7 @@ const styles = StyleSheet.create({
   secondary: { backgroundColor: "#eee" },
   secondaryText: { color: "#000", fontWeight: "800" },
 });
+  function canNavigateTo(routeName) {
+    const routeNames = navigation?.getState?.()?.routeNames || [];
+    return routeNames.includes(routeName);
+  }
