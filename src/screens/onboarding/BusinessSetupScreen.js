@@ -3,6 +3,7 @@ import { View, Text, TextInput, Pressable, StyleSheet, ScrollView } from "react-
 import { SafeAreaView } from "react-native-safe-area-context";
 import { OnboardingContext } from "../../onboarding/OnboardingContext";
 import OnboardingHeader from "../../onboarding/OnboardingHeader";
+import { STEPS } from "../../onboarding/stepKeys";
 
 export default function BusinessSetupScreen({ navigation }) {
   const { updateStep, updateData, onboardingData } = useContext(OnboardingContext);
@@ -28,7 +29,7 @@ export default function BusinessSetupScreen({ navigation }) {
   );
 
   useEffect(() => {
-    updateStep("BUSINESS_SETUP");
+    updateStep(STEPS.BUSINESS_SNAPSHOT);
   }, [updateStep]);
 
   function getDeviceTimezone() {
@@ -72,14 +73,15 @@ export default function BusinessSetupScreen({ navigation }) {
       businessDays,
     });
 
-    navigation.navigate("Services");
+    await updateStep(STEPS.BUSINESS_SNAPSHOT);
+    navigation.navigate("NumberStrategy");
   }
 
   return (
     <SafeAreaView style={styles.safe}>
       <OnboardingHeader showLogout={false} showRestart={true} />
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Business Setup</Text>
+        <Text style={styles.title}>Business Snapshot</Text>
 
         <Text style={styles.label}>Shop Name</Text>
         <TextInput

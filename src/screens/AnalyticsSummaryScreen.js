@@ -1,9 +1,9 @@
 import { View, Text, StyleSheet } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { useEffect, useState } from "react";
 import api from "../config/api";
 import StatCard from "../components/StatCard";
 import LoadingState from "../components/LoadingState";
+import ScreenContainer from "../components/layout/ScreenContainer";
 
 export default function AnalyticsSummaryScreen() {
   const [loading, setLoading] = useState(true);
@@ -32,8 +32,20 @@ export default function AnalyticsSummaryScreen() {
     }
   }
 
-  if (loading) return <LoadingState label="Loading analytics..." />;
-  if (error) return <Text style={styles.error}>{error}</Text>;
+  if (loading) {
+    return (
+      <ScreenContainer>
+        <LoadingState label="Loading analytics..." />
+      </ScreenContainer>
+    );
+  }
+  if (error) {
+    return (
+      <ScreenContainer>
+        <Text style={styles.error}>{error}</Text>
+      </ScreenContainer>
+    );
+  }
 
   const totalCalls = analytics?.totalCalls ?? 0;
   const aiHandled = analytics?.aiHandled ?? 0;
@@ -41,7 +53,7 @@ export default function AnalyticsSummaryScreen() {
   const booked = analytics?.appointmentsBooked ?? 0;
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <ScreenContainer>
       <View style={styles.container}>
         <Text style={styles.title}>Analytics</Text>
 
@@ -55,19 +67,13 @@ export default function AnalyticsSummaryScreen() {
           <StatCard label="Booked" value={String(booked)} />
         </View>
       </View>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: "#fff",
-  },
   container: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 16,
   },
   title: {
     fontSize: 34,

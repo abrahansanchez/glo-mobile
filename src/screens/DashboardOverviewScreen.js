@@ -1,6 +1,5 @@
 import { useEffect, useState, useContext } from "react";
 import { View, Text, StyleSheet, Button, Pressable, TouchableOpacity } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { showIncomingCall } from "../native/CallKit";
 
 import { useNavigation } from "@react-navigation/native";
@@ -11,6 +10,7 @@ import { OnboardingContext } from "../onboarding/OnboardingContext";
 import api from "../config/api";
 import StatCard from "../components/StatCard";
 import LoadingState from "../components/LoadingState";
+import ScreenContainer from "../components/layout/ScreenContainer";
 
 export default function DashboardOverviewScreen() {
   const navigation = useNavigation();
@@ -88,8 +88,20 @@ export default function DashboardOverviewScreen() {
     }
   }
 
-  if (loading) return <LoadingState label="Loading overview..." />;
-  if (error) return <Text style={styles.error}>{error}</Text>;
+  if (loading) {
+    return (
+      <ScreenContainer>
+        <LoadingState label="Loading overview..." />
+      </ScreenContainer>
+    );
+  }
+  if (error) {
+    return (
+      <ScreenContainer>
+        <Text style={styles.error}>{error}</Text>
+      </ScreenContainer>
+    );
+  }
 
   const totalCalls = overview?.todayCalls ?? 0;
   const aiHandled = overview?.aiHandled ?? 0;
@@ -97,7 +109,7 @@ export default function DashboardOverviewScreen() {
     totalCalls > 0 ? Math.round((aiHandled / totalCalls) * 100) : 0;
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <ScreenContainer>
       <View style={styles.container}>
       <Text style={styles.title}>Overview</Text>
       {/* ===== DEV CONTROLS ===== */}
@@ -173,19 +185,13 @@ export default function DashboardOverviewScreen() {
         ))
       )}
       </View>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: "#fff",
-  },
   container: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 16,
   },
   title: {
     fontSize: 34,

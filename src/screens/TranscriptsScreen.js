@@ -3,6 +3,7 @@ import { FlatList, Pressable, Text, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import api from "../config/api";
 import { normalizeTranscriptTimeline } from "../utils/transcriptTimeline";
+import ScreenContainer from "../components/layout/ScreenContainer";
 
 function getTranscriptId(item) {
   return item?._id || item?.id || null;
@@ -47,62 +48,64 @@ export default function TranscriptsScreen() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1 }}>
+      <ScreenContainer>
         <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
           <Text>Loading transcripts...</Text>
         </View>
-      </View>
+      </ScreenContainer>
     );
   }
 
   if (error) {
     return (
-      <View style={{ flex: 1 }}>
+      <ScreenContainer>
         <View style={{ flex: 1, justifyContent: "center", alignItems: "center", padding: 16 }}>
           <Text>{error}</Text>
         </View>
-      </View>
+      </ScreenContainer>
     );
   }
 
   return (
-    <FlatList
-      data={transcripts}
-      keyExtractor={(item, index) => String(getTranscriptId(item) || index)}
-      contentContainerStyle={{ padding: 16 }}
-      ListEmptyComponent={
-        <View style={{ padding: 16 }}>
-          <Text>No transcripts yet.</Text>
-        </View>
-      }
-      renderItem={({ item }) => {
-        const transcriptId = getTranscriptId(item);
-        const caller = item?.callerNumber || item?.from || "Unknown";
-        const normalized = normalizeTranscriptTimeline(item);
-        const previewEntry = normalized.timeline[0];
-        const previewText = previewEntry
-          ? `${previewEntry.role || "system"}: ${previewEntry.text || ""}`
-          : "No transcript preview";
-        return (
-          <Pressable
-            onPress={() => {
-              if (!transcriptId) return;
-              navigation.navigate("TranscriptDetail", { transcriptId });
-            }}
-            style={{
-              paddingVertical: 12,
-              paddingHorizontal: 16,
-              borderBottomWidth: 1,
-              borderBottomColor: "#ddd",
-            }}
-          >
-            <Text>Caller: {caller}</Text>
-            <Text>When: {formatDate(item?.callEndedAt || item?.createdAt)}</Text>
-            <Text>Intent/Outcome: {item?.intent || "-"} / {item?.outcome || "-"}</Text>
-            <Text numberOfLines={1}>Preview: {previewText}</Text>
-          </Pressable>
-        );
-      }}
-    />
+    <ScreenContainer>
+      <FlatList
+        data={transcripts}
+        keyExtractor={(item, index) => String(getTranscriptId(item) || index)}
+        contentContainerStyle={{ paddingBottom: 16 }}
+        ListEmptyComponent={
+          <View style={{ paddingTop: 16 }}>
+            <Text>No transcripts yet.</Text>
+          </View>
+        }
+        renderItem={({ item }) => {
+          const transcriptId = getTranscriptId(item);
+          const caller = item?.callerNumber || item?.from || "Unknown";
+          const normalized = normalizeTranscriptTimeline(item);
+          const previewEntry = normalized.timeline[0];
+          const previewText = previewEntry
+            ? `${previewEntry.role || "system"}: ${previewEntry.text || ""}`
+            : "No transcript preview";
+          return (
+            <Pressable
+              onPress={() => {
+                if (!transcriptId) return;
+                navigation.navigate("TranscriptDetail", { transcriptId });
+              }}
+              style={{
+                paddingVertical: 12,
+                paddingHorizontal: 16,
+                borderBottomWidth: 1,
+                borderBottomColor: "#ddd",
+              }}
+            >
+              <Text>Caller: {caller}</Text>
+              <Text>When: {formatDate(item?.callEndedAt || item?.createdAt)}</Text>
+              <Text>Intent/Outcome: {item?.intent || "-"} / {item?.outcome || "-"}</Text>
+              <Text numberOfLines={1}>Preview: {previewText}</Text>
+            </Pressable>
+          );
+        }}
+      />
+    </ScreenContainer>
   );
 }

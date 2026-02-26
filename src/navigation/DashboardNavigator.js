@@ -18,13 +18,30 @@ const Tab = createBottomTabNavigator();
 
 function DashboardTabs() {
   return (
-    <Tab.Navigator screenOptions={{ headerShown: false }}>
+    <Tab.Navigator
+      screenOptions={{
+        headerShown: false,
+        tabBarHideOnKeyboard: true,
+        tabBarStyle: {
+          height: 72,
+          paddingTop: 8,
+          paddingBottom: 10,
+        },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          marginTop: 2,
+        },
+        tabBarItemStyle: {
+          paddingVertical: 4,
+        },
+      }}
+    >
       <Tab.Screen name="Overview" component={DashboardOverviewScreen} />
       <Tab.Screen name="Calls" component={CallsScreen} />
-      <Tab.Screen name="Appointments" component={AppointmentsScreen} />
-      <Tab.Screen name="Voicemails" component={VoicemailsScreen} />
-      <Tab.Screen name="Transcripts" component={TranscriptsScreen} />
-      <Tab.Screen name="Analytics" component={AnalyticsSummaryScreen} />
+      <Tab.Screen name="Appointments" component={AppointmentsScreen} options={{ tabBarLabel: "Schedule" }} />
+      <Tab.Screen name="Voicemails" component={VoicemailsScreen} options={{ tabBarLabel: "Voicemail" }} />
+      <Tab.Screen name="Transcripts" component={TranscriptsScreen} options={{ tabBarLabel: "Transc." }} />
+      <Tab.Screen name="Analytics" component={AnalyticsSummaryScreen} options={{ tabBarLabel: "Insights" }} />
       <Tab.Screen name="Settings" component={SettingsScreen} />
     </Tab.Navigator>
   );

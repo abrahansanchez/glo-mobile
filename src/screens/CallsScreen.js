@@ -3,6 +3,7 @@ import { View, Text, Button, StyleSheet, TextInput, Alert, ScrollView } from "re
 import { Audio } from "expo-av";
 import { useVoice } from "../voice/VoiceContext";
 import { initTwilioVoice, startCall, endCall } from "../voice/twilioVoiceService";
+import ScreenContainer from "../components/layout/ScreenContainer";
 
 export default function CallsScreen() {
   const { status, token, identity, refreshToken } = useVoice();
@@ -102,56 +103,56 @@ export default function CallsScreen() {
   const canStartCall = twilioInitialized;
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Calls (Phase A)</Text>
+    <ScreenContainer>
+      <ScrollView contentContainerStyle={styles.container}>
+        <Text style={styles.title}>Calls (Phase A)</Text>
 
-      <Text style={styles.subtitle}>Voice Token Status</Text>
-      <Text style={styles.line}>Voice status: {status}</Text>
-      <Text style={styles.line}>token present: {token ? "✅ true" : "❌ false"}</Text>
-      <Text style={styles.line}>identity: {identity || "none"}</Text>
-      <Text style={styles.line}>Twilio initialized: {twilioInitialized ? "✅ yes" : "❌ no"}</Text>
-      <Text style={styles.line}>Twilio deviceReady: {deviceReadyFlag ? "✅ yes" : "❌ no"}</Text>
+        <Text style={styles.subtitle}>Voice Token Status</Text>
+        <Text style={styles.line}>Voice status: {status}</Text>
+        <Text style={styles.line}>token present: {token ? "✅ true" : "❌ false"}</Text>
+        <Text style={styles.line}>identity: {identity || "none"}</Text>
+        <Text style={styles.line}>Twilio initialized: {twilioInitialized ? "✅ yes" : "❌ no"}</Text>
+        <Text style={styles.line}>Twilio deviceReady: {deviceReadyFlag ? "✅ yes" : "❌ no"}</Text>
 
-      <View style={{ height: 20 }} />
+        <View style={{ height: 20 }} />
 
-      <Button title="Refresh Voice Token" onPress={refreshToken} />
-      <View style={{ height: 12 }} />
-      <Button title="Initialize Twilio Voice" onPress={handleInit} />
+        <Button title="Refresh Voice Token" onPress={refreshToken} />
+        <View style={{ height: 12 }} />
+        <Button title="Initialize Twilio Voice" onPress={handleInit} />
 
-      <View style={{ height: 24 }} />
+        <View style={{ height: 24 }} />
 
-      <Text style={styles.subtitle}>Make a Test Call</Text>
-      <TextInput
-        value={to}
-        onChangeText={setTo}
-        placeholder="Enter number (8132207636 or +1...)"
-        autoCapitalize="none"
-        keyboardType="phone-pad"
-        style={styles.input}
-      />
+        <Text style={styles.subtitle}>Make a Test Call</Text>
+        <TextInput
+          value={to}
+          onChangeText={setTo}
+          placeholder="Enter number (8132207636 or +1...)"
+          autoCapitalize="none"
+          keyboardType="phone-pad"
+          style={styles.input}
+        />
 
-      <View style={{ height: 12 }} />
-      <Button title="Start Outgoing Call" onPress={handleCall} disabled={!canStartCall} />
-      <View style={{ height: 12 }} />
-      <Button title="Hang Up" onPress={handleHangup} color="red" />
+        <View style={{ height: 12 }} />
+        <Button title="Start Outgoing Call" onPress={handleCall} disabled={!canStartCall} />
+        <View style={{ height: 12 }} />
+        <Button title="Hang Up" onPress={handleHangup} color="red" />
 
-      <View style={{ height: 24 }} />
-      <Text style={styles.note}>
-        Phase A: Outgoing calls only (no VoIP push yet).{"\n"}
-        • Tap "Start Outgoing Call" to place a call{"\n"}
-        • Call will keep ringing until recipient answers or you tap "Hang Up"{"\n"}
-        • Watch terminal logs for [TWILIO_VOICE][EVENT] messages
-      </Text>
-    </ScrollView>
+        <View style={{ height: 24 }} />
+        <Text style={styles.note}>
+          Phase A: Outgoing calls only (no VoIP push yet).{"\n"}
+          • Tap "Start Outgoing Call" to place a call{"\n"}
+          • Call will keep ringing until recipient answers or you tap "Hang Up"{"\n"}
+          • Watch terminal logs for [TWILIO_VOICE][EVENT] messages
+        </Text>
+      </ScrollView>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
-    padding: 20,
-    paddingTop: 50,
-    backgroundColor: "#fff",
+    paddingBottom: 20,
   },
   title: {
     fontSize: 26,

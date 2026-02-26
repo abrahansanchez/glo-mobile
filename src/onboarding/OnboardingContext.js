@@ -9,13 +9,40 @@ import {
   resetOnboarding as persistReset,
 } from "./onboardingStorage";
 import { AuthContext } from "../auth/authContext";
+import api from "../config/api";
+import { STEP_VALUES, STEPS } from "./stepKeys";
 
 export const OnboardingContext = createContext(null);
+
+function normalizeStep(step) {
+  if (!step || typeof step !== "string") return STEPS.WELCOME;
+  const value = step.toLowerCase();
+  const legacyMap = {
+    welcome: STEPS.WELCOME,
+    account: STEPS.ACCOUNT,
+    phone: STEPS.ACCOUNT,
+    business_setup: STEPS.BUSINESS_SNAPSHOT,
+    business_snapshot: STEPS.BUSINESS_SNAPSHOT,
+    phone_choice: STEPS.NUMBER_STRATEGY,
+    number_strategy: STEPS.NUMBER_STRATEGY,
+    trial_start: STEPS.TRIAL_START,
+  };
+  return legacyMap[value] || value;
+}
+
+function parseOnboardingStatus(payload) {
+  const raw = payload || {};
+  const step = normalizeStep(raw?.nextStep || raw?.currentStep || STEPS.WELCOME);
+  const complete = Boolean(raw?.isComplete);
+  const stepMap = raw?.stepMap || {};
+  return { step, complete, stepMap };
+}
 
 export function OnboardingProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [onboardingComplete, setComplete] = useState(false);
-  const [onboardingStep, setStep] = useState("WELCOME");
+  const [onboardingStep, setStep] = useState(STEPS.WELCOME);
+  const [onboardingStepMap, setOnboardingStepMap] = useState({});
   const [onboardingData, setData] = useState({});
   const { barber } = useContext(AuthContext);
   const barberId = barber?.id || barber?._id || null;
@@ -26,23 +53,67 @@ export function OnboardingProvider({ children }) {
         if (!barberId) {
           // no barber yet — keep defaults
           setComplete(false);
-          setStep("WELCOME");
+          setStep(STEPS.WELCOME);
           setData({});
           setLoading(false);
           return;
         }
 
-        const complete = await isComplete(barberId);
-        const step = await getStoredStep(barberId);
-        const data = await getOnboardingData(barberId);
-        setComplete(complete);
-        setStep(step);
-        setData(data);
+        try {
+          const response = await api.get("/onboarding/status");
+          const parsed = parseOnboardingStatus(response.data);
+          const cachedData = await getOnboardingData(barberId);
+          setComplete(parsed.complete);
+          setStep(parsed.step);
+          setOnboardingStepMap(parsed.stepMap);
+          setData(cachedData || {});
+          await persistComplete(barberId, parsed.complete);
+          await persistStep(barberId, parsed.step);
+          console.log("[ONBOARDING] loaded from backend status", {
+            step: parsed.step,
+            complete: parsed.complete,
+          });
+        } catch (backendError) {
+          console.log("[ONBOARDING] backend status failed, using local cache", backendError?.message || backendError);
+          const complete = await isComplete(barberId);
+          const step = normalizeStep(await getStoredStep(barberId));
+          const data = await getOnboardingData(barberId);
+          setComplete(complete);
+          setStep(step);
+          setOnboardingStepMap({});
+          setData(data);
+        }
       } finally {
         setLoading(false);
       }
     })();
   }, [barberId]);
+
+  async function postOnboardingStep(step) {
+    if (!barberId) return;
+    if (!STEP_VALUES.has(step)) return;
+    try {
+      const response = await api.post("/onboarding/step", {
+        step,
+        completed: true,
+      });
+
+      const parsed = parseOnboardingStatus(response.data);
+      if (parsed.step) {
+        setStep(parsed.step);
+        await persistStep(barberId, parsed.step);
+      }
+      if (typeof parsed.complete === "boolean") {
+        setComplete(parsed.complete);
+        await persistComplete(barberId, parsed.complete);
+      }
+      if (parsed.stepMap && typeof parsed.stepMap === "object") {
+        setOnboardingStepMap(parsed.stepMap);
+      }
+    } catch (error) {
+      console.log("[ONBOARDING] step post failed", { step, error: error?.response?.data || error?.message || error });
+    }
+  }
 
   async function markComplete() {
     if (!barberId) {
@@ -58,7 +129,8 @@ export function OnboardingProvider({ children }) {
     await persistComplete(barberId, true);
   }
 
-  async function updateStep(step) {
+  async function updateStep(step, data = {}, options = {}) {
+    const shouldPost = options?.post !== false;
     if (!barberId) {
       if (__DEV__) console.log("[Onboarding] skipping updateStep — barberId not yet available");
       return;
@@ -69,6 +141,16 @@ export function OnboardingProvider({ children }) {
       if (__DEV__) console.log(`Onboarding:updateStep ${barberId} -> ${step}`);
     } catch (e) {}
     await persistStep(barberId, step);
+    if (Object.keys(data || {}).length > 0) {
+      await updateData(data);
+    }
+    if (shouldPost) {
+      await postOnboardingStep(step);
+    }
+  }
+
+  async function setLocalStep(step) {
+    setStep(step);
   }
 
   async function updateData(newData) {
@@ -90,7 +172,7 @@ export function OnboardingProvider({ children }) {
       return;
     }
     setComplete(false);
-    setStep("WELCOME");
+    setStep(STEPS.WELCOME);
     setData({});
     try {
       if (__DEV__)
@@ -104,13 +186,16 @@ export function OnboardingProvider({ children }) {
       loading,
       onboardingComplete,
       onboardingStep,
+      onboardingStepMap,
       onboardingData,
+      postOnboardingStep,
       markComplete,
       updateStep,
+      setLocalStep,
       updateData,
       reset,
     }),
-    [loading, onboardingComplete, onboardingStep, onboardingData]
+    [loading, onboardingComplete, onboardingStep, onboardingStepMap, onboardingData]
   );
 
   return (
@@ -119,4 +204,3 @@ export function OnboardingProvider({ children }) {
     </OnboardingContext.Provider>
   );
 }
-

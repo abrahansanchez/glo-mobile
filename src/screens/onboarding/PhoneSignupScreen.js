@@ -2,6 +2,7 @@ import React, { useContext, useEffect, useState } from "react";
 import { View, Text, TextInput, Pressable, StyleSheet } from "react-native";
 import { OnboardingContext } from "../../onboarding/OnboardingContext";
 import OnboardingHeader from "../../onboarding/OnboardingHeader";
+import { STEPS } from "../../onboarding/stepKeys";
 
 export default function PhoneSignupScreen({ navigation }) {
   const { updateStep } = useContext(OnboardingContext);
@@ -11,8 +12,8 @@ export default function PhoneSignupScreen({ navigation }) {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    updateStep("PHONE");
-  }, []);
+    updateStep(STEPS.ACCOUNT);
+  }, [updateStep]);
 
   function handleSendOtp() {
     setError("");
@@ -32,13 +33,14 @@ export default function PhoneSignupScreen({ navigation }) {
     }
     // Placeholder: real verify later -> should authenticate user
     // For now, we continue onboarding after login is handled separately
-    navigation.navigate("ProfileBasics");
+    updateStep(STEPS.ACCOUNT);
+    navigation.navigate("BusinessSnapshot");
   }
 
   return (
     <View style={styles.container}>
       <OnboardingHeader />
-      <Text style={styles.title}>Set up your account</Text>
+      <Text style={styles.title}>Create Your Glō Workspace</Text>
 
       {stage === "PHONE" ? (
         <>

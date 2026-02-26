@@ -5,13 +5,14 @@ import { useContext, useEffect } from "react";
 import * as SecureStore from "expo-secure-store";
 import { AuthContext } from "../../auth/authContext";
 import api from "../../config/api";
+import { STEPS } from "../../onboarding/stepKeys";
 
 export default function WelcomeScreen({ navigation }) {
   const { updateStep } = useContext(OnboardingContext);
   const { logout } = useContext(AuthContext);
 
   useEffect(() => {
-    updateStep("WELCOME");
+    updateStep(STEPS.WELCOME);
   }, [updateStep]);
 
   const handleDevReset = async () => {
@@ -61,7 +62,10 @@ export default function WelcomeScreen({ navigation }) {
 
       <Pressable
         style={[styles.button, styles.primary]}
-        onPress={() => navigation.navigate("PhoneSignup")}
+        onPress={async () => {
+          await updateStep(STEPS.WELCOME);
+          navigation.navigate("Account");
+        }}
       >
         <Text style={styles.primaryText}>Get Started</Text>
       </Pressable>

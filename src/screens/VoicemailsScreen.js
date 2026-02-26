@@ -2,6 +2,7 @@ import { View, Text, FlatList, StyleSheet } from "react-native";
 import { useEffect, useState } from "react";
 import api from "../config/api";
 import LoadingState from "../components/LoadingState";
+import ScreenContainer from "../components/layout/ScreenContainer";
 
 export default function VoicemailsScreen() {
   const [loading, setLoading] = useState(true);
@@ -34,38 +35,46 @@ export default function VoicemailsScreen() {
   }
 
   if (loading) {
-    return <LoadingState label="Loading voicemails..." />;
+    return (
+      <ScreenContainer>
+        <LoadingState label="Loading voicemails..." />
+      </ScreenContainer>
+    );
   }
 
   if (!voicemails.length) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.empty}>No voicemails</Text>
-      </View>
+      <ScreenContainer>
+        <View style={styles.center}>
+          <Text style={styles.empty}>No voicemails</Text>
+        </View>
+      </ScreenContainer>
     );
   }
 
   return (
-    <FlatList
-      data={voicemails}
-      keyExtractor={(item) => item._id}
-      contentContainerStyle={{ padding: 16 }}
-      renderItem={({ item }) => (
-        <View style={styles.card}>
-          <Text style={styles.caller}>
-            {item.from || "Unknown caller"}
-          </Text>
+    <ScreenContainer>
+      <FlatList
+        data={voicemails}
+        keyExtractor={(item) => item._id}
+        contentContainerStyle={{ paddingBottom: 16 }}
+        renderItem={({ item }) => (
+          <View style={styles.card}>
+            <Text style={styles.caller}>
+              {item.from || "Unknown caller"}
+            </Text>
 
-          <Text style={styles.meta}>
-            {new Date(item.createdAt).toLocaleString()}
-          </Text>
+            <Text style={styles.meta}>
+              {new Date(item.createdAt).toLocaleString()}
+            </Text>
 
-          <Text style={styles.duration}>
-            Duration: {item.duration || "—"} sec
-          </Text>
-        </View>
-      )}
-    />
+            <Text style={styles.duration}>
+              Duration: {item.duration || "—"} sec
+            </Text>
+          </View>
+        )}
+      />
+    </ScreenContainer>
   );
 }
 

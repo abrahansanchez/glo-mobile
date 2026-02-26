@@ -1,8 +1,8 @@
 import React, { useContext, useEffect, useState } from "react";
 import { View, Text, Pressable, StyleSheet, Alert, Linking, Platform } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import api from "../config/api";
 import { AuthContext } from "../auth/authContext";
+import ScreenContainer from "../components/layout/ScreenContainer";
 
 export default function SettingsScreen({ navigation }) {
   const { logout } = useContext(AuthContext);
@@ -82,7 +82,7 @@ export default function SettingsScreen({ navigation }) {
     null;
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <ScreenContainer>
       <View style={styles.container}>
         <Text style={styles.title}>Settings</Text>
 
@@ -129,16 +129,12 @@ export default function SettingsScreen({ navigation }) {
         </Pressable>
       </View>
       </View>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: "#fff",
-  },
-  container: { flex: 1, paddingHorizontal: 20, paddingTop: 16 },
+  container: { flex: 1 },
   title: { fontSize: 28, fontWeight: "900", marginBottom: 14 },
   card: {
     backgroundColor: "#fff",
