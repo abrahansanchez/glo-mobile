@@ -12,6 +12,7 @@ import PortingTrackerScreen from "../screens/onboarding/PortingTrackerScreen";
 import PortingStatusScreen from "../screens/onboarding/PortingStatusScreen";
 import PortingDocumentsScreen from "../screens/onboarding/PortingDocumentsScreen";
 import GoLiveChecklistScreen from "../screens/onboarding/GoLiveChecklistScreen";
+import SettingsScreen from "../screens/SettingsScreen";
 import { STEPS } from "../onboarding/stepKeys";
 
 const Stack = createNativeStackNavigator();
@@ -60,6 +61,7 @@ export default function OnboardingNavigator() {
       <Stack.Screen name="PortingStatus" component={PortingStatusScreen} />
       <Stack.Screen name="PortingDocuments" component={PortingDocumentsScreen} />
       <Stack.Screen name="GoLiveChecklist" component={GoLiveChecklistScreen} />
+      <Stack.Screen name="Settings" component={SettingsScreen} />
     </Stack.Navigator>
   );
 }
