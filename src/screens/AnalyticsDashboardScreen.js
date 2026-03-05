@@ -8,6 +8,7 @@ import AppCard from "../components/ui/AppCard";
 import AppText from "../components/ui/AppText";
 import MetricCard from "../components/MetricCard";
 import { colors, spacing } from "../ui/tokens";
+import { useIsAdmin } from "../auth/adminAccess";
 
 const RANGE_OPTIONS = [7, 14, 30];
 
@@ -40,6 +41,7 @@ function formatPercent(value) {
 }
 
 export default function AnalyticsDashboardScreen() {
+  const isAdmin = useIsAdmin();
   const [rangeDays, setRangeDays] = useState(7);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -88,6 +90,17 @@ export default function AnalyticsDashboardScreen() {
     return (
       <ScreenContainer>
         <LoadingState message="Loading KPI dashboard..." />
+      </ScreenContainer>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <ScreenContainer>
+        <EmptyState
+          title="Restricted"
+          message="Funnel KPI dashboard is available to admin accounts only."
+        />
       </ScreenContainer>
     );
   }

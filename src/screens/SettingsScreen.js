@@ -13,9 +13,11 @@ import {
   getEliteOnboardingFlag,
   setEliteOnboardingFlag,
 } from "../config/featureFlags";
+import { useIsAdmin } from "../auth/adminAccess";
 
 export default function SettingsScreen({ navigation }) {
   const { logout, stripeCustomerId } = useContext(AuthContext);
+  const isAdmin = useIsAdmin();
 
   const [loading, setLoading] = useState(true);
   const [sub, setSub] = useState(null);
@@ -236,7 +238,7 @@ export default function SettingsScreen({ navigation }) {
         />
       </AppCard>
 
-      {__DEV__ ? (
+      {__DEV__ && isAdmin ? (
         <AppCard style={styles.card}>
           <AppText variant="section" style={styles.cardTitle}>Feature Flags (Dev)</AppText>
 
