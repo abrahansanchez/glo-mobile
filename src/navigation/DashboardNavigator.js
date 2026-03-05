@@ -11,6 +11,7 @@ import TranscriptsScreen from "../screens/TranscriptsScreen";
 import TranscriptDetailScreen from "../screens/TranscriptDetailScreen";
 import CallNavigator from "./CallNavigator";
 import SettingsScreen from "../screens/SettingsScreen";
+import InboxScreen from "../screens/InboxScreen";
 import AccountScreen from "../screens/settings/AccountScreen";
 import PortingStatusScreen from "../screens/onboarding/PortingStatusScreen";
 import PortingDocumentsScreen from "../screens/onboarding/PortingDocumentsScreen";
@@ -38,12 +39,10 @@ function DashboardTabs() {
         },
       }}
     >
-      <Tab.Screen name="Overview" component={DashboardOverviewScreen} />
-      <Tab.Screen name="Calls" component={CallsScreen} />
-      <Tab.Screen name="Appointments" component={AppointmentsScreen} options={{ tabBarLabel: "Schedule" }} />
-      <Tab.Screen name="Voicemails" component={VoicemailsScreen} options={{ tabBarLabel: "Voicemail" }} />
-      <Tab.Screen name="Transcripts" component={TranscriptsScreen} options={{ tabBarLabel: "Transc." }} />
-      <Tab.Screen name="Analytics" component={AnalyticsSummaryScreen} options={{ tabBarLabel: "Insights" }} />
+      <Tab.Screen name="Home" component={DashboardOverviewScreen} />
+      <Tab.Screen name="Schedule" component={AppointmentsScreen} />
+      <Tab.Screen name="Inbox" component={InboxScreen} />
+      <Tab.Screen name="Insights" component={AnalyticsSummaryScreen} />
       <Tab.Screen name="Settings" component={SettingsScreen} />
     </Tab.Navigator>
   );
@@ -54,6 +53,14 @@ export default function DashboardNavigator() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       {/* Main dashboard tabs */}
       <Stack.Screen name="DashboardTabs" component={DashboardTabs} />
+
+      {/* Legacy/secondary screens still reachable without top-level tab exposure */}
+      <Stack.Screen name="Calls" component={CallsScreen} />
+      <Stack.Screen name="Voicemails" component={VoicemailsScreen} />
+      <Stack.Screen name="Transcripts" component={TranscriptsScreen} />
+      <Stack.Screen name="Appointments" component={AppointmentsScreen} />
+      <Stack.Screen name="Overview" component={DashboardOverviewScreen} />
+      <Stack.Screen name="Analytics" component={AnalyticsSummaryScreen} />
 
       <Stack.Screen name="Account" component={AccountScreen} />
       <Stack.Screen name="PortingStatus" component={PortingStatusScreen} />

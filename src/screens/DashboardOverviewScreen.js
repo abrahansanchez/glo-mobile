@@ -122,7 +122,7 @@ export default function DashboardOverviewScreen() {
     const focusAppointmentId = appointment?._id || null;
 
     // Overview lives in tabs, so this switches to Schedule tab and forwards focus params.
-    navigation.navigate("Appointments", {
+    navigation.navigate("Schedule", {
       focusDate,
       focusAppointmentId,
       initialView: "day",
