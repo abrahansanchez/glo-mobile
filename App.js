@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { View } from "react-native";
 import { AuthProvider } from "./src/auth/authContext";
 import AppNavigator from "./src/navigation/AppNavigator";
@@ -8,6 +8,7 @@ import { OnboardingProvider } from "./src/onboarding/OnboardingContext";
 import ErrorBoundary from "./src/components/ErrorBoundary";
 import { CallManagerProvider, useCallManager } from "./src/voice/CallManager";
 import IncomingCallOverlay from "./src/voice/IncomingCallOverlay";
+import AnimatedSplashOverlay from "./src/components/AnimatedSplashOverlay";
 
 function IncomingCallOverlayContainer() {
   const { incomingInvite, actionInProgress, answerIncomingCall, letAiHandleIncomingCall } = useCallManager();
@@ -24,6 +25,7 @@ function IncomingCallOverlayContainer() {
 }
 
 export default function App() {
+  const [splashDone, setSplashDone] = useState(false);
 
   useEffect(() => {
     const teardown = setupForegroundPushLogging();
@@ -36,9 +38,10 @@ export default function App() {
         <VoiceProvider>
           <OnboardingProvider>
             <ErrorBoundary>
-              <View style={{ flex: 1 }}>
+              <View style={{ flex: 1, backgroundColor: "#000000" }}>
                 <AppNavigator />
                 <IncomingCallOverlayContainer />
+                {!splashDone ? <AnimatedSplashOverlay onFinish={() => setSplashDone(true)} /> : null}
               </View>
             </ErrorBoundary>
           </OnboardingProvider>
