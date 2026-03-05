@@ -21,6 +21,10 @@ export default function OnboardingHeader({
 
   const { logout } = useContext(AuthContext);
   const { reset: resetOnboarding } = useContext(OnboardingContext);
+  function canNavigateTo(routeName) {
+    const routeNames = navigation?.getState?.()?.routeNames || [];
+    return routeNames.includes(routeName);
+  }
 
   async function handleLogout() {
     Alert.alert("Log out", "Are you sure you want to log out?", [
@@ -46,9 +50,13 @@ export default function OnboardingHeader({
           style: "destructive",
           onPress: async () => {
             await resetOnboarding();
-            // If you are inside onboarding already, send them to Welcome
-            if (canGoBack) {
-              navigation.popToTop();
+            if (canNavigateTo("Welcome")) {
+              navigation.reset({
+                index: 0,
+                routes: [{ name: "Welcome" }],
+              });
+            } else if (canGoBack) {
+              navigation.goBack();
             } else {
               navigation.navigate("Welcome");
             }
