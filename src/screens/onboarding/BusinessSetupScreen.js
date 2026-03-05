@@ -18,6 +18,10 @@ import { STEPS } from "../../onboarding/stepKeys";
 
 export default function BusinessSetupScreen({ navigation }) {
   const { updateStep, setLocalStep, updateData, onboardingData } = useContext(OnboardingContext);
+  function canNavigateTo(routeName) {
+    const routeNames = navigation?.getState?.()?.routeNames || [];
+    return routeNames.includes(routeName);
+  }
 
   const [shopName, setShopName] = useState(onboardingData?.shopName || "");
   const [city, setCity] = useState(onboardingData?.city || "");
@@ -316,8 +320,4 @@ const styles = StyleSheet.create({
     }
 
     return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
-  }
-  function canNavigateTo(routeName) {
-    const routeNames = navigation?.getState?.()?.routeNames || [];
-    return routeNames.includes(routeName);
   }

@@ -11,6 +11,11 @@ export default function NumberStrategyScreen({ navigation }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
+  function canNavigateTo(routeName) {
+    const routeNames = navigation?.getState?.()?.routeNames || [];
+    return routeNames.includes(routeName);
+  }
+
   async function submit() {
     setSubmitting(true);
     setError("");
@@ -92,7 +97,3 @@ const styles = StyleSheet.create({
   buttonText: { color: "#fff", fontWeight: "900" },
   error: { color: "#b00020", fontWeight: "700", marginBottom: 8 },
 });
-  function canNavigateTo(routeName) {
-    const routeNames = navigation?.getState?.()?.routeNames || [];
-    return routeNames.includes(routeName);
-  }
