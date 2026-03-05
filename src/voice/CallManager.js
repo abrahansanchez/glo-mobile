@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, AppState } from "react-native";
 import api from "../config/api";
+import { AuthContext } from "../auth/authContext";
 import {
   acceptIncomingInvite,
   isVoipDeviceReady,
@@ -12,6 +13,7 @@ import {
 const CallManagerContext = createContext(null);
 
 export function CallManagerProvider({ children }) {
+  const { barber } = useContext(AuthContext);
   const [incomingInvite, setIncomingInvite] = useState(null);
   const [actionInProgress, setActionInProgress] = useState(false);
   const appStateRef = useRef(AppState.currentState || "active");
@@ -19,6 +21,18 @@ export function CallManagerProvider({ children }) {
 
   const getCallSid = useCallback((invite) => invite?.call_sid || invite?.callSid || invite?.CallSid || null, []);
   const inviteKey = useCallback((invite) => getCallSid(invite) || invite?.from || invite?.call_from || "unknown", [getCallSid]);
+  const resolvePreferredLanguage = useCallback(() => {
+    const raw =
+      barber?.preferredLanguage ||
+      barber?.languagePreference ||
+      barber?.language ||
+      barber?.locale ||
+      "";
+    const normalized = String(raw).toLowerCase().trim();
+    if (normalized.startsWith("es")) return "es";
+    if (normalized.startsWith("en")) return "en";
+    return null;
+  }, [barber]);
 
   const logVoipDiag = useCallback(
     (invite, hasInvite) => {
@@ -114,12 +128,14 @@ export function CallManagerProvider({ children }) {
     let aiTakeoverOk = false;
     let backendStatus = null;
     const callSid = getCallSid(incomingInvite);
+    const preferredLanguage = resolvePreferredLanguage();
 
     try {
       const response = await api.post("/voice/ai-takeover", {
         callSid,
         from: incomingInvite?.call_from || incomingInvite?.from || null,
         to: incomingInvite?.call_to || incomingInvite?.to || null,
+        preferredLanguage,
       });
       backendStatus = response?.status || 200;
       aiTakeoverOk = true;
@@ -128,7 +144,12 @@ export function CallManagerProvider({ children }) {
       console.log("[CALL_UI] ai takeover failed", error?.response?.data || error?.message || error);
       Alert.alert("AI takeover failed", "Could not send this call to AI. You can try again or answer the call.");
     } finally {
-      console.log("[AI_HANDLE_RESULT]", { ok: aiTakeoverOk, status: backendStatus, callSid });
+      console.log("[AI_HANDLE_RESULT]", {
+        ok: aiTakeoverOk,
+        status: backendStatus,
+        callSid,
+        preferredLanguage: preferredLanguage || "unset",
+      });
     }
 
     if (!aiTakeoverOk) {
@@ -147,7 +168,7 @@ export function CallManagerProvider({ children }) {
       setActionInProgress(false);
       inFlightActionRef.current = null;
     }
-  }, [actionInProgress, getCallSid, incomingInvite, inviteKey, logVoipDiag]);
+  }, [actionInProgress, getCallSid, incomingInvite, inviteKey, logVoipDiag, resolvePreferredLanguage]);
 
   const value = useMemo(
     () => ({
