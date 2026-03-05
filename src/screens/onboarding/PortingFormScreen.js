@@ -154,7 +154,11 @@ export default function PortingFormScreen({ navigation, route }) {
         response?.data?.id ||
         response?.data?._id ||
         null;
-      navigation.navigate("PortingStatus", { portingId });
+      navigation.navigate("PortingStatus", {
+        portingId,
+        seededStatusPayload: response?.data || null,
+        resubmittedAt: Date.now(),
+      });
     } catch (e) {
       setError(getBackendErrorMessage(e?.response));
     } finally {

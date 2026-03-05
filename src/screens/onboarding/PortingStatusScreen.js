@@ -26,6 +26,8 @@ export default function PortingStatusScreen({ navigation, route }) {
   const [statusPayload, setStatusPayload] = useState(null);
   const [error, setError] = useState("");
   const routePortingId = route?.params?.portingId || null;
+  const seededStatusPayload = route?.params?.seededStatusPayload || null;
+  const resubmittedAt = route?.params?.resubmittedAt || null;
 
   const status = statusPayload?.status || "draft";
   const rejectionReason = statusPayload?.rejectionReason || statusPayload?.reason || "";
@@ -55,6 +57,11 @@ export default function PortingStatusScreen({ navigation, route }) {
     loadStatus();
   }, []);
 
+  useEffect(() => {
+    if (!seededStatusPayload) return;
+    setStatusPayload((prev) => ({ ...(prev || {}), ...seededStatusPayload }));
+  }, [seededStatusPayload]);
+
   useFocusEffect(
     React.useCallback(() => {
       loadStatus();
@@ -71,6 +78,11 @@ export default function PortingStatusScreen({ navigation, route }) {
 
     return () => clearInterval(timer);
   }, [status, routePortingId]);
+
+  useEffect(() => {
+    if (!resubmittedAt) return;
+    loadStatus();
+  }, [resubmittedAt, routePortingId]);
 
   async function onPullRefresh() {
     setRefreshing(true);
@@ -117,7 +129,7 @@ export default function PortingStatusScreen({ navigation, route }) {
 
       {!!rejectionReason && status === "rejected" ? (
         <View style={styles.rejectCard}>
-          <Text style={styles.rejectTitle}>Rejection reason</Text>
+          <Text style={styles.rejectTitle}>Action Needed: Port Request Rejected</Text>
           <Text style={styles.rejectText}>{rejectionReason}</Text>
         </View>
       ) : null}
@@ -159,6 +171,13 @@ export default function PortingStatusScreen({ navigation, route }) {
             <Text style={styles.secondaryText}>Fix & Resubmit</Text>
           </Pressable>
 
+          <Pressable
+            style={styles.secondaryBtn}
+            onPress={() => navigation.navigate("PortingDocuments", { portingId })}
+          >
+            <Text style={styles.secondaryText}>Re-upload Documents</Text>
+          </Pressable>
+
           <Pressable style={styles.secondaryBtn} onPress={() => Linking.openURL("mailto:support@gloai.com")}>
             <Text style={styles.secondaryText}>Contact support</Text>
           </Pressable>
@@ -185,9 +204,16 @@ const styles = StyleSheet.create({
   stageRejected: { backgroundColor: "#fef2f2", borderColor: "#ef4444" },
   stageText: { fontWeight: "700", color: "#374151" },
   stageTextDone: { color: "#065f46" },
-  rejectCard: { padding: 10, borderWidth: 1, borderColor: "#fca5a5", borderRadius: 10, marginBottom: 10, backgroundColor: "#fff1f2" },
-  rejectTitle: { fontWeight: "800", color: "#991b1b", marginBottom: 4 },
-  rejectText: { color: "#7f1d1d" },
+  rejectCard: {
+    padding: 12,
+    borderWidth: 2,
+    borderColor: "#dc2626",
+    borderRadius: 10,
+    marginBottom: 10,
+    backgroundColor: "#fff1f2",
+  },
+  rejectTitle: { fontWeight: "900", color: "#7f1d1d", marginBottom: 4, fontSize: 15 },
+  rejectText: { color: "#7f1d1d", fontWeight: "700" },
   blockersCard: {
     padding: 10,
     borderWidth: 1,
