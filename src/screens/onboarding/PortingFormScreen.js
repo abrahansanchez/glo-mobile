@@ -19,12 +19,6 @@ export default function PortingFormScreen({ navigation, route }) {
   const { setLocalStep } = useContext(OnboardingContext);
   const [form, setForm] = useState({
     phoneNumber: "",
-    businessName: "",
-    authorizedName: "",
-    serviceStreet: "",
-    serviceCity: "",
-    serviceState: "",
-    serviceZip: "",
     carrier: "",
     accountNumber: "",
     pin: "",
@@ -61,19 +55,52 @@ export default function PortingFormScreen({ navigation, route }) {
     if (!source || typeof source !== "object") return null;
     return {
       phoneNumber: source.phoneNumber || source.phone || "",
-      businessName: source.businessName || source.companyName || "",
-      authorizedName: source.authorizedName || source.contactName || "",
-      serviceStreet: source.serviceStreet || source.address1 || source.street || "",
-      serviceCity: source.serviceCity || source.city || "",
-      serviceState: source.serviceState || source.state || "",
-      serviceZip: source.serviceZip || source.zip || "",
       carrier: source.carrier || "",
       accountNumber: source.accountNumber || "",
       pin: source.pin || source.passcode || "",
       billingZip: source.billingZip || source.zip || "",
-      contactName: source.contactName || source.authorizedName || "",
+      contactName: source.contactName || source.authorizedName || source.name || "",
       contactEmail: source.contactEmail || source.email || "",
     };
+  }
+
+  function normalizePhone(value) {
+    return String(value || "").replace(/[^\d+]/g, "");
+  }
+
+  function isValidPhone(value) {
+    const cleaned = normalizePhone(value);
+    const digitsOnly = cleaned.replace(/\D/g, "");
+    return digitsOnly.length >= 10 && digitsOnly.length <= 15;
+  }
+
+  function isValidEmail(value) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || "").trim());
+  }
+
+  function generateIdempotencyKey() {
+    const bytes = new Uint8Array(16);
+    for (let i = 0; i < bytes.length; i += 1) {
+      bytes[i] = Math.floor(Math.random() * 256);
+    }
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(
+      16,
+      20
+    )}-${hex.slice(20)}`;
+  }
+
+  function getBackendErrorMessage(errorResponse) {
+    const data = errorResponse?.data;
+    if (typeof data?.message === "string" && data.message.trim()) return data.message.trim();
+    if (Array.isArray(data?.errors) && data.errors.length) {
+      const first = data.errors[0];
+      if (typeof first === "string") return first;
+      if (typeof first?.message === "string") return first.message;
+    }
+    return "Failed to submit port request";
   }
 
   function setField(key, value) {
@@ -84,34 +111,42 @@ export default function PortingFormScreen({ navigation, route }) {
     setLoading(true);
     setError("");
     try {
-      if (!form.phoneNumber || !form.businessName || !form.authorizedName) {
-        setError("Phone number, business name, and authorized name are required.");
+      const requiredFields = [
+        "phoneNumber",
+        "carrier",
+        "accountNumber",
+        "pin",
+        "billingZip",
+        "contactName",
+        "contactEmail",
+      ];
+      const missing = requiredFields.some((key) => !String(form[key] || "").trim());
+      if (missing) {
+        setError("All fields are required.");
         setLoading(false);
         return;
       }
-      if (!form.serviceStreet || !form.serviceCity || !form.serviceState || !form.serviceZip) {
-        setError("Complete service address is required.");
+      if (!isValidPhone(form.phoneNumber)) {
+        setError("Enter a valid phone number.");
         setLoading(false);
         return;
       }
-      if (!form.carrier || !form.accountNumber) {
-        setError("Carrier name and account number are required.");
+      if (!isValidEmail(form.contactEmail)) {
+        setError("Enter a valid email address.");
         setLoading(false);
         return;
       }
 
       await setLocalStep("porting_form");
       const payload = {
-        ...form,
-        contactName: form.authorizedName || form.contactName,
-        billingZip: form.serviceZip || form.billingZip,
-        serviceAddress: {
-          street: form.serviceStreet,
-          city: form.serviceCity,
-          state: form.serviceState,
-          zip: form.serviceZip,
-        },
-        idempotencyKey: `porting-${Date.now()}`,
+        phoneNumber: normalizePhone(form.phoneNumber),
+        carrier: form.carrier.trim(),
+        accountNumber: form.accountNumber.trim(),
+        pin: form.pin.trim(),
+        billingZip: form.billingZip.trim(),
+        contactName: form.contactName.trim(),
+        contactEmail: form.contactEmail.trim().toLowerCase(),
+        idempotencyKey: generateIdempotencyKey(),
       };
       const response = await api.post("/phone/porting/start", payload);
       const portingId =
@@ -121,7 +156,7 @@ export default function PortingFormScreen({ navigation, route }) {
         null;
       navigation.navigate("PortingStatus", { portingId });
     } catch (e) {
-      setError(e?.response?.data?.message || "Failed to submit port request");
+      setError(getBackendErrorMessage(e?.response));
     } finally {
       setLoading(false);
     }
@@ -144,24 +179,29 @@ export default function PortingFormScreen({ navigation, route }) {
 
         {[
           ["phoneNumber", "Phone Number"],
-          ["businessName", "Business Name"],
-          ["authorizedName", "Authorized Name"],
-          ["serviceStreet", "Service Street"],
-          ["serviceCity", "Service City"],
-          ["serviceState", "Service State"],
-          ["serviceZip", "Service ZIP"],
           ["carrier", "Carrier"],
           ["accountNumber", "Account Number"],
           ["pin", "PIN / Passcode"],
-          ["contactEmail", "Authorized Contact Email (optional)"],
+          ["billingZip", "Billing ZIP"],
+          ["contactName", "Contact Name"],
+          ["contactEmail", "Contact Email"],
         ].map(([key, label]) => (
           <View key={key}>
             <Text style={styles.label}>{label}</Text>
             <TextInput
               value={form[key]}
               onChangeText={(value) => setField(key, value)}
-              autoCapitalize="none"
-              keyboardType={key === "contactEmail" ? "email-address" : "default"}
+              autoCapitalize={key === "contactName" || key === "carrier" ? "words" : "none"}
+              keyboardType={
+                key === "contactEmail"
+                  ? "email-address"
+                  : key === "phoneNumber"
+                    ? "phone-pad"
+                    : key === "billingZip" || key === "pin"
+                      ? "number-pad"
+                      : "default"
+              }
+              textContentType={key === "contactEmail" ? "emailAddress" : "none"}
               style={styles.input}
             />
           </View>
