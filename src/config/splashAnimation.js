@@ -1,7 +1,7 @@
 export const splashAnimationConfig = {
-  durationMs: 2500,
-  fadeOutMs: 320,
-  wordmarkDelayMs: 420,
+  durationMs: 1200,
+  fadeOutMs: 220,
+  wordmarkDelayMs: 240,
   wordmarkSlidePx: 10,
   // Toggle when lottie-react-native is installed and animation json is configured.
   useLottie: false,
