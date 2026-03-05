@@ -1,5 +1,5 @@
 // src/screens/AppointmentsScreen.js
-import { View, FlatList, StyleSheet, Pressable } from "react-native";
+import { View, FlatList, StyleSheet, Pressable, Alert } from "react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
 import api from "../config/api";
 import LoadingState from "../components/LoadingState";
@@ -75,6 +75,17 @@ function formatLocalDateTime(value) {
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return "Time unavailable";
   return d.toLocaleString();
+}
+
+function appointmentTypeLabel(item) {
+  return (
+    item?.appointmentType ||
+    item?.serviceType ||
+    item?.serviceName ||
+    item?.service ||
+    item?.type ||
+    "Not specified"
+  );
 }
 
 export default function AppointmentsScreen({ route }) {
@@ -177,6 +188,30 @@ export default function AppointmentsScreen({ route }) {
     setAnchorDate(new Date());
   }
 
+  function openAppointmentDetails(item) {
+    const name = item?.clientName || item?.customerName || item?.name || "Unknown client";
+    const when = formatLocalDateTime(appointmentStartAt(item));
+    const type = appointmentTypeLabel(item);
+    const status = item?.status || "scheduled";
+    const source = item?.source || "manual";
+    const notes = item?.notes || item?.note || item?.internalNotes || "";
+
+    Alert.alert(
+      "Appointment Details",
+      [
+        `Client: ${name}`,
+        `Type: ${type}`,
+        `When: ${when}`,
+        `Status: ${status}`,
+        `Source: ${source}`,
+        notes ? `Notes: ${notes}` : null,
+      ]
+        .filter(Boolean)
+        .join("\n"),
+      [{ text: "OK" }]
+    );
+  }
+
   if (loading) {
     return (
       <ScreenContainer>
@@ -254,17 +289,22 @@ export default function AppointmentsScreen({ route }) {
             }, 200);
           }}
           renderItem={({ item }) => (
-            <AppCard style={[styles.card, focusAppointmentId === item?._id && styles.focusCard]}>
-              <AppText style={styles.client}>{item.clientName || item.customerName || "Client"}</AppText>
-              <AppText variant="body" style={styles.meta}>{formatLocalDateTime(appointmentStartAt(item))}</AppText>
-              <View style={styles.badgeRow}>
-                <AppBadge
-                  label={(item?.status || "scheduled").toUpperCase()}
-                  tone={item?.status === "confirmed" || item?.status === "completed" ? "success" : "neutral"}
-                />
-                <AppBadge label={(item?.source || "manual").toUpperCase()} tone="neutral" />
-              </View>
-            </AppCard>
+            <Pressable onPress={() => openAppointmentDetails(item)}>
+              <AppCard style={[styles.card, focusAppointmentId === item?._id && styles.focusCard]}>
+                <AppText style={styles.client}>{item.clientName || item.customerName || "Client"}</AppText>
+                <AppText variant="body" style={styles.meta}>{formatLocalDateTime(appointmentStartAt(item))}</AppText>
+                <AppText variant="caption" style={styles.typeLabel}>
+                  Type: {appointmentTypeLabel(item)}
+                </AppText>
+                <View style={styles.badgeRow}>
+                  <AppBadge
+                    label={(item?.status || "scheduled").toUpperCase()}
+                    tone={item?.status === "confirmed" || item?.status === "completed" ? "success" : "neutral"}
+                  />
+                  <AppBadge label={(item?.source || "manual").toUpperCase()} tone="neutral" />
+                </View>
+              </AppCard>
+            </Pressable>
           )}
         />
       )}
@@ -362,6 +402,9 @@ const styles = StyleSheet.create({
   meta: {
     marginTop: 4,
     color: "#4b5563",
+  },
+  typeLabel: {
+    marginTop: 6,
   },
   badgeRow: {
     marginTop: 8,
