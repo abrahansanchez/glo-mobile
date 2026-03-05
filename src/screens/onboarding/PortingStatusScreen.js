@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { View, StyleSheet, Linking, ScrollView, RefreshControl } from "react-native";
 import api from "../../config/api";
 import OnboardingHeader from "../../onboarding/OnboardingHeader";
@@ -8,6 +8,7 @@ import AppText from "../../components/ui/AppText";
 import AppBadge from "../../components/ui/AppBadge";
 import AppButton from "../../components/ui/AppButton";
 import { colors, spacing } from "../../ui/tokens";
+import { track } from "../../analytics/track";
 
 const STATUS_STEPS = [
   { key: "draft", label: "Draft" },
@@ -33,6 +34,7 @@ export default function PortingStatusScreen({ navigation, route }) {
   const routePortingId = route?.params?.portingId || null;
   const seededStatusPayload = route?.params?.seededStatusPayload || null;
   const resubmittedAt = route?.params?.resubmittedAt || null;
+  const previousStatusRef = useRef(null);
 
   const status = statusPayload?.status || "draft";
   const rejectionReason = statusPayload?.rejectionReason || statusPayload?.reason || "";
@@ -99,6 +101,17 @@ export default function PortingStatusScreen({ navigation, route }) {
   const loaUploaded = Boolean(docs?.loa || statusPayload?.loaUploaded || statusPayload?.loaUrl);
   const billUploaded = Boolean(docs?.bill || statusPayload?.billUploaded || statusPayload?.billUrl);
   const portingId = statusPayload?.portingId || statusPayload?.id || statusPayload?._id || null;
+
+  useEffect(() => {
+    if (!status) return;
+    if (previousStatusRef.current === status) return;
+    previousStatusRef.current = status;
+    track("porting_status_updated", {
+      step: "porting_status",
+      status,
+      portingId: portingId || routePortingId || null,
+    });
+  }, [status, portingId, routePortingId]);
 
   return (
     <ScrollView

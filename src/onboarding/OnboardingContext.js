@@ -11,6 +11,7 @@ import {
 import { AuthContext } from "../auth/authContext";
 import api from "../config/api";
 import { STEP_VALUES, STEPS } from "./stepKeys";
+import { track } from "../analytics/track";
 
 export const OnboardingContext = createContext(null);
 
@@ -48,6 +49,7 @@ export function OnboardingProvider({ children }) {
   const barberId = barber?.id || barber?._id || null;
   const onboardingStepRef = useRef(STEPS.WELCOME);
   const onboardingDataRef = useRef({});
+  const lastViewedStepRef = useRef(null);
 
   useEffect(() => {
     onboardingStepRef.current = onboardingStep;
@@ -56,6 +58,15 @@ export function OnboardingProvider({ children }) {
   useEffect(() => {
     onboardingDataRef.current = onboardingData || {};
   }, [onboardingData]);
+
+  useEffect(() => {
+    if (loading || onboardingComplete) return;
+    if (!onboardingStep) return;
+    if (lastViewedStepRef.current === onboardingStep) return;
+
+    lastViewedStepRef.current = onboardingStep;
+    track("onboarding_step_viewed", { step: onboardingStep });
+  }, [loading, onboardingComplete, onboardingStep]);
 
   useEffect(() => {
     (async () => {
@@ -121,6 +132,7 @@ export function OnboardingProvider({ children }) {
       if (parsed.stepMap && typeof parsed.stepMap === "object") {
         setOnboardingStepMap(parsed.stepMap);
       }
+      track("onboarding_step_completed", { step });
       return parsed;
     } catch (error) {
       console.log(`[ONBOARDING_STEP] posted step=${step} ok=false`);
@@ -141,6 +153,7 @@ export function OnboardingProvider({ children }) {
       if (__DEV__) console.log(`Onboarding: markComplete for barberId=${barberId}`);
     } catch (e) {}
     await persistComplete(barberId, true);
+    track("onboarding_completed", { step: onboardingStepRef.current || STEPS.TRIAL_START });
     try {
       await refreshSession?.("onboarding_completed");
     } catch (error) {
@@ -190,6 +203,7 @@ export function OnboardingProvider({ children }) {
     if (shouldPost) {
       return await postOnboardingStep(step);
     }
+    track("onboarding_step_completed", { step });
     return null;
   }, [barberId, postOnboardingStep, updateData]);
 

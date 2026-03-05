@@ -10,6 +10,7 @@ import AppText from "../../components/ui/AppText";
 import AppBadge from "../../components/ui/AppBadge";
 import AppButton from "../../components/ui/AppButton";
 import { colors, spacing } from "../../ui/tokens";
+import { track } from "../../analytics/track";
 
 export default function TrialStartScreen({ navigation }) {
   const { updateStep } = useContext(OnboardingContext);
@@ -26,6 +27,7 @@ export default function TrialStartScreen({ navigation }) {
   async function startTrial() {
     setLoading(true);
     setError("");
+    track("trial_start_clicked", { step: STEPS.TRIAL_START });
     try {
       const idempotencyKey = `trial-start-${Date.now()}`;
       await api.post(
@@ -35,8 +37,13 @@ export default function TrialStartScreen({ navigation }) {
       );
       await updateStep(STEPS.TRIAL_START);
       await refreshSession?.("trial_started");
+      track("trial_started", { step: STEPS.TRIAL_START });
       setSuccess(true);
     } catch (e) {
+      track("trial_start_failed", {
+        step: STEPS.TRIAL_START,
+        error: e?.response?.data?.message || e?.message || "unknown",
+      });
       setError(e?.response?.data?.message || "Failed to start trial");
       setSuccess(false);
     } finally {

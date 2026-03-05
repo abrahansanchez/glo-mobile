@@ -18,6 +18,7 @@ import AppText from "../../components/ui/AppText";
 import AppBadge from "../../components/ui/AppBadge";
 import AppButton from "../../components/ui/AppButton";
 import { colors, spacing } from "../../ui/tokens";
+import { track } from "../../analytics/track";
 
 export default function PortingFormScreen({ navigation, route }) {
   const { setLocalStep } = useContext(OnboardingContext);
@@ -39,6 +40,7 @@ export default function PortingFormScreen({ navigation, route }) {
   useEffect(() => {
     hydratePrefill();
     hydrateSkipPolicy();
+    track("porting_started", { step: "porting_form" });
   }, []);
 
   async function hydratePrefill() {
@@ -185,6 +187,7 @@ export default function PortingFormScreen({ navigation, route }) {
       };
       const response = await api.post("/onboarding/step", payload);
       const nextStep = response?.data?.nextStep || response?.data?.currentStep || "trial_start";
+      track("onboarding_step_skipped", { step: "porting" });
       const mappedRoute = mapNextStepToRoute(nextStep);
       const nextRoute = canNavigateTo(mappedRoute) ? mappedRoute : "TrialStart";
       await setLocalStep(String(nextStep).toLowerCase());
@@ -211,16 +214,28 @@ export default function PortingFormScreen({ navigation, route }) {
       ];
       const missing = requiredFields.some((key) => !String(form[key] || "").trim());
       if (missing) {
+        track("porting_failed_validation", {
+          step: "porting_form",
+          reason: "missing_required_fields",
+        });
         setError("All fields are required.");
         setLoading(false);
         return;
       }
       if (!isValidPhone(form.phoneNumber)) {
+        track("porting_failed_validation", {
+          step: "porting_form",
+          reason: "invalid_phone",
+        });
         setError("Enter a valid phone number.");
         setLoading(false);
         return;
       }
       if (!isValidEmail(form.contactEmail)) {
+        track("porting_failed_validation", {
+          step: "porting_form",
+          reason: "invalid_email",
+        });
         setError("Enter a valid email address.");
         setLoading(false);
         return;
@@ -243,12 +258,21 @@ export default function PortingFormScreen({ navigation, route }) {
         response?.data?.id ||
         response?.data?._id ||
         null;
+      track("porting_submitted", {
+        step: "porting_form",
+        portingId,
+      });
       navigation.navigate("PortingStatus", {
         portingId,
         seededStatusPayload: response?.data || null,
         resubmittedAt: Date.now(),
       });
     } catch (e) {
+      track("porting_failed_validation", {
+        step: "porting_form",
+        reason: "backend_validation",
+        error: e?.response?.data?.message || e?.message || "unknown",
+      });
       setError(getBackendErrorMessage(e?.response));
     } finally {
       setLoading(false);

@@ -10,6 +10,7 @@ import {
   registerProvidedExpoPushTokenIfNeeded,
   setupPushTokenRefreshRegistration,
 } from "../notifications/pushNotifications";
+import { setAnalyticsContext } from "../analytics/track";
 
 export const AuthContext = createContext();
 
@@ -233,6 +234,12 @@ export function AuthProvider({ children }) {
       teardownPushTokenRefresh();
     };
   }, [authenticated, registerPushTokenWithContext]);
+
+  useEffect(() => {
+    setAnalyticsContext({
+      barberId: barber?.id || barber?._id || null,
+    });
+  }, [barber]);
 
   return (
     <AuthContext.Provider
