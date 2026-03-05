@@ -118,6 +118,31 @@ export default function SettingsScreen({ navigation }) {
     }
   }
 
+  function canNavigateTo(routeName) {
+    const routeNames = navigation?.getState?.()?.routeNames || [];
+    return routeNames.includes(routeName);
+  }
+
+  function openAccount() {
+    if (canNavigateTo("Account")) {
+      navigation.navigate("Account");
+      return;
+    }
+    Alert.alert("Navigation", "Account screen is unavailable in this build.");
+  }
+
+  function openPortingStatus() {
+    if (canNavigateTo("PortingStatus")) {
+      navigation.navigate("PortingStatus");
+      return;
+    }
+    if (canNavigateTo("PortingForm")) {
+      navigation.navigate("PortingForm");
+      return;
+    }
+    Alert.alert("Navigation", "Porting screen is unavailable in this build.");
+  }
+
   function formatDate(d) {
     if (!d) return "—";
     const dt = new Date(d);
@@ -176,7 +201,6 @@ export default function SettingsScreen({ navigation }) {
         <AppButton
           label="Manage Billing"
           onPress={openBillingPortal}
-          disabled={!canManageBilling}
           variant="primary"
           style={styles.btn}
         />
@@ -185,13 +209,19 @@ export default function SettingsScreen({ navigation }) {
       <AppCard style={styles.card}>
         <AppText variant="section" style={styles.cardTitle}>Account</AppText>
 
-        <Pressable style={styles.rowButton} onPress={() => navigation.navigate("Account")}>
-          <AppText style={styles.rowText}>Account</AppText>
-        </Pressable>
+        <AppButton
+          label="Account"
+          variant="secondary"
+          style={styles.actionBtn}
+          onPress={openAccount}
+        />
 
-        <Pressable style={styles.rowButton} onPress={() => navigation.navigate("PortingStatus")}>
-          <AppText style={styles.rowText}>Porting Status</AppText>
-        </Pressable>
+        <AppButton
+          label="Porting Status"
+          variant="secondary"
+          style={styles.actionBtn}
+          onPress={openPortingStatus}
+        />
 
         <AppButton
           label="Log out"
@@ -240,4 +270,5 @@ const styles = StyleSheet.create({
   helperText: { marginBottom: 2, color: colors.textMuted },
   rowButton: { paddingVertical: 12 },
   rowText: { fontSize: 16, color: colors.textPrimary, fontWeight: "700", marginBottom: 6 },
+  actionBtn: { marginBottom: spacing.sm },
 });
