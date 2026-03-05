@@ -1,6 +1,7 @@
 import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { Feather } from "@expo/vector-icons";
 
 import DashboardOverviewScreen from "../screens/DashboardOverviewScreen";
 import CallsScreen from "../screens/CallsScreen";
@@ -25,6 +26,8 @@ function DashboardTabs() {
       screenOptions={{
         headerShown: false,
         tabBarHideOnKeyboard: true,
+        tabBarActiveTintColor: "#111827",
+        tabBarInactiveTintColor: "#9ca3af",
         tabBarStyle: {
           height: 72,
           paddingTop: 8,
@@ -39,11 +42,41 @@ function DashboardTabs() {
         },
       }}
     >
-      <Tab.Screen name="Home" component={DashboardOverviewScreen} />
-      <Tab.Screen name="Schedule" component={AppointmentsScreen} />
-      <Tab.Screen name="Inbox" component={InboxScreen} />
-      <Tab.Screen name="Insights" component={AnalyticsSummaryScreen} />
-      <Tab.Screen name="Settings" component={SettingsScreen} />
+      <Tab.Screen
+        name="Home"
+        component={DashboardOverviewScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => <Feather name="home" color={color} size={Math.max(size, 22)} />,
+        }}
+      />
+      <Tab.Screen
+        name="Schedule"
+        component={AppointmentsScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => <Feather name="calendar" color={color} size={Math.max(size, 22)} />,
+        }}
+      />
+      <Tab.Screen
+        name="Inbox"
+        component={InboxScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => <Feather name="inbox" color={color} size={Math.max(size, 22)} />,
+        }}
+      />
+      <Tab.Screen
+        name="Insights"
+        component={AnalyticsSummaryScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => <Feather name="bar-chart-2" color={color} size={Math.max(size, 22)} />,
+        }}
+      />
+      <Tab.Screen
+        name="Settings"
+        component={SettingsScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => <Feather name="settings" color={color} size={Math.max(size, 22)} />,
+        }}
+      />
     </Tab.Navigator>
   );
 }
