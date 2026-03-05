@@ -8,6 +8,11 @@ import AppBadge from "../components/ui/AppBadge";
 import AppText from "../components/ui/AppText";
 import AppButton from "../components/ui/AppButton";
 import { colors, spacing } from "../ui/tokens";
+import {
+  FEATURE_FLAGS,
+  getEliteOnboardingFlag,
+  setEliteOnboardingFlag,
+} from "../config/featureFlags";
 
 export default function SettingsScreen({ navigation }) {
   const { logout, stripeCustomerId } = useContext(AuthContext);
@@ -15,9 +20,23 @@ export default function SettingsScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [sub, setSub] = useState(null);
   const [error, setError] = useState("");
+  const [eliteOnboardingEnabled, setEliteOnboardingEnabled] = useState(FEATURE_FLAGS.ELITE_ONBOARDING);
+  const [flagBusy, setFlagBusy] = useState(false);
 
   useEffect(() => {
     loadSubscription();
+  }, []);
+
+  useEffect(() => {
+    if (!__DEV__) return;
+    let cancelled = false;
+    (async () => {
+      const enabled = await getEliteOnboardingFlag();
+      if (!cancelled) setEliteOnboardingEnabled(enabled);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   async function loadSubscription() {
@@ -78,6 +97,24 @@ export default function SettingsScreen({ navigation }) {
           e?.response?.data?.message ||
           "Failed to open billing portal"
       );
+    }
+  }
+
+  async function toggleEliteOnboarding() {
+    if (!__DEV__) return;
+    try {
+      setFlagBusy(true);
+      const nextValue = !eliteOnboardingEnabled;
+      const persisted = await setEliteOnboardingFlag(nextValue);
+      setEliteOnboardingEnabled(persisted);
+      Alert.alert(
+        "Feature flag updated",
+        `Elite onboarding is now ${persisted ? "ON" : "OFF"}. Restart onboarding (or re-login) to verify flow routing.`
+      );
+    } catch {
+      Alert.alert("Feature flags", "Unable to update feature flag.");
+    } finally {
+      setFlagBusy(false);
     }
   }
 
@@ -168,6 +205,21 @@ export default function SettingsScreen({ navigation }) {
           }
         />
       </AppCard>
+
+      {__DEV__ ? (
+        <AppCard style={styles.card}>
+          <AppText variant="section" style={styles.cardTitle}>Feature Flags (Dev)</AppText>
+
+          <Pressable style={styles.rowButton} onPress={toggleEliteOnboarding} disabled={flagBusy}>
+            <AppText style={styles.rowText}>
+              Elite Onboarding: {eliteOnboardingEnabled ? "ON" : "OFF"}
+            </AppText>
+            <AppText variant="caption" style={styles.helperText}>
+              Tap to toggle rollout. Hidden in production builds.
+            </AppText>
+          </Pressable>
+        </AppCard>
+      ) : null}
       </View>
     </ScreenContainer>
   );
