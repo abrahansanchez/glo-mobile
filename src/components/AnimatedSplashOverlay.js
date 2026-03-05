@@ -22,6 +22,7 @@ const {
   fadeOutMs,
   wordmarkDelayMs,
   wordmarkSlidePx,
+  postCycleHoldMs,
   useLottie,
   lottieSource,
   gifSource,
@@ -120,6 +121,8 @@ export default function AnimatedSplashOverlay({ onFinish }) {
         ]),
       ]).start();
 
+      const cycleCompleteAtMs = 980;
+      const finishAtMs = Math.max(durationMs, cycleCompleteAtMs + postCycleHoldMs);
       const doneTimer = setTimeout(() => {
         Animated.timing(overlayOpacity, {
           toValue: 0,
@@ -130,7 +133,7 @@ export default function AnimatedSplashOverlay({ onFinish }) {
           setVisible(false);
           onFinish?.();
         });
-      }, durationMs);
+      }, finishAtMs);
 
       return () => clearTimeout(doneTimer);
     };
@@ -153,6 +156,7 @@ export default function AnimatedSplashOverlay({ onFinish }) {
     wordmarkOpacity,
     wordmarkSlidePx,
     wordmarkTranslateY,
+    postCycleHoldMs,
   ]);
 
   if (!visible) {
