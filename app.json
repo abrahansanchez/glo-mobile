@@ -4,13 +4,13 @@
     "slug": "glo-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/brand/icon/app_icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": false,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/brand/splash/splash_universal.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#000000"
     },
     "ios": {
       "supportsTablet": true,
@@ -30,7 +30,7 @@
       "edgeToEdgeEnabled": true,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#000000"
       },
       "permissions": [
         "RECEIVE_BOOT_COMPLETED",
@@ -43,6 +43,9 @@
       "expo-secure-store",
       "expo-notifications"
     ],
+    "web": {
+      "favicon": "./assets/branding/glo_favicon.png"
+    },
     "extra": {
       "eas": {
         "projectId": "d8fefe39-990e-4c03-abe6-7163ba745309"
