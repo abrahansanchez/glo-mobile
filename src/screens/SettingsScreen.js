@@ -14,10 +14,12 @@ import {
   setEliteOnboardingFlag,
 } from "../config/featureFlags";
 import { useIsAdmin } from "../auth/adminAccess";
+import { useTheme } from "../theme/ThemeContext";
 
 export default function SettingsScreen({ navigation }) {
   const { logout, stripeCustomerId } = useContext(AuthContext);
   const isAdmin = useIsAdmin();
+  const { themeMode, setThemeMode, colors: themeColors } = useTheme();
 
   const [loading, setLoading] = useState(true);
   const [sub, setSub] = useState(null);
@@ -117,6 +119,14 @@ export default function SettingsScreen({ navigation }) {
       Alert.alert("Feature flags", "Unable to update feature flag.");
     } finally {
       setFlagBusy(false);
+    }
+  }
+
+  async function handleThemeChange(mode) {
+    try {
+      await setThemeMode(mode);
+    } catch {
+      Alert.alert("Appearance", "Unable to update theme preference.");
     }
   }
 
@@ -238,6 +248,33 @@ export default function SettingsScreen({ navigation }) {
         />
       </AppCard>
 
+      <AppCard style={styles.card}>
+        <AppText variant="section" style={styles.cardTitle}>Appearance</AppText>
+        <View style={styles.themeRow}>
+          {["system", "light", "dark"].map((mode) => (
+            <Pressable
+              key={mode}
+              onPress={() => handleThemeChange(mode)}
+              style={[
+                styles.themePill,
+                { borderColor: themeColors.border, backgroundColor: themeColors.card },
+                themeMode === mode && { backgroundColor: themeColors.textPrimary, borderColor: themeColors.textPrimary },
+              ]}
+            >
+              <AppText
+                style={[
+                  styles.themePillText,
+                  { color: themeColors.textPrimary },
+                  themeMode === mode && { color: themeColors.bg },
+                ]}
+              >
+                {mode.charAt(0).toUpperCase() + mode.slice(1)}
+              </AppText>
+            </Pressable>
+          ))}
+        </View>
+      </AppCard>
+
       {__DEV__ && isAdmin ? (
         <AppCard style={styles.card}>
           <AppText variant="section" style={styles.cardTitle}>Feature Flags (Dev)</AppText>
@@ -273,4 +310,12 @@ const styles = StyleSheet.create({
   rowButton: { paddingVertical: 12 },
   rowText: { fontSize: 16, color: colors.textPrimary, fontWeight: "700", marginBottom: 6 },
   actionBtn: { marginBottom: spacing.sm },
+  themeRow: { flexDirection: "row", gap: spacing.sm },
+  themePill: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  themePillText: { fontWeight: "700" },
 });

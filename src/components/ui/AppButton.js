@@ -1,7 +1,8 @@
 import React from "react";
 import { Pressable, StyleSheet } from "react-native";
 import AppText from "./AppText";
-import { colors, spacing, radii } from "../../ui/tokens";
+import { spacing, radii } from "../../ui/tokens";
+import { useTheme } from "../../theme/ThemeContext";
 
 export default function AppButton({
   label,
@@ -11,6 +12,7 @@ export default function AppButton({
   style,
   textStyle,
 }) {
+  const { colors } = useTheme();
   const isPrimary = variant === "primary";
   const isSecondary = variant === "secondary";
   const isDanger = variant === "danger";
@@ -21,9 +23,9 @@ export default function AppButton({
       disabled={disabled}
       style={[
         styles.base,
-        isPrimary && styles.primary,
-        isSecondary && styles.secondary,
-        isDanger && styles.danger,
+        isPrimary && { backgroundColor: colors.accent },
+        isSecondary && { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
+        isDanger && { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
         disabled && styles.disabled,
         style,
       ]}
@@ -31,9 +33,9 @@ export default function AppButton({
       <AppText
         style={[
           styles.baseText,
-          isPrimary && styles.primaryText,
-          isSecondary && styles.secondaryText,
-          isDanger && styles.dangerText,
+          isPrimary && { color: colors.bg },
+          isSecondary && { color: colors.textPrimary },
+          isDanger && { color: colors.danger },
           textStyle,
         ]}
       >
@@ -51,32 +53,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  primary: {
-    backgroundColor: "#000",
-  },
-  secondary: {
-    backgroundColor: "#fff",
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  danger: {
-    backgroundColor: "#eee",
-    borderWidth: 1,
-    borderColor: "#d1d5db",
-  },
   disabled: {
     opacity: 0.55,
   },
   baseText: {
     fontWeight: "800",
-  },
-  primaryText: {
-    color: "#fff",
-  },
-  secondaryText: {
-    color: colors.textPrimary,
-  },
-  dangerText: {
-    color: colors.danger,
   },
 });

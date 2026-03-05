@@ -1,6 +1,7 @@
 import React from "react";
 import { Text } from "react-native";
-import { colors, type } from "../../ui/tokens";
+import { type } from "../../ui/tokens";
+import { useTheme } from "../../theme/ThemeContext";
 
 const variantStyles = {
   title: type.title,
@@ -10,6 +11,7 @@ const variantStyles = {
 };
 
 export default function AppText({ variant = "body", style, children, ...rest }) {
+  const { colors } = useTheme();
   return (
     <Text
       style={[

@@ -9,6 +9,7 @@ import ErrorBoundary from "./src/components/ErrorBoundary";
 import { CallManagerProvider, useCallManager } from "./src/voice/CallManager";
 import IncomingCallOverlay from "./src/voice/IncomingCallOverlay";
 import AnimatedSplashOverlay from "./src/components/AnimatedSplashOverlay";
+import { ThemeProvider } from "./src/theme/ThemeContext";
 
 function IncomingCallOverlayContainer() {
   const { incomingInvite, actionInProgress, answerIncomingCall, letAiHandleIncomingCall } = useCallManager();
@@ -33,20 +34,22 @@ export default function App() {
   }, []);
 
   return (
-    <AuthProvider>
-      <CallManagerProvider>
-        <VoiceProvider>
-          <OnboardingProvider>
-            <ErrorBoundary>
-              <View style={{ flex: 1, backgroundColor: "#000000" }}>
-                <AppNavigator />
-                <IncomingCallOverlayContainer />
-                {!splashDone ? <AnimatedSplashOverlay onFinish={() => setSplashDone(true)} /> : null}
-              </View>
-            </ErrorBoundary>
-          </OnboardingProvider>
-        </VoiceProvider>
-      </CallManagerProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <CallManagerProvider>
+          <VoiceProvider>
+            <OnboardingProvider>
+              <ErrorBoundary>
+                <View style={{ flex: 1, backgroundColor: "#000000" }}>
+                  <AppNavigator />
+                  <IncomingCallOverlayContainer />
+                  {!splashDone ? <AnimatedSplashOverlay onFinish={() => setSplashDone(true)} /> : null}
+                </View>
+              </ErrorBoundary>
+            </OnboardingProvider>
+          </VoiceProvider>
+        </CallManagerProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

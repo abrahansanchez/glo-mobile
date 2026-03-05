@@ -1,5 +1,6 @@
-export const colors = {
+export const lightColors = {
   bg: "#ffffff",
+  surface: "#f9fafb",
   textPrimary: "#111827",
   textSecondary: "#4b5563",
   textMuted: "#6b7280",
@@ -10,6 +11,27 @@ export const colors = {
   warning: "#92400e",
   danger: "#b00020",
 };
+
+export const darkColors = {
+  bg: "#0b0f14",
+  surface: "#11161d",
+  textPrimary: "#e5e7eb",
+  textSecondary: "#cbd5e1",
+  textMuted: "#94a3b8",
+  border: "#1f2937",
+  card: "#0f1720",
+  accent: "#e5e7eb",
+  success: "#34d399",
+  warning: "#fbbf24",
+  danger: "#f87171",
+};
+
+export function getThemeColors(theme = "light") {
+  return theme === "dark" ? darkColors : lightColors;
+}
+
+// Backward-compatible static export for legacy screens.
+export const colors = lightColors;
 
 export const spacing = {
   xs: 4,
