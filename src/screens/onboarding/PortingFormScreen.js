@@ -123,7 +123,20 @@ export default function PortingFormScreen({ navigation, route }) {
   }
 
   function normalizePhone(value) {
-    return String(value || "").replace(/[^\d+]/g, "");
+    return String(value || "").replace(/[^\d]/g, "");
+  }
+
+  function normalizePhoneE164(value) {
+    const digits = normalizePhone(value);
+    if (!digits) return "";
+    if (digits.length === 10) return `+1${digits}`;
+    if (digits.length >= 11 && digits.length <= 15) return `+${digits}`;
+    return `+${digits}`;
+  }
+
+  function normalizeZip(value) {
+    const digits = String(value || "").replace(/[^\d]/g, "");
+    return digits.slice(0, 5);
   }
 
   function isValidPhone(value) {
@@ -153,10 +166,17 @@ export default function PortingFormScreen({ navigation, route }) {
   function getBackendErrorMessage(errorResponse) {
     const data = errorResponse?.data;
     if (typeof data?.message === "string" && data.message.trim()) return data.message.trim();
+    if (typeof data?.error === "string" && data.error.trim()) return data.error.trim();
     if (Array.isArray(data?.errors) && data.errors.length) {
       const first = data.errors[0];
       if (typeof first === "string") return first;
       if (typeof first?.message === "string") return first.message;
+    }
+    if (data?.details && typeof data.details === "object") {
+      const detail = Object.entries(data.details)
+        .map(([key, val]) => `${key}: ${Array.isArray(val) ? val.join(", ") : String(val)}`)
+        .join(" | ");
+      if (detail) return detail;
     }
     return "Failed to submit port request";
   }
@@ -242,17 +262,27 @@ export default function PortingFormScreen({ navigation, route }) {
       }
 
       await setLocalStep("porting_form");
+      const idempotencyKey = generateIdempotencyKey();
       const payload = {
-        phoneNumber: normalizePhone(form.phoneNumber),
+        phoneNumber: normalizePhoneE164(form.phoneNumber),
         carrier: form.carrier.trim(),
-        accountNumber: form.accountNumber.trim(),
-        pin: form.pin.trim(),
-        billingZip: form.billingZip.trim(),
+        accountNumber: form.accountNumber.replace(/\s+/g, "").trim(),
+        pin: form.pin.replace(/\s+/g, "").trim(),
+        billingZip: normalizeZip(form.billingZip),
         contactName: form.contactName.trim(),
         contactEmail: form.contactEmail.trim().toLowerCase(),
-        idempotencyKey: generateIdempotencyKey(),
+        idempotencyKey,
       };
-      const response = await api.post("/phone/porting/start", payload);
+      if (__DEV__) {
+        console.log("[PORTING_SUBMIT] payload", {
+          ...payload,
+          accountNumber: payload.accountNumber ? "***" : "",
+          pin: payload.pin ? "***" : "",
+        });
+      }
+      const response = await api.post("/phone/porting/start", payload, {
+        headers: { "Idempotency-Key": idempotencyKey },
+      });
       const portingId =
         response?.data?.portingId ||
         response?.data?.id ||
