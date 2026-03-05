@@ -10,6 +10,7 @@ import {
   Platform,
   TouchableWithoutFeedback,
   Keyboard,
+  Alert,
 } from "react-native";
 import { OnboardingContext } from "../../onboarding/OnboardingContext";
 import api from "../../config/api";
@@ -27,10 +28,14 @@ export default function PortingFormScreen({ navigation, route }) {
     contactEmail: "",
   });
   const [loading, setLoading] = useState(false);
+  const [skipLoading, setSkipLoading] = useState(false);
+  const [checkingSkipPolicy, setCheckingSkipPolicy] = useState(true);
+  const [skipAllowed, setSkipAllowed] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     hydratePrefill();
+    hydrateSkipPolicy();
   }, []);
 
   async function hydratePrefill() {
@@ -62,6 +67,54 @@ export default function PortingFormScreen({ navigation, route }) {
       contactName: source.contactName || source.authorizedName || source.name || "",
       contactEmail: source.contactEmail || source.email || "",
     };
+  }
+
+  function resolveSkipPolicy(payload) {
+    const explicit =
+      payload?.policies?.portingSkippable ??
+      payload?.policy?.portingSkippable ??
+      payload?.rules?.allowPortingSkip ??
+      payload?.porting?.allowSkip ??
+      payload?.porting?.skippable ??
+      payload?.launchPolicy?.allowTemporaryNumber;
+
+    if (typeof explicit === "boolean") {
+      return explicit;
+    }
+
+    return false;
+  }
+
+  async function hydrateSkipPolicy() {
+    setCheckingSkipPolicy(true);
+    try {
+      const response = await api.get("/onboarding/status");
+      setSkipAllowed(resolveSkipPolicy(response?.data || {}));
+    } catch {
+      // Policy-safe default: skip is not allowed unless explicitly enabled by backend policy.
+      setSkipAllowed(false);
+    } finally {
+      setCheckingSkipPolicy(false);
+    }
+  }
+
+  function mapNextStepToRoute(rawStep) {
+    const step = String(rawStep || "").toLowerCase();
+    if (step === "go_live_checklist") return "GoLiveChecklist";
+    if (step === "trial_start") return "TrialStart";
+    if (step === "porting_form") return "PortingForm";
+    if (step === "porting_documents") return "PortingDocuments";
+    if (step === "porting_tracker") return "PortingStatus";
+    if (step === "number_strategy") return "NumberStrategy";
+    if (step === "business_snapshot") return "BusinessSnapshot";
+    if (step === "account") return "Account";
+    if (step === "welcome") return "Welcome";
+    return "TrialStart";
+  }
+
+  function canNavigateTo(routeName) {
+    const routeNames = navigation?.getState?.()?.routeNames || [];
+    return routeNames.includes(routeName);
   }
 
   function normalizePhone(value) {
@@ -105,6 +158,39 @@ export default function PortingFormScreen({ navigation, route }) {
 
   function setField(key, value) {
     setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  async function skipPorting() {
+    if (checkingSkipPolicy) return;
+
+    if (!skipAllowed) {
+      Alert.alert(
+        "Porting remains required",
+        "Your current policy requires number porting before full go-live. You can continue later, but this will remain a blocker in Go Live."
+      );
+      return;
+    }
+
+    setSkipLoading(true);
+    setError("");
+    try {
+      const payload = {
+        step: "porting",
+        data: { skipped: true },
+        completedAt: new Date().toISOString(),
+        idempotencyKey: generateIdempotencyKey(),
+      };
+      const response = await api.post("/onboarding/step", payload);
+      const nextStep = response?.data?.nextStep || response?.data?.currentStep || "trial_start";
+      const mappedRoute = mapNextStepToRoute(nextStep);
+      const nextRoute = canNavigateTo(mappedRoute) ? mappedRoute : "TrialStart";
+      await setLocalStep(String(nextStep).toLowerCase());
+      navigation.navigate(nextRoute);
+    } catch (e) {
+      setError(getBackendErrorMessage(e?.response));
+    } finally {
+      setSkipLoading(false);
+    }
   }
 
   async function submitPorting() {
@@ -213,12 +299,14 @@ export default function PortingFormScreen({ navigation, route }) {
 
           {!!error ? <Text style={styles.error}>{error}</Text> : null}
 
-          <Pressable style={[styles.primaryBtn, loading && styles.disabled]} disabled={loading} onPress={submitPorting}>
+          <Pressable style={[styles.primaryBtn, loading && styles.disabled]} disabled={loading || skipLoading} onPress={submitPorting}>
             <Text style={styles.primaryText}>{loading ? "Submitting..." : "Submit Port Request"}</Text>
           </Pressable>
 
-          <Pressable style={styles.secondaryBtn} onPress={() => navigation.navigate("TrialStart")}>
-            <Text style={styles.secondaryText}>I'll do this later</Text>
+          <Pressable style={styles.secondaryBtn} onPress={skipPorting} disabled={loading || skipLoading || checkingSkipPolicy}>
+            <Text style={styles.secondaryText}>
+              {checkingSkipPolicy ? "Checking policy..." : skipLoading ? "Skipping..." : "I'll do this later"}
+            </Text>
           </Pressable>
         </ScrollView>
       </TouchableWithoutFeedback>
