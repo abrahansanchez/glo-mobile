@@ -1,9 +1,13 @@
 import { useEffect, useState } from "react";
-import { FlatList, Pressable, Text, View } from "react-native";
+import { FlatList, Pressable, StyleSheet, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import api from "../config/api";
 import { normalizeTranscriptTimeline } from "../utils/transcriptTimeline";
 import ScreenContainer from "../components/layout/ScreenContainer";
+import AppCard from "../components/ui/AppCard";
+import AppText from "../components/ui/AppText";
+import EmptyState from "../components/ui/EmptyState";
+import { spacing } from "../ui/tokens";
 
 function getTranscriptId(item) {
   return item?._id || item?.id || null;
@@ -50,7 +54,7 @@ export default function TranscriptsScreen() {
     return (
       <ScreenContainer>
         <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-          <Text>Loading transcripts...</Text>
+          <AppText>Loading transcripts...</AppText>
         </View>
       </ScreenContainer>
     );
@@ -60,7 +64,7 @@ export default function TranscriptsScreen() {
     return (
       <ScreenContainer>
         <View style={{ flex: 1, justifyContent: "center", alignItems: "center", padding: 16 }}>
-          <Text>{error}</Text>
+          <AppText>{error}</AppText>
         </View>
       </ScreenContainer>
     );
@@ -68,14 +72,13 @@ export default function TranscriptsScreen() {
 
   return (
     <ScreenContainer>
+      <AppText variant="title" style={styles.title}>Transcripts</AppText>
       <FlatList
         data={transcripts}
         keyExtractor={(item, index) => String(getTranscriptId(item) || index)}
-        contentContainerStyle={{ paddingBottom: 16 }}
+        contentContainerStyle={styles.list}
         ListEmptyComponent={
-          <View style={{ paddingTop: 16 }}>
-            <Text>No transcripts yet.</Text>
-          </View>
+          <EmptyState title="No transcripts yet" message="Completed calls with transcripts will appear here." />
         }
         renderItem={({ item }) => {
           const transcriptId = getTranscriptId(item);
@@ -91,17 +94,21 @@ export default function TranscriptsScreen() {
                 if (!transcriptId) return;
                 navigation.navigate("TranscriptDetail", { transcriptId });
               }}
-              style={{
-                paddingVertical: 12,
-                paddingHorizontal: 16,
-                borderBottomWidth: 1,
-                borderBottomColor: "#ddd",
-              }}
+              style={styles.rowPressable}
             >
-              <Text>Caller: {caller}</Text>
-              <Text>When: {formatDate(item?.callEndedAt || item?.createdAt)}</Text>
-              <Text>Intent/Outcome: {item?.intent || "-"} / {item?.outcome || "-"}</Text>
-              <Text numberOfLines={1}>Preview: {previewText}</Text>
+              <AppCard style={styles.rowCard}>
+                <AppText style={styles.rowTitle}>Caller: {caller}</AppText>
+                <AppText variant="caption" style={styles.rowMeta}>
+                  {formatDate(item?.callEndedAt || item?.createdAt)}
+                </AppText>
+                <View style={styles.separator} />
+                <AppText variant="body">
+                  Intent/Outcome: {item?.intent || "-"} / {item?.outcome || "-"}
+                </AppText>
+                <AppText variant="caption" numberOfLines={2} style={styles.preview}>
+                  Preview: {previewText}
+                </AppText>
+              </AppCard>
             </Pressable>
           );
         }}
@@ -109,3 +116,19 @@ export default function TranscriptsScreen() {
     </ScreenContainer>
   );
 }
+
+const styles = StyleSheet.create({
+  title: { marginBottom: spacing.md },
+  list: { paddingBottom: spacing.md },
+  rowPressable: { marginBottom: spacing.sm },
+  rowCard: { padding: spacing.md },
+  rowTitle: { fontWeight: "800" },
+  rowMeta: { marginTop: spacing.xs },
+  separator: {
+    marginTop: spacing.sm,
+    marginBottom: spacing.sm,
+    height: 1,
+    backgroundColor: "rgba(148, 163, 184, 0.35)",
+  },
+  preview: { marginTop: spacing.sm },
+});

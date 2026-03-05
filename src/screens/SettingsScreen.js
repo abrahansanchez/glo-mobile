@@ -7,7 +7,7 @@ import AppCard from "../components/ui/AppCard";
 import AppBadge from "../components/ui/AppBadge";
 import AppText from "../components/ui/AppText";
 import AppButton from "../components/ui/AppButton";
-import { colors, spacing } from "../ui/tokens";
+import { spacing } from "../ui/tokens";
 import {
   FEATURE_FLAGS,
   getEliteOnboardingFlag,
@@ -196,7 +196,7 @@ export default function SettingsScreen({ navigation }) {
         {loading ? (
           <AppText style={styles.text}>Loading…</AppText>
         ) : error ? (
-          <AppText style={[styles.text, styles.error]}>{error}</AppText>
+          <AppText style={[styles.text, styles.error, { color: themeColors.danger }]}>{error}</AppText>
         ) : (
           <>
             <AppText style={styles.text}>Status: <AppText style={styles.bold}>{String(status)}</AppText></AppText>
@@ -205,7 +205,7 @@ export default function SettingsScreen({ navigation }) {
         )}
 
         {!canManageBilling ? (
-          <AppText variant="caption" style={styles.helperText}>
+          <AppText variant="caption" style={[styles.helperText, { color: themeColors.textMuted }]}>
             Billing portal will unlock after Stripe customer setup completes.
           </AppText>
         ) : null}
@@ -283,7 +283,7 @@ export default function SettingsScreen({ navigation }) {
             <AppText style={styles.rowText}>
               Elite Onboarding: {eliteOnboardingEnabled ? "ON" : "OFF"}
             </AppText>
-            <AppText variant="caption" style={styles.helperText}>
+            <AppText variant="caption" style={[styles.helperText, { color: themeColors.textMuted }]}>
               Tap to toggle rollout. Hidden in production builds.
             </AppText>
           </Pressable>
@@ -302,13 +302,13 @@ const styles = StyleSheet.create({
   statusBadge: { marginBottom: spacing.sm },
   text: { marginBottom: spacing.xs },
   bold: { fontWeight: "900" },
-  error: { color: colors.danger },
+  error: {},
   btn: {
     marginTop: spacing.sm,
   },
-  helperText: { marginBottom: 2, color: colors.textMuted },
+  helperText: { marginBottom: 2 },
   rowButton: { paddingVertical: 12 },
-  rowText: { fontSize: 16, color: colors.textPrimary, fontWeight: "700", marginBottom: 6 },
+  rowText: { fontSize: 16, fontWeight: "700", marginBottom: 6 },
   actionBtn: { marginBottom: spacing.sm },
   themeRow: { flexDirection: "row", gap: spacing.sm },
   themePill: {

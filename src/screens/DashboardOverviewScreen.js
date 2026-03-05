@@ -13,10 +13,12 @@ import AppCard from "../components/ui/AppCard";
 import AppBadge from "../components/ui/AppBadge";
 import AppText from "../components/ui/AppText";
 import EmptyState from "../components/ui/EmptyState";
-import { colors, spacing } from "../ui/tokens";
+import { spacing } from "../ui/tokens";
+import { useTheme } from "../theme/ThemeContext";
 
 export default function DashboardOverviewScreen() {
   const navigation = useNavigation();
+  const { colors: themeColors } = useTheme();
   const { authenticated, barber, subscriptionStatus, setSubscriptionStatus } = useContext(AuthContext);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -172,10 +174,12 @@ export default function DashboardOverviewScreen() {
           <Pressable key={appt._id} onPress={() => handleAppointmentPress(appt)}>
             <AppCard style={styles.apptCard}>
             <AppText style={styles.client}>{appt.clientName || "Client"}</AppText>
-            <AppText style={styles.meta}>{new Date(getAppointmentDate(appt)).toLocaleString()}</AppText>
+            <AppText style={[styles.meta, { color: themeColors.textSecondary }]}>
+              {new Date(getAppointmentDate(appt)).toLocaleString()}
+            </AppText>
             <View style={styles.tapRow}>
-              <AppText variant="caption" style={styles.tapHint}>View details</AppText>
-              <AppText style={styles.chevron}>›</AppText>
+              <AppText variant="caption" style={[styles.tapHint, { color: themeColors.textMuted }]}>View details</AppText>
+              <AppText style={[styles.chevron, { color: themeColors.textMuted }]}>›</AppText>
             </View>
             </AppCard>
           </Pressable>
@@ -211,13 +215,11 @@ const styles = StyleSheet.create({
   meta: {
     marginTop: 4,
     fontSize: 13,
-    color: colors.textSecondary,
   },
   error: {
-    color: colors.danger,
+    color: "#b00020",
   },
   tapHint: {
-    color: colors.textMuted,
     fontWeight: "600",
   },
   tapRow: {
@@ -227,7 +229,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   chevron: {
-    color: colors.textMuted,
     fontSize: 18,
     fontWeight: "700",
   },

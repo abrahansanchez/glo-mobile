@@ -1,8 +1,12 @@
-import { View, Text, FlatList, StyleSheet } from "react-native";
+import { View, FlatList, StyleSheet } from "react-native";
 import { useEffect, useState } from "react";
 import api from "../config/api";
 import LoadingState from "../components/LoadingState";
 import ScreenContainer from "../components/layout/ScreenContainer";
+import AppCard from "../components/ui/AppCard";
+import AppText from "../components/ui/AppText";
+import EmptyState from "../components/ui/EmptyState";
+import { spacing } from "../ui/tokens";
 
 export default function VoicemailsScreen() {
   const [loading, setLoading] = useState(true);
@@ -45,33 +49,33 @@ export default function VoicemailsScreen() {
   if (!voicemails.length) {
     return (
       <ScreenContainer>
-        <View style={styles.center}>
-          <Text style={styles.empty}>No voicemails</Text>
-        </View>
+        <EmptyState title="No voicemails" message="New voicemail messages will appear here." />
       </ScreenContainer>
     );
   }
 
   return (
     <ScreenContainer>
+      <AppText variant="title" style={styles.title}>Voicemail</AppText>
       <FlatList
         data={voicemails}
         keyExtractor={(item) => item._id}
-        contentContainerStyle={{ paddingBottom: 16 }}
+        contentContainerStyle={styles.list}
         renderItem={({ item }) => (
-          <View style={styles.card}>
-            <Text style={styles.caller}>
+          <AppCard style={styles.card}>
+            <AppText style={styles.caller}>
               {item.from || "Unknown caller"}
-            </Text>
+            </AppText>
 
-            <Text style={styles.meta}>
+            <AppText variant="caption" style={styles.meta}>
               {new Date(item.createdAt).toLocaleString()}
-            </Text>
+            </AppText>
 
-            <Text style={styles.duration}>
+            <View style={styles.separator} />
+            <AppText variant="body" style={styles.duration}>
               Duration: {item.duration || "—"} sec
-            </Text>
-          </View>
+            </AppText>
+          </AppCard>
         )}
       />
     </ScreenContainer>
@@ -79,37 +83,25 @@ export default function VoicemailsScreen() {
 }
 
 const styles = StyleSheet.create({
-  center: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  empty: {
-    fontSize: 16,
-    color: "#777",
-  },
+  title: { marginBottom: spacing.md },
+  list: { paddingBottom: spacing.md },
   card: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 3,
+    marginBottom: spacing.sm,
   },
   caller: {
     fontSize: 15,
-    fontWeight: "600",
+    fontWeight: "700",
   },
   meta: {
     marginTop: 4,
-    fontSize: 13,
-    color: "#666",
+  },
+  separator: {
+    marginTop: spacing.sm,
+    marginBottom: spacing.sm,
+    height: 1,
+    backgroundColor: "rgba(148, 163, 184, 0.35)",
   },
   duration: {
-    marginTop: 8,
-    fontSize: 12,
-    color: "#444",
+    fontSize: 13,
   },
 });

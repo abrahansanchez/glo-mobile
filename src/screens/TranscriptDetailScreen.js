@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { ScrollView, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { ScrollView, StyleSheet, View } from "react-native";
 import api from "../config/api";
 import { normalizeTranscriptTimeline } from "../utils/transcriptTimeline";
+import ScreenContainer from "../components/layout/ScreenContainer";
+import AppCard from "../components/ui/AppCard";
+import AppText from "../components/ui/AppText";
+import EmptyState from "../components/ui/EmptyState";
+import { spacing } from "../ui/tokens";
 
 export default function TranscriptDetailScreen({ route }) {
   const transcriptId = route?.params?.transcriptId;
@@ -43,42 +47,63 @@ export default function TranscriptDetailScreen({ route }) {
 
   if (loading) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
+      <ScreenContainer>
         <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-          <Text>Loading transcript...</Text>
+          <AppText>Loading transcript...</AppText>
         </View>
-      </SafeAreaView>
+      </ScreenContainer>
     );
   }
 
   if (error) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
+      <ScreenContainer>
         <View style={{ flex: 1, justifyContent: "center", alignItems: "center", padding: 16 }}>
-          <Text>{error}</Text>
+          <AppText>{error}</AppText>
         </View>
-      </SafeAreaView>
+      </ScreenContainer>
     );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
-      <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 16, gap: 8 }}>
-        <Text>Caller: {detail?.callerNumber || detail?.from || "Unknown"}</Text>
-        <Text>Intent: {detail?.intent || "-"}</Text>
-        <Text>Outcome: {detail?.outcome || "-"}</Text>
+    <ScreenContainer>
+      <ScrollView contentContainerStyle={styles.container}>
+        <AppText variant="title" style={styles.title}>Transcript Detail</AppText>
 
-        <Text style={{ marginTop: 10, fontWeight: "700" }}>Transcript</Text>
+        <AppCard style={styles.metaCard}>
+          <AppText style={styles.metaLine}>Caller: {detail?.callerNumber || detail?.from || "Unknown"}</AppText>
+          <View style={styles.separator} />
+          <AppText variant="body">Intent: {detail?.intent || "-"}</AppText>
+          <AppText variant="body">Outcome: {detail?.outcome || "-"}</AppText>
+        </AppCard>
+
+        <AppText variant="section" style={styles.sectionTitle}>Transcript</AppText>
         {normalizedTranscript.timeline.length === 0 ? (
-          <Text>No transcript lines.</Text>
+          <EmptyState title="No transcript lines" message="No transcript content is available for this call yet." />
         ) : (
           normalizedTranscript.timeline.map((line) => (
-            <Text key={line.id} style={{ marginBottom: 6 }}>
-              {`${line.role}: ${line.text}`}
-            </Text>
+            <AppCard key={line.id} style={styles.lineCard}>
+              <AppText variant="caption" style={styles.roleLabel}>{line.role}</AppText>
+              <AppText variant="body">{line.text}</AppText>
+            </AppCard>
           ))
         )}
       </ScrollView>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 }
+
+const styles = StyleSheet.create({
+  container: { paddingBottom: spacing.xl },
+  title: { marginBottom: spacing.md },
+  metaCard: { marginBottom: spacing.md },
+  metaLine: { fontWeight: "700" },
+  separator: {
+    marginVertical: spacing.sm,
+    height: 1,
+    backgroundColor: "rgba(148, 163, 184, 0.35)",
+  },
+  sectionTitle: { marginBottom: spacing.sm },
+  lineCard: { marginBottom: spacing.sm },
+  roleLabel: { textTransform: "uppercase", marginBottom: spacing.xs, fontWeight: "700" },
+});

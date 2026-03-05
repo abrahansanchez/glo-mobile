@@ -1,7 +1,7 @@
 import { StyleSheet } from "react-native";
 import AppCard from "./ui/AppCard";
 import AppText from "./ui/AppText";
-import { spacing, colors } from "../ui/tokens";
+import { spacing } from "../ui/tokens";
 
 export default function MetricCard({ label, value, description }) {
   return (
@@ -22,15 +22,12 @@ const styles = StyleSheet.create({
   value: {
     fontSize: 28,
     fontWeight: "900",
-    color: colors.textPrimary,
   },
   label: {
     marginTop: spacing.xs,
     fontWeight: "700",
-    color: colors.textSecondary,
   },
   description: {
     marginTop: spacing.xs,
-    color: colors.textMuted,
   },
 });

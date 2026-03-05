@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, Button, StyleSheet, TextInput, Alert, ScrollView } from "react-native";
+import { View, Button, StyleSheet, TextInput, Alert, ScrollView } from "react-native";
 import { Audio } from "expo-av";
 import { useVoice } from "../voice/VoiceContext";
 import { initTwilioVoice, startCall, endCall } from "../voice/twilioVoiceService";
 import ScreenContainer from "../components/layout/ScreenContainer";
+import AppText from "../components/ui/AppText";
+import { useTheme } from "../theme/ThemeContext";
 
 export default function CallsScreen() {
+  const { colors } = useTheme();
   const { status, token, identity, refreshToken } = useVoice();
   const [to, setTo] = useState("");
   const [twilioInitialized, setTwilioInitialized] = useState(false);
@@ -105,14 +108,14 @@ export default function CallsScreen() {
   return (
     <ScreenContainer>
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Calls (Phase A)</Text>
+        <AppText variant="title" style={styles.title}>Calls</AppText>
 
-        <Text style={styles.subtitle}>Voice Token Status</Text>
-        <Text style={styles.line}>Voice status: {status}</Text>
-        <Text style={styles.line}>token present: {token ? "✅ true" : "❌ false"}</Text>
-        <Text style={styles.line}>identity: {identity || "none"}</Text>
-        <Text style={styles.line}>Twilio initialized: {twilioInitialized ? "✅ yes" : "❌ no"}</Text>
-        <Text style={styles.line}>Twilio deviceReady: {deviceReadyFlag ? "✅ yes" : "❌ no"}</Text>
+        <AppText variant="section" style={styles.subtitle}>Voice Token Status</AppText>
+        <AppText style={styles.line}>Voice status: {status}</AppText>
+        <AppText style={styles.line}>Token present: {token ? "Yes" : "No"}</AppText>
+        <AppText style={styles.line}>Identity: {identity || "none"}</AppText>
+        <AppText style={styles.line}>Twilio initialized: {twilioInitialized ? "Yes" : "No"}</AppText>
+        <AppText style={styles.line}>Twilio deviceReady: {deviceReadyFlag ? "Yes" : "No"}</AppText>
 
         <View style={{ height: 20 }} />
 
@@ -122,14 +125,15 @@ export default function CallsScreen() {
 
         <View style={{ height: 24 }} />
 
-        <Text style={styles.subtitle}>Make a Test Call</Text>
+        <AppText variant="section" style={styles.subtitle}>Make a Test Call</AppText>
         <TextInput
           value={to}
           onChangeText={setTo}
           placeholder="Enter number (8132207636 or +1...)"
           autoCapitalize="none"
           keyboardType="phone-pad"
-          style={styles.input}
+          style={[styles.input, { borderColor: colors.border, color: colors.textPrimary, backgroundColor: colors.card }]}
+          placeholderTextColor={colors.textMuted}
         />
 
         <View style={{ height: 12 }} />
@@ -138,12 +142,12 @@ export default function CallsScreen() {
         <Button title="Hang Up" onPress={handleHangup} color="red" />
 
         <View style={{ height: 24 }} />
-        <Text style={styles.note}>
+        <AppText variant="caption" style={styles.note}>
           Phase A: Outgoing calls only (no VoIP push yet).{"\n"}
           • Tap "Start Outgoing Call" to place a call{"\n"}
           • Call will keep ringing until recipient answers or you tap "Hang Up"{"\n"}
           • Watch terminal logs for [TWILIO_VOICE][EVENT] messages
-        </Text>
+        </AppText>
       </ScrollView>
     </ScreenContainer>
   );
@@ -159,21 +163,13 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     marginBottom: 12,
   },
-  subtitle: {
-    fontSize: 14,
-    fontWeight: "700",
-    marginTop: 16,
-    marginBottom: 8,
-    color: "#333",
-  },
+  subtitle: { marginTop: 16, marginBottom: 8 },
   line: {
     fontSize: 14,
-    color: "#222",
     marginTop: 4,
   },
   input: {
     borderWidth: 1,
-    borderColor: "#ddd",
     borderRadius: 10,
     padding: 12,
     fontSize: 16,
@@ -181,7 +177,6 @@ const styles = StyleSheet.create({
   },
   note: {
     fontSize: 12,
-    color: "#666",
     marginTop: 16,
     lineHeight: 18,
   },

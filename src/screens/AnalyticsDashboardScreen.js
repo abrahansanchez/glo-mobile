@@ -7,8 +7,9 @@ import EmptyState from "../components/ui/EmptyState";
 import AppCard from "../components/ui/AppCard";
 import AppText from "../components/ui/AppText";
 import MetricCard from "../components/MetricCard";
-import { colors, spacing } from "../ui/tokens";
+import { spacing } from "../ui/tokens";
 import { useIsAdmin } from "../auth/adminAccess";
+import { useTheme } from "../theme/ThemeContext";
 
 const RANGE_OPTIONS = [7, 14, 30];
 
@@ -41,6 +42,7 @@ function formatPercent(value) {
 }
 
 export default function AnalyticsDashboardScreen() {
+  const { colors } = useTheme();
   const isAdmin = useIsAdmin();
   const [rangeDays, setRangeDays] = useState(7);
   const [loading, setLoading] = useState(true);
@@ -121,7 +123,11 @@ export default function AnalyticsDashboardScreen() {
               return (
                 <Pressable
                   key={option}
-                  style={[styles.rangeButton, selected && styles.rangeButtonActive]}
+                  style={[
+                    styles.rangeButton,
+                    { borderColor: colors.border, backgroundColor: colors.surface },
+                    selected && [styles.rangeButtonActive, { backgroundColor: colors.textPrimary, borderColor: colors.textPrimary }],
+                  ]}
                   onPress={() => setRangeDays(option)}
                 >
                   <AppText style={[styles.rangeButtonText, selected && styles.rangeButtonTextActive]}>
@@ -180,19 +186,16 @@ const styles = StyleSheet.create({
   },
   rangeButton: {
     borderWidth: 1,
-    borderColor: colors.border,
     borderRadius: 12,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
-    backgroundColor: colors.surface,
   },
   rangeButtonActive: {
-    backgroundColor: colors.textPrimary,
-    borderColor: colors.textPrimary,
+    backgroundColor: "#111827",
+    borderColor: "#111827",
   },
   rangeButtonText: {
     fontWeight: "700",
-    color: colors.textSecondary,
   },
   rangeButtonTextActive: {
     color: "#fff",

@@ -8,7 +8,8 @@ import AppCard from "../components/ui/AppCard";
 import AppBadge from "../components/ui/AppBadge";
 import AppText from "../components/ui/AppText";
 import EmptyState from "../components/ui/EmptyState";
-import { colors, spacing, radii } from "../ui/tokens";
+import { spacing, radii } from "../ui/tokens";
+import { useTheme } from "../theme/ThemeContext";
 
 function startOfDayLocal(value) {
   const d = new Date(value);
@@ -77,6 +78,7 @@ function formatLocalDateTime(value) {
 }
 
 export default function AppointmentsScreen({ route }) {
+  const { colors } = useTheme();
   const [loading, setLoading] = useState(true);
   const [appointments, setAppointments] = useState([]);
   const [viewMode, setViewMode] = useState("week");
@@ -191,7 +193,11 @@ export default function AppointmentsScreen({ route }) {
             <Pressable
               key={mode}
               onPress={() => setViewMode(mode)}
-              style={[styles.modeButton, viewMode === mode && styles.modeButtonActive]}
+              style={[
+                styles.modeButton,
+                { borderColor: colors.border, backgroundColor: colors.card },
+                viewMode === mode && [styles.modeButtonActive, { backgroundColor: colors.textPrimary, borderColor: colors.textPrimary }],
+              ]}
             >
               <AppText style={[styles.modeText, viewMode === mode && styles.modeTextActive]}>
                 {mode.toUpperCase()}
@@ -267,9 +273,7 @@ export default function AppointmentsScreen({ route }) {
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    backgroundColor: "#f7f8fa",
-  },
+  screen: {},
   topControls: {
     marginTop: 6,
     marginBottom: spacing.md,
@@ -280,19 +284,15 @@ const styles = StyleSheet.create({
   },
   modeButton: {
     borderWidth: 1,
-    borderColor: colors.border,
     borderRadius: radii.pill,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: colors.card,
   },
   modeButtonActive: {
     backgroundColor: "#111827",
-    borderColor: "#111827",
   },
   modeText: {
     fontSize: 12,
-    color: colors.textSecondary,
     fontWeight: "600",
   },
   modeTextActive: {
@@ -323,7 +323,6 @@ const styles = StyleSheet.create({
   rangeLabel: {
     fontSize: 14,
     fontWeight: "600",
-    color: colors.textPrimary,
   },
   todayButton: {
     borderWidth: 1,
@@ -339,7 +338,6 @@ const styles = StyleSheet.create({
   },
   tzText: {
     marginTop: 4,
-    color: colors.textMuted,
   },
   fallbackText: {
     marginTop: 6,
