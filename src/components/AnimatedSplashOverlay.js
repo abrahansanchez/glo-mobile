@@ -58,18 +58,6 @@ export default function AnimatedSplashOverlay({ onFinish }) {
       await SplashScreenModule?.hideAsync?.().catch(() => {});
 
       Animated.parallel([
-        Animated.timing(ringOpacity, {
-          toValue: 1,
-          duration: 560,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        Animated.timing(ringScale, {
-          toValue: 1,
-          duration: 680,
-          easing: Easing.out(Easing.back(1.1)),
-          useNativeDriver: true,
-        }),
         Animated.sequence([
           Animated.timing(glowOpacity, {
             toValue: 0.85,
@@ -96,6 +84,23 @@ export default function AnimatedSplashOverlay({ onFinish }) {
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
+        Animated.sequence([
+          Animated.delay(760),
+          Animated.parallel([
+            Animated.timing(ringOpacity, {
+              toValue: 1,
+              duration: 180,
+              easing: Easing.out(Easing.cubic),
+              useNativeDriver: true,
+            }),
+            Animated.timing(ringScale, {
+              toValue: 1,
+              duration: 220,
+              easing: Easing.out(Easing.back(1.1)),
+              useNativeDriver: true,
+            }),
+          ]),
+        ]),
         Animated.sequence([
           Animated.delay(wordmarkDelayMs),
           Animated.parallel([
