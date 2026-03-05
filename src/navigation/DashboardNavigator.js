@@ -8,6 +8,7 @@ import CallsScreen from "../screens/CallsScreen";
 import AppointmentsScreen from "../screens/AppointmentsScreen";
 import VoicemailsScreen from "../screens/VoicemailsScreen";
 import AnalyticsSummaryScreen from "../screens/AnalyticsSummaryScreen";
+import AnalyticsDashboardScreen from "../screens/AnalyticsDashboardScreen";
 import TranscriptsScreen from "../screens/TranscriptsScreen";
 import TranscriptDetailScreen from "../screens/TranscriptDetailScreen";
 import CallNavigator from "./CallNavigator";
@@ -68,7 +69,7 @@ function DashboardTabs() {
       />
       <Tab.Screen
         name="Insights"
-        component={AnalyticsSummaryScreen}
+        component={AnalyticsDashboardScreen}
         options={{
           tabBarIcon: ({ color, size }) => <Feather name="bar-chart-2" color={color} size={Math.max(size, 22)} />,
         }}
@@ -96,7 +97,7 @@ export default function DashboardNavigator() {
       <Stack.Screen name="Transcripts" component={TranscriptsScreen} />
       <Stack.Screen name="Appointments" component={AppointmentsScreen} />
       <Stack.Screen name="Overview" component={DashboardOverviewScreen} />
-      <Stack.Screen name="Analytics" component={AnalyticsSummaryScreen} />
+      <Stack.Screen name="Analytics" component={AnalyticsDashboardScreen} />
 
       <Stack.Screen name="Account" component={AccountScreen} />
       <Stack.Screen name="PortingStatus" component={PortingStatusScreen} />
