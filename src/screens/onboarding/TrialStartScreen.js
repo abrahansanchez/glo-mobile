@@ -1,10 +1,14 @@
 import React, { useContext, useState } from "react";
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import { View, Pressable, StyleSheet } from "react-native";
 import { OnboardingContext } from "../../onboarding/OnboardingContext";
 import { AuthContext } from "../../auth/authContext";
 import api from "../../config/api";
 import OnboardingHeader from "../../onboarding/OnboardingHeader";
 import { STEPS } from "../../onboarding/stepKeys";
+import AppCard from "../../components/ui/AppCard";
+import AppText from "../../components/ui/AppText";
+import AppBadge from "../../components/ui/AppBadge";
+import { colors, spacing } from "../../ui/tokens";
 
 export default function TrialStartScreen({ navigation }) {
   const { updateStep } = useContext(OnboardingContext);
@@ -12,6 +16,11 @@ export default function TrialStartScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+
+  function canNavigateTo(routeName) {
+    const routeNames = navigation?.getState?.()?.routeNames || [];
+    return routeNames.includes(routeName);
+  }
 
   async function startTrial() {
     setLoading(true);
@@ -37,20 +46,21 @@ export default function TrialStartScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <OnboardingHeader />
-      <Text style={styles.title}>Start Your Free Trial</Text>
-      <Text style={styles.subtitle}>Full access for 14 days. Cancel anytime.</Text>
+      <AppText variant="title" style={styles.title}>Start Your Free Trial</AppText>
+      <AppText variant="body" style={styles.subtitle}>Full access for 14 days. Cancel anytime.</AppText>
+      <AppBadge label="14 DAY TRIAL" tone="success" style={styles.badge} />
 
-      <View style={styles.disclosure}>
-        <Text style={styles.disclosureTitle}>Trial disclosure</Text>
-        <Text style={styles.disclosureText}>You won’t be charged until your trial ends.</Text>
-        <Text style={styles.disclosureText}>Renewal amount/date are shown before checkout.</Text>
-      </View>
+      <AppCard style={styles.disclosure}>
+        <AppText style={styles.disclosureTitle}>Trial disclosure</AppText>
+        <AppText variant="body" style={styles.disclosureText}>You won’t be charged until your trial ends.</AppText>
+        <AppText variant="body" style={styles.disclosureText}>Renewal amount/date are shown before checkout.</AppText>
+      </AppCard>
 
-      {!!success ? <Text style={styles.success}>Trial started successfully.</Text> : null}
-      {!!error ? <Text style={styles.error}>{error}</Text> : null}
+      {!!success ? <AppText style={styles.success}>Trial started successfully.</AppText> : null}
+      {!!error ? <AppText style={styles.error}>{error}</AppText> : null}
 
       <Pressable style={[styles.button, loading && styles.buttonDisabled]} disabled={loading} onPress={startTrial}>
-        <Text style={styles.buttonText}>{loading ? "Starting..." : "Start Free Trial"}</Text>
+        <AppText style={styles.buttonText}>{loading ? "Starting..." : "Start Free Trial"}</AppText>
       </Pressable>
 
       <Pressable
@@ -61,12 +71,12 @@ export default function TrialStartScreen({ navigation }) {
           }
         }}
       >
-        <Text style={styles.secondaryText}>Continue</Text>
+        <AppText style={styles.secondaryText}>Continue</AppText>
       </Pressable>
 
       {!!error ? (
         <Pressable style={styles.retryBtn} onPress={startTrial}>
-          <Text style={styles.retryText}>Retry</Text>
+          <AppText style={styles.retryText}>Retry</AppText>
         </Pressable>
       ) : null}
     </View>
@@ -75,11 +85,12 @@ export default function TrialStartScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 24, justifyContent: "center" },
-  title: { fontSize: 28, fontWeight: "900", marginBottom: 8 },
-  subtitle: { fontSize: 14, color: "#4b5563", marginBottom: 18 },
-  disclosure: { borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 12, padding: 14, marginBottom: 14 },
-  disclosureTitle: { fontWeight: "800", marginBottom: 6 },
-  disclosureText: { color: "#4b5563", fontSize: 13, marginBottom: 3 },
+  title: { marginBottom: spacing.xs },
+  subtitle: { color: colors.textSecondary, marginBottom: spacing.md },
+  badge: { marginBottom: spacing.md },
+  disclosure: { borderWidth: 1, borderColor: colors.border, marginBottom: spacing.md },
+  disclosureTitle: { fontWeight: "800", marginBottom: spacing.xs },
+  disclosureText: { color: colors.textSecondary, marginBottom: 3 },
   button: {
     backgroundColor: "#000",
     paddingVertical: 14,
@@ -90,13 +101,9 @@ const styles = StyleSheet.create({
   buttonDisabled: { opacity: 0.7 },
   buttonText: { color: "#fff", fontWeight: "900" },
   secondaryBtn: { marginTop: 10, alignItems: "center", padding: 10 },
-  secondaryText: { color: "#111827", fontWeight: "700", textDecorationLine: "underline" },
+  secondaryText: { color: colors.textPrimary, fontWeight: "700", textDecorationLine: "underline" },
   retryBtn: { marginTop: 8, alignItems: "center" },
-  retryText: { color: "#111827", fontWeight: "800" },
-  success: { color: "#065f46", fontWeight: "700", marginBottom: 10 },
-  error: { color: "#b00020", fontWeight: "700", marginBottom: 10 },
+  retryText: { color: colors.textPrimary, fontWeight: "800" },
+  success: { color: colors.success, fontWeight: "700", marginBottom: spacing.sm },
+  error: { color: colors.danger, fontWeight: "700", marginBottom: spacing.sm },
 });
-  function canNavigateTo(routeName) {
-    const routeNames = navigation?.getState?.()?.routeNames || [];
-    return routeNames.includes(routeName);
-  }

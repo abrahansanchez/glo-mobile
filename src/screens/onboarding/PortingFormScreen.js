@@ -1,7 +1,6 @@
 import React, { useContext, useEffect, useState } from "react";
 import {
   View,
-  Text,
   TextInput,
   Pressable,
   StyleSheet,
@@ -15,6 +14,10 @@ import {
 import { OnboardingContext } from "../../onboarding/OnboardingContext";
 import api from "../../config/api";
 import OnboardingHeader from "../../onboarding/OnboardingHeader";
+import AppCard from "../../components/ui/AppCard";
+import AppText from "../../components/ui/AppText";
+import AppBadge from "../../components/ui/AppBadge";
+import { colors, spacing } from "../../ui/tokens";
 
 export default function PortingFormScreen({ navigation, route }) {
   const { setLocalStep } = useContext(OnboardingContext);
@@ -264,8 +267,9 @@ export default function PortingFormScreen({ navigation, route }) {
           contentContainerStyle={styles.container}
         >
           <OnboardingHeader />
-          <Text style={styles.title}>Port Your Number</Text>
-          <Text style={styles.subtitle}>Usually 3-10 business days depending on your carrier.</Text>
+          <AppText variant="title" style={styles.title}>Port Your Number</AppText>
+          <AppText variant="body" style={styles.subtitle}>Usually 3-10 business days depending on your carrier.</AppText>
+          <AppBadge label="Number Porting" style={styles.badge} />
 
         {[
           ["phoneNumber", "Phone Number"],
@@ -276,8 +280,8 @@ export default function PortingFormScreen({ navigation, route }) {
           ["contactName", "Contact Name"],
           ["contactEmail", "Contact Email"],
         ].map(([key, label]) => (
-          <View key={key}>
-            <Text style={styles.label}>{label}</Text>
+          <AppCard key={key} style={styles.fieldCard}>
+            <AppText style={styles.label}>{label}</AppText>
             <TextInput
               value={form[key]}
               onChangeText={(value) => setField(key, value)}
@@ -294,19 +298,19 @@ export default function PortingFormScreen({ navigation, route }) {
               textContentType={key === "contactEmail" ? "emailAddress" : "none"}
               style={styles.input}
             />
-          </View>
+          </AppCard>
         ))}
 
-          {!!error ? <Text style={styles.error}>{error}</Text> : null}
+          {!!error ? <AppText style={styles.error}>{error}</AppText> : null}
 
           <Pressable style={[styles.primaryBtn, loading && styles.disabled]} disabled={loading || skipLoading} onPress={submitPorting}>
-            <Text style={styles.primaryText}>{loading ? "Submitting..." : "Submit Port Request"}</Text>
+            <AppText style={styles.primaryText}>{loading ? "Submitting..." : "Submit Port Request"}</AppText>
           </Pressable>
 
           <Pressable style={styles.secondaryBtn} onPress={skipPorting} disabled={loading || skipLoading || checkingSkipPolicy}>
-            <Text style={styles.secondaryText}>
+            <AppText style={styles.secondaryText}>
               {checkingSkipPolicy ? "Checking policy..." : skipLoading ? "Skipping..." : "I'll do this later"}
-            </Text>
+            </AppText>
           </Pressable>
         </ScrollView>
       </TouchableWithoutFeedback>
@@ -316,21 +320,23 @@ export default function PortingFormScreen({ navigation, route }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#fff" },
-  container: { paddingHorizontal: 20, paddingBottom: 140, paddingTop: 8 },
-  title: { fontSize: 26, fontWeight: "900", marginBottom: 6 },
-  subtitle: { color: "#4b5563", marginBottom: 14 },
-  label: { fontWeight: "700", marginBottom: 6, marginTop: 8 },
-  input: { borderWidth: 1, borderColor: "#d1d5db", borderRadius: 10, padding: 12 },
+  container: { paddingHorizontal: spacing.xl, paddingBottom: 140, paddingTop: spacing.sm },
+  title: { marginBottom: spacing.xs },
+  subtitle: { color: colors.textSecondary, marginBottom: spacing.xs },
+  badge: { marginBottom: spacing.md },
+  fieldCard: { marginBottom: spacing.sm, padding: spacing.md },
+  label: { fontWeight: "700", marginBottom: spacing.xs },
+  input: { borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, color: colors.textPrimary },
   primaryBtn: {
     backgroundColor: "#000",
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: "center",
-    marginTop: 16,
+    marginTop: spacing.md,
   },
   disabled: { opacity: 0.7 },
   primaryText: { color: "#fff", fontWeight: "900" },
-  secondaryBtn: { marginTop: 10, alignItems: "center", paddingVertical: 10 },
-  secondaryText: { color: "#111827", textDecorationLine: "underline", fontWeight: "700" },
-  error: { color: "#b00020", fontWeight: "700", marginTop: 8 },
+  secondaryBtn: { marginTop: spacing.sm, alignItems: "center", paddingVertical: spacing.sm },
+  secondaryText: { color: colors.textPrimary, textDecorationLine: "underline", fontWeight: "700" },
+  error: { color: colors.danger, fontWeight: "700", marginTop: spacing.sm },
 });

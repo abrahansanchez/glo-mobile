@@ -1,8 +1,12 @@
 import React, { useContext, useEffect, useState } from "react";
-import { View, Text, Pressable, StyleSheet, Alert, Linking, Platform } from "react-native";
+import { View, Pressable, StyleSheet, Alert, Linking } from "react-native";
 import api from "../config/api";
 import { AuthContext } from "../auth/authContext";
 import ScreenContainer from "../components/layout/ScreenContainer";
+import AppCard from "../components/ui/AppCard";
+import AppBadge from "../components/ui/AppBadge";
+import AppText from "../components/ui/AppText";
+import { colors, spacing } from "../ui/tokens";
 
 export default function SettingsScreen({ navigation }) {
   const { logout, stripeCustomerId } = useContext(AuthContext);
@@ -104,30 +108,31 @@ export default function SettingsScreen({ navigation }) {
   return (
     <ScreenContainer>
       <View style={styles.container}>
-        <Text style={styles.title}>Settings</Text>
+        <AppText variant="title" style={styles.title}>Settings</AppText>
 
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Subscription</Text>
+      <AppCard style={styles.card}>
+        <AppText variant="section" style={styles.cardTitle}>Subscription</AppText>
+        <AppBadge
+          label={String(status).toUpperCase()}
+          tone={status === "active" ? "success" : "warning"}
+          style={styles.statusBadge}
+        />
 
         {loading ? (
-          <Text style={styles.text}>Loading…</Text>
+          <AppText style={styles.text}>Loading…</AppText>
         ) : error ? (
-          <Text style={[styles.text, styles.error]}>{error}</Text>
+          <AppText style={[styles.text, styles.error]}>{error}</AppText>
         ) : (
           <>
-            <Text style={styles.text}>
-              Status: <Text style={styles.bold}>{String(status)}</Text>
-            </Text>
-            <Text style={styles.text}>
-              Ends: <Text style={styles.bold}>{formatDate(endsAt)}</Text>
-            </Text>
+            <AppText style={styles.text}>Status: <AppText style={styles.bold}>{String(status)}</AppText></AppText>
+            <AppText style={styles.text}>Ends: <AppText style={styles.bold}>{formatDate(endsAt)}</AppText></AppText>
           </>
         )}
 
         {!canManageBilling ? (
-          <Text style={styles.helperText}>
+          <AppText variant="caption" style={styles.helperText}>
             Billing portal will unlock after Stripe customer setup completes.
-          </Text>
+          </AppText>
         ) : null}
 
         <Pressable
@@ -135,19 +140,19 @@ export default function SettingsScreen({ navigation }) {
           onPress={openBillingPortal}
           disabled={!canManageBilling}
         >
-          <Text style={styles.btnText}>Manage Billing</Text>
+          <AppText style={styles.btnText}>Manage Billing</AppText>
         </Pressable>
-      </View>
+      </AppCard>
 
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Account</Text>
+      <AppCard style={styles.card}>
+        <AppText variant="section" style={styles.cardTitle}>Account</AppText>
 
         <Pressable style={styles.rowButton} onPress={() => navigation.navigate("Account")}>
-          <Text style={styles.rowText}>Account</Text>
+          <AppText style={styles.rowText}>Account</AppText>
         </Pressable>
 
         <Pressable style={styles.rowButton} onPress={() => navigation.navigate("PortingStatus")}>
-          <Text style={styles.rowText}>Porting Status</Text>
+          <AppText style={styles.rowText}>Porting Status</AppText>
         </Pressable>
 
         <Pressable
@@ -159,9 +164,9 @@ export default function SettingsScreen({ navigation }) {
             ])
           }
         >
-          <Text style={[styles.btnText, styles.logoutText]}>Log out</Text>
+          <AppText style={[styles.btnText, styles.logoutText]}>Log out</AppText>
         </Pressable>
-      </View>
+      </AppCard>
       </View>
     </ScreenContainer>
   );
@@ -169,23 +174,15 @@ export default function SettingsScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  title: { fontSize: 28, fontWeight: "900", marginBottom: 14 },
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 14,
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 2,
-  },
-  cardTitle: { fontSize: 16, fontWeight: "900", marginBottom: 10 },
-  text: { fontSize: 14, color: "#111", marginBottom: 6 },
+  title: { marginBottom: spacing.md },
+  card: { marginBottom: spacing.md },
+  cardTitle: { marginBottom: spacing.sm },
+  statusBadge: { marginBottom: spacing.sm },
+  text: { marginBottom: spacing.xs },
   bold: { fontWeight: "900" },
-  error: { color: "red" },
+  error: { color: colors.danger },
   btn: {
-    marginTop: 10,
+    marginTop: spacing.sm,
     backgroundColor: "#000",
     paddingVertical: 12,
     borderRadius: 12,
@@ -193,9 +190,9 @@ const styles = StyleSheet.create({
   },
   btnDisabled: { opacity: 0.5 },
   btnText: { color: "#fff", fontWeight: "900" },
-  helperText: { fontSize: 12, color: "#6b7280", marginBottom: 2 },
+  helperText: { marginBottom: 2, color: colors.textMuted },
   logoutBtn: { backgroundColor: "#eee" },
   logoutText: { color: "#b00" },
   rowButton: { paddingVertical: 12 },
-  rowText: { fontSize: 16, color: "#111", fontWeight: "700", marginBottom: 6 },
+  rowText: { fontSize: 16, color: colors.textPrimary, fontWeight: "700", marginBottom: 6 },
 });

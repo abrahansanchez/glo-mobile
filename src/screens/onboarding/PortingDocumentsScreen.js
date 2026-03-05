@@ -1,7 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, Pressable, StyleSheet, Alert } from "react-native";
+import { View, Pressable, StyleSheet, Alert } from "react-native";
 import api from "../../config/api";
 import OnboardingHeader from "../../onboarding/OnboardingHeader";
+import AppCard from "../../components/ui/AppCard";
+import AppText from "../../components/ui/AppText";
+import AppBadge from "../../components/ui/AppBadge";
+import { colors, spacing } from "../../ui/tokens";
 
 function getPortingId(payload) {
   return payload?.portingId || payload?.id || payload?._id || null;
@@ -146,51 +150,56 @@ export default function PortingDocumentsScreen({ navigation, route }) {
   return (
     <View style={styles.container}>
       <OnboardingHeader />
-      <Text style={styles.title}>Upload Porting Documents</Text>
-      <Text style={styles.subtitle}>Upload signed LOA and a recent bill.</Text>
+      <AppText variant="title" style={styles.title}>Upload Porting Documents</AppText>
+      <AppText variant="body" style={styles.subtitle}>Upload signed LOA and a recent bill.</AppText>
 
-      <View style={styles.statusRow}>
-        <Text style={styles.statusLabel}>LOA</Text>
-        <Text style={[styles.statusValue, loaUploaded ? styles.ok : styles.missing]}>
+      <View style={styles.badgeRow}>
+        <AppBadge label={`LOA: ${loaUploaded ? "UPLOADED" : "MISSING"}`} tone={loaUploaded ? "success" : "warning"} />
+        <AppBadge label={`BILL: ${billUploaded ? "UPLOADED" : "MISSING"}`} tone={billUploaded ? "success" : "warning"} />
+      </View>
+
+      <AppCard style={styles.statusRow}>
+        <AppText style={styles.statusLabel}>LOA</AppText>
+        <AppText style={[styles.statusValue, loaUploaded ? styles.ok : styles.missing]}>
           {loaUploaded ? "Uploaded" : "Missing"}
-        </Text>
-      </View>
-      <View style={styles.statusRow}>
-        <Text style={styles.statusLabel}>Recent bill</Text>
-        <Text style={[styles.statusValue, billUploaded ? styles.ok : styles.missing]}>
+        </AppText>
+      </AppCard>
+      <AppCard style={styles.statusRow}>
+        <AppText style={styles.statusLabel}>Recent bill</AppText>
+        <AppText style={[styles.statusValue, billUploaded ? styles.ok : styles.missing]}>
           {billUploaded ? "Uploaded" : "Missing"}
-        </Text>
-      </View>
+        </AppText>
+      </AppCard>
 
       <Pressable style={styles.secondaryBtn} onPress={() => pickDoc("loa")}>
-        <Text style={styles.secondaryText}>
+        <AppText style={styles.secondaryText}>
           {loaFile
             ? `Selected LOA: ${loaFile.name || "file"} (${formatMimeType(loaFile)})`
             : "Select LOA file"}
-        </Text>
+        </AppText>
       </Pressable>
-      {loaUploadSuccess ? <Text style={styles.success}>LOA uploaded successfully.</Text> : null}
+      {loaUploadSuccess ? <AppText style={styles.success}>LOA uploaded successfully.</AppText> : null}
       <Pressable style={styles.secondaryBtn} onPress={() => pickDoc("bill")}>
-        <Text style={styles.secondaryText}>
+        <AppText style={styles.secondaryText}>
           {billFile
             ? `Selected bill: ${billFile.name || "file"} (${formatMimeType(billFile)})`
             : "Select bill file"}
-        </Text>
+        </AppText>
       </Pressable>
-      {billUploadSuccess ? <Text style={styles.success}>Bill uploaded successfully.</Text> : null}
+      {billUploadSuccess ? <AppText style={styles.success}>Bill uploaded successfully.</AppText> : null}
 
-      {!!error ? <Text style={styles.error}>{error}</Text> : null}
+      {!!error ? <AppText style={styles.error}>{error}</AppText> : null}
 
       <Pressable
         style={[styles.primaryBtn, loading && styles.disabled]}
         onPress={uploadDocs}
         disabled={loading}
       >
-        <Text style={styles.primaryText}>{loading ? "Uploading bill + LOA..." : "Upload documents"}</Text>
+        <AppText style={styles.primaryText}>{loading ? "Uploading bill + LOA..." : "Upload documents"}</AppText>
       </Pressable>
 
       <Pressable style={styles.secondaryBtn} onPress={() => navigation.navigate("PortingStatus")}>
-        <Text style={styles.secondaryText}>View status</Text>
+        <AppText style={styles.secondaryText}>View status</AppText>
       </Pressable>
     </View>
   );
@@ -198,27 +207,23 @@ export default function PortingDocumentsScreen({ navigation, route }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff", padding: 24, justifyContent: "center" },
-  title: { fontSize: 26, fontWeight: "900", marginBottom: 8 },
-  subtitle: { color: "#4b5563", marginBottom: 14 },
+  title: { marginBottom: spacing.xs },
+  subtitle: { color: colors.textSecondary, marginBottom: spacing.md },
+  badgeRow: { flexDirection: "row", gap: spacing.xs, marginBottom: spacing.sm },
   statusRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
-  statusLabel: { fontWeight: "700", color: "#111827" },
+  statusLabel: { fontWeight: "700", color: colors.textPrimary },
   statusValue: { fontWeight: "800" },
-  ok: { color: "#065f46" },
-  missing: { color: "#b45309" },
-  primaryBtn: { backgroundColor: "#000", borderRadius: 12, paddingVertical: 12, alignItems: "center", marginTop: 8 },
+  ok: { color: colors.success },
+  missing: { color: colors.warning },
+  primaryBtn: { backgroundColor: "#000", borderRadius: 12, paddingVertical: 12, alignItems: "center", marginTop: spacing.sm },
   primaryText: { color: "#fff", fontWeight: "900" },
-  secondaryBtn: { alignItems: "center", marginTop: 10, padding: 10 },
-  secondaryText: { textDecorationLine: "underline", fontWeight: "700", color: "#111827" },
+  secondaryBtn: { alignItems: "center", marginTop: spacing.sm, padding: spacing.sm },
+  secondaryText: { textDecorationLine: "underline", fontWeight: "700", color: colors.textPrimary },
   disabled: { opacity: 0.6 },
-  error: { color: "#b00020", fontWeight: "700", marginTop: 8 },
-  success: { color: "#065f46", fontWeight: "700", marginTop: 4 },
+  error: { color: colors.danger, fontWeight: "700", marginTop: spacing.sm },
+  success: { color: colors.success, fontWeight: "700", marginTop: spacing.xs },
 });

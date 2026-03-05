@@ -1,9 +1,14 @@
 // src/screens/AppointmentsScreen.js
-import { View, Text, FlatList, StyleSheet, Pressable } from "react-native";
+import { View, FlatList, StyleSheet, Pressable } from "react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
 import api from "../config/api";
 import LoadingState from "../components/LoadingState";
 import ScreenContainer from "../components/layout/ScreenContainer";
+import AppCard from "../components/ui/AppCard";
+import AppBadge from "../components/ui/AppBadge";
+import AppText from "../components/ui/AppText";
+import EmptyState from "../components/ui/EmptyState";
+import { colors, spacing, radii } from "../ui/tokens";
 
 function startOfDayLocal(value) {
   const d = new Date(value);
@@ -188,9 +193,9 @@ export default function AppointmentsScreen({ route }) {
               onPress={() => setViewMode(mode)}
               style={[styles.modeButton, viewMode === mode && styles.modeButtonActive]}
             >
-              <Text style={[styles.modeText, viewMode === mode && styles.modeTextActive]}>
+              <AppText style={[styles.modeText, viewMode === mode && styles.modeTextActive]}>
                 {mode.toUpperCase()}
-              </Text>
+              </AppText>
             </Pressable>
           ))}
         </View>
@@ -198,35 +203,34 @@ export default function AppointmentsScreen({ route }) {
         <View style={styles.rangeRowWrap}>
           <View style={styles.rangeRow}>
           <Pressable onPress={() => shiftRange(-1)} style={styles.navButton}>
-            <Text style={styles.navButtonText}>Prev</Text>
+            <AppText style={styles.navButtonText}>Prev</AppText>
           </Pressable>
-          <Text style={styles.rangeLabel}>{selectedRange.label}</Text>
+          <AppText style={styles.rangeLabel}>{selectedRange.label}</AppText>
           <View style={styles.rightNavGroup}>
             <Pressable onPress={jumpToToday} style={styles.todayButton}>
-              <Text style={styles.todayButtonText}>Today</Text>
+              <AppText style={styles.todayButtonText}>Today</AppText>
             </Pressable>
             <Pressable onPress={() => shiftRange(1)} style={styles.navButton}>
-              <Text style={styles.navButtonText}>Next</Text>
+              <AppText style={styles.navButtonText}>Next</AppText>
             </Pressable>
           </View>
         </View>
         </View>
 
-        <Text style={styles.tzText}>Times shown in {timezone}</Text>
+        <AppText variant="caption" style={styles.tzText}>Times shown in {timezone}</AppText>
         {isFallbackList ? (
-          <Text style={styles.fallbackText}>Showing upcoming list (range view fallback).</Text>
+          <AppText variant="caption" style={styles.fallbackText}>Showing upcoming list (range view fallback).</AppText>
         ) : null}
         {!!focusDateLabel ? (
-          <Text style={styles.focusInfo}>Focused date: {focusDateLabel}</Text>
+          <AppText variant="caption" style={styles.focusInfo}>Focused date: {focusDateLabel}</AppText>
         ) : null}
       </View>
 
       {!appointments.length ? (
-        <View style={styles.center}>
-          <Text style={styles.empty}>
-            {isFallbackList ? "No upcoming appointments" : `No appointments in this ${viewMode}.`}
-          </Text>
-        </View>
+        <EmptyState
+          title={isFallbackList ? "No upcoming appointments" : "No appointments"}
+          message={isFallbackList ? "No upcoming appointments found right now." : `No appointments in this ${viewMode}.`}
+        />
       ) : (
         <FlatList
           ref={listRef}
@@ -244,13 +248,17 @@ export default function AppointmentsScreen({ route }) {
             }, 200);
           }}
           renderItem={({ item }) => (
-            <View style={[styles.card, focusAppointmentId === item?._id && styles.focusCard]}>
-              <Text style={styles.client}>{item.clientName || item.customerName || "Client"}</Text>
-              <Text style={styles.meta}>{formatLocalDateTime(appointmentStartAt(item))}</Text>
-              <Text style={styles.badges}>
-                {(item?.status || "scheduled").toUpperCase()} · {(item?.source || "manual").toUpperCase()}
-              </Text>
-            </View>
+            <AppCard style={[styles.card, focusAppointmentId === item?._id && styles.focusCard]}>
+              <AppText style={styles.client}>{item.clientName || item.customerName || "Client"}</AppText>
+              <AppText variant="body" style={styles.meta}>{formatLocalDateTime(appointmentStartAt(item))}</AppText>
+              <View style={styles.badgeRow}>
+                <AppBadge
+                  label={(item?.status || "scheduled").toUpperCase()}
+                  tone={item?.status === "confirmed" || item?.status === "completed" ? "success" : "neutral"}
+                />
+                <AppBadge label={(item?.source || "manual").toUpperCase()} tone="neutral" />
+              </View>
+            </AppCard>
           )}
         />
       )}
@@ -264,19 +272,19 @@ const styles = StyleSheet.create({
   },
   topControls: {
     marginTop: 6,
-    marginBottom: 10,
+    marginBottom: spacing.md,
   },
   modeRow: {
     flexDirection: "row",
-    gap: 8,
+    gap: spacing.sm,
   },
   modeButton: {
     borderWidth: 1,
-    borderColor: "#d9dde3",
-    borderRadius: 999,
+    borderColor: colors.border,
+    borderRadius: radii.pill,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: "#fff",
+    backgroundColor: colors.card,
   },
   modeButtonActive: {
     backgroundColor: "#111827",
@@ -284,7 +292,7 @@ const styles = StyleSheet.create({
   },
   modeText: {
     fontSize: 12,
-    color: "#4b5563",
+    color: colors.textSecondary,
     fontWeight: "600",
   },
   modeTextActive: {
@@ -296,8 +304,8 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   rangeRowWrap: {
-    marginTop: 10,
-    marginBottom: 12,
+    marginTop: spacing.sm,
+    marginBottom: spacing.md,
   },
   rightNavGroup: {
     flexDirection: "row",
@@ -315,7 +323,7 @@ const styles = StyleSheet.create({
   rangeLabel: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#111827",
+    color: colors.textPrimary,
   },
   todayButton: {
     borderWidth: 1,
@@ -331,40 +339,19 @@ const styles = StyleSheet.create({
   },
   tzText: {
     marginTop: 4,
-    fontSize: 12,
-    color: "#6b7280",
+    color: colors.textMuted,
   },
   fallbackText: {
     marginTop: 6,
-    fontSize: 12,
-    color: "#92400e",
+    color: colors.warning,
   },
   focusInfo: {
     marginTop: 6,
-    fontSize: 12,
     color: "#2563eb",
     fontWeight: "600",
   },
-  center: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
-  },
-  empty: {
-    fontSize: 16,
-    color: "#777",
-    textAlign: "center",
-  },
   card: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 3,
+    marginBottom: spacing.sm,
   },
   focusCard: {
     borderWidth: 2,
@@ -376,12 +363,11 @@ const styles = StyleSheet.create({
   },
   meta: {
     marginTop: 4,
-    color: "#666",
+    color: colors.textSecondary,
   },
-  badges: {
+  badgeRow: {
     marginTop: 8,
-    fontSize: 12,
-    color: "#4b5563",
-    fontWeight: "600",
+    flexDirection: "row",
+    gap: spacing.xs,
   },
 });

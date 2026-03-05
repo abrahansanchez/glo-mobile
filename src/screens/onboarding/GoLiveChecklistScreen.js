@@ -1,9 +1,14 @@
 import React, { useContext, useEffect, useState } from "react";
-import { View, Text, Pressable, StyleSheet, ScrollView, RefreshControl, Alert } from "react-native";
+import { View, Pressable, StyleSheet, ScrollView, RefreshControl, Alert } from "react-native";
 import { OnboardingContext } from "../../onboarding/OnboardingContext";
 import api from "../../config/api";
 import OnboardingHeader from "../../onboarding/OnboardingHeader";
 import { STEPS } from "../../onboarding/stepKeys";
+import AppCard from "../../components/ui/AppCard";
+import AppBadge from "../../components/ui/AppBadge";
+import AppText from "../../components/ui/AppText";
+import EmptyState from "../../components/ui/EmptyState";
+import { colors, spacing } from "../../ui/tokens";
 
 const BLOCKER_UI = {
   ONBOARDING_INCOMPLETE: {
@@ -339,53 +344,57 @@ export default function GoLiveChecklistScreen({ navigation }) {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onPullRefresh} />}
     >
       <OnboardingHeader />
-      <Text style={styles.title}>You’re Almost Live</Text>
-      <Text style={styles.subtitle}>
+      <AppText variant="title" style={styles.title}>You’re Almost Live</AppText>
+      <AppText variant="body" style={styles.subtitle}>
         {ready ? "All systems ready." : "Complete these items to go live."}
-      </Text>
+      </AppText>
+      <AppBadge label={ready ? "READY" : "ACTION REQUIRED"} tone={ready ? "success" : "warning"} style={styles.statusBadge} />
 
-      {loading ? <Text style={styles.loading}>Loading…</Text> : null}
+      {loading ? <AppText style={styles.loading}>Loading…</AppText> : null}
 
       {checklistItems.length === 0 && !loading ? (
-        <Text style={styles.empty}>Checklist unavailable right now.</Text>
+        <EmptyState
+          title="Checklist unavailable"
+          message="Checklist unavailable right now."
+        />
       ) : (
         checklistItems.map(({ key, value }) => (
-          <View key={key} style={[styles.row, value ? styles.rowReady : styles.rowPending]}>
+          <AppCard key={key} style={[styles.row, value ? styles.rowReady : styles.rowPending]}>
             <View style={styles.rowLeft}>
-              <Text style={styles.rowLabel}>{getReadinessLabel(key)}</Text>
-              {!value ? <Text style={styles.helperText}>{getReadinessHelper(key)}</Text> : null}
+              <AppText style={styles.rowLabel}>{getReadinessLabel(key)}</AppText>
+              {!value ? <AppText variant="caption" style={styles.helperText}>{getReadinessHelper(key)}</AppText> : null}
             </View>
-            <Text style={[styles.rowValue, value ? styles.ok : styles.notOk]}>
+            <AppText style={[styles.rowValue, value ? styles.ok : styles.notOk]}>
               {value ? "✅ Ready" : "⏳ Not ready"}
-            </Text>
-          </View>
+            </AppText>
+          </AppCard>
         ))
       )}
 
-      {!!error ? <Text style={styles.error}>{error}</Text> : null}
+      {!!error ? <AppText style={styles.error}>{error}</AppText> : null}
       {blockers.length > 0 ? (
-        <View style={styles.blockers}>
-          <Text style={styles.blockerTitle}>Blockers</Text>
+        <AppCard style={styles.blockers}>
+          <AppText style={styles.blockerTitle}>Blockers</AppText>
           {blockers.map((blocker, idx) => {
             const action = blocker.action || getBlockerAction(blocker.code);
             return (
-              <View key={`bl-${idx}-${blocker.code}`} style={styles.blockerCard}>
-                <Text style={styles.blockerCardTitle}>{blocker.title}</Text>
-                <Text style={styles.blockerText}>{blocker.message}</Text>
+              <AppCard key={`bl-${idx}-${blocker.code}`} style={styles.blockerCard}>
+                <AppText style={styles.blockerCardTitle}>{blocker.title}</AppText>
+                <AppText style={styles.blockerText}>{blocker.message}</AppText>
                 <Pressable
                   style={styles.blockerBtn}
                   onPress={() => handleBlockerAction(action)}
                 >
-                  <Text style={styles.blockerBtnText}>{blocker.actionText || "Fix"}</Text>
+                  <AppText style={styles.blockerBtnText}>{blocker.actionText || "Fix"}</AppText>
                 </Pressable>
-              </View>
+              </AppCard>
             );
           })}
-        </View>
+        </AppCard>
       ) : null}
 
       <Pressable style={styles.secondaryBtn} onPress={loadChecklist}>
-        <Text style={styles.secondaryText}>{loading ? "Refreshing..." : "Refresh Checklist"}</Text>
+        <AppText style={styles.secondaryText}>{loading ? "Refreshing..." : "Refresh Checklist"}</AppText>
       </Pressable>
 
       <Pressable
@@ -393,13 +402,13 @@ export default function GoLiveChecklistScreen({ navigation }) {
         onPress={handleGoLive}
         disabled={!trialStarted}
       >
-        <Text style={styles.primaryText}>
+        <AppText style={styles.primaryText}>
           {trialStarted ? "Go to Dashboard" : "Start trial to continue"}
-        </Text>
+        </AppText>
       </Pressable>
 
       <Pressable style={styles.secondaryBtn} onPress={handleFinishSetup}>
-        <Text style={styles.secondaryText}>Finish Setup</Text>
+        <AppText style={styles.secondaryText}>Finish Setup</AppText>
       </Pressable>
     </ScrollView>
   );
@@ -407,48 +416,40 @@ export default function GoLiveChecklistScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flexGrow: 1, backgroundColor: "#fff", padding: 24 },
-  title: { fontSize: 28, fontWeight: "900", marginBottom: 6 },
-  subtitle: { color: "#4b5563", marginBottom: 14 },
-  loading: { color: "#6b7280", marginBottom: 10, fontWeight: "700" },
+  title: { marginBottom: spacing.xs },
+  subtitle: { color: colors.textSecondary, marginBottom: spacing.xs },
+  statusBadge: { marginBottom: spacing.md },
+  loading: { color: colors.textMuted, marginBottom: spacing.sm, fontWeight: "700" },
   row: {
     flexDirection: "row",
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   rowReady: { backgroundColor: "#f9fafb" },
   rowPending: { backgroundColor: "#fff" },
   rowLeft: { flex: 1, paddingRight: 8 },
-  rowLabel: { color: "#111827", fontWeight: "700" },
-  helperText: { color: "#6b7280", fontSize: 12, marginTop: 2 },
+  rowLabel: { color: colors.textPrimary, fontWeight: "700" },
+  helperText: { color: colors.textMuted, marginTop: 2 },
   rowValue: { fontWeight: "800" },
-  ok: { color: "#065f46" },
-  notOk: { color: "#92400e" },
+  ok: { color: colors.success },
+  notOk: { color: colors.warning },
   blockers: {
-    marginTop: 8,
+    marginTop: spacing.sm,
     borderWidth: 1,
     borderColor: "#fde68a",
     backgroundColor: "#fffbeb",
-    borderRadius: 10,
-    padding: 12,
   },
-  blockerTitle: { fontWeight: "800", marginBottom: 4 },
+  blockerTitle: { fontWeight: "800", marginBottom: spacing.xs },
   blockerText: { color: "#78350f", marginTop: 2 },
   blockerCard: {
-    marginTop: 10,
-    padding: 10,
+    marginTop: spacing.sm,
     borderWidth: 1,
     borderColor: "#f59e0b",
-    borderRadius: 10,
     backgroundColor: "#fff",
   },
   blockerCardTitle: { fontWeight: "800", color: "#78350f" },
   blockerBtn: {
-    marginTop: 8,
+    marginTop: spacing.sm,
     alignSelf: "flex-start",
     backgroundColor: "#111827",
     borderRadius: 999,
@@ -465,8 +466,7 @@ const styles = StyleSheet.create({
   },
   primaryDisabled: { opacity: 0.5 },
   primaryText: { color: "#fff", fontWeight: "900" },
-  secondaryBtn: { alignItems: "center", marginTop: 10, padding: 10 },
+  secondaryBtn: { alignItems: "center", marginTop: spacing.sm, padding: spacing.sm },
   secondaryText: { textDecorationLine: "underline", fontWeight: "700" },
-  error: { color: "#b00020", fontWeight: "700", marginTop: 8 },
-  empty: { color: "#6b7280", marginBottom: 8 },
+  error: { color: colors.danger, fontWeight: "700", marginTop: spacing.sm },
 });
