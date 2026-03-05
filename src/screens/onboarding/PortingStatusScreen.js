@@ -20,14 +20,16 @@ function formatDate(value) {
   return d.toLocaleString();
 }
 
-export default function PortingStatusScreen({ navigation }) {
+export default function PortingStatusScreen({ navigation, route }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [statusPayload, setStatusPayload] = useState(null);
   const [error, setError] = useState("");
+  const routePortingId = route?.params?.portingId || null;
 
   const status = statusPayload?.status || "draft";
   const rejectionReason = statusPayload?.rejectionReason || statusPayload?.reason || "";
+  const blockers = Array.isArray(statusPayload?.blockers) ? statusPayload.blockers : [];
 
   const currentIndex = useMemo(
     () => STATUS_STEPS.findIndex((s) => s.key === status),
@@ -38,7 +40,9 @@ export default function PortingStatusScreen({ navigation }) {
     setLoading((prev) => (refreshing ? prev : true));
     setError("");
     try {
-      const response = await api.get("/phone/porting/status");
+      const response = await api.get("/phone/porting/status", {
+        params: routePortingId ? { id: routePortingId } : undefined,
+      });
       setStatusPayload(response.data || {});
     } catch (e) {
       setError(e?.response?.data?.message || "Failed to load port status");
@@ -56,6 +60,17 @@ export default function PortingStatusScreen({ navigation }) {
       loadStatus();
     }, [])
   );
+
+  useEffect(() => {
+    const shouldPoll = status === "submitted" || status === "carrier_review";
+    if (!shouldPoll) return undefined;
+
+    const timer = setInterval(() => {
+      loadStatus();
+    }, 30000);
+
+    return () => clearInterval(timer);
+  }, [status, routePortingId]);
 
   async function onPullRefresh() {
     setRefreshing(true);
@@ -76,6 +91,7 @@ export default function PortingStatusScreen({ navigation }) {
       <OnboardingHeader />
       <Text style={styles.title}>Porting Status</Text>
       <Text style={styles.subtitle}>Current status: {status}</Text>
+      <Text style={styles.note}>Usually 3-10 business days depending on carrier response times.</Text>
 
       <View style={styles.metaCard}>
         <Text style={styles.metaText}>Submitted: {formatDate(statusPayload?.submittedAt)}</Text>
@@ -103,6 +119,17 @@ export default function PortingStatusScreen({ navigation }) {
         <View style={styles.rejectCard}>
           <Text style={styles.rejectTitle}>Rejection reason</Text>
           <Text style={styles.rejectText}>{rejectionReason}</Text>
+        </View>
+      ) : null}
+
+      {blockers.length ? (
+        <View style={styles.blockersCard}>
+          <Text style={styles.blockersTitle}>Blockers</Text>
+          {blockers.map((item, idx) => (
+            <Text key={`${idx}-${item}`} style={styles.blockersItem}>
+              • {String(item)}
+            </Text>
+          ))}
         </View>
       ) : null}
 
@@ -149,6 +176,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff", padding: 24, justifyContent: "center" },
   title: { fontSize: 28, fontWeight: "900", marginBottom: 6 },
   subtitle: { color: "#4b5563", marginBottom: 12 },
+  note: { color: "#6b7280", marginBottom: 12 },
   metaCard: { padding: 10, borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, marginBottom: 12 },
   metaText: { color: "#374151", fontSize: 12, marginBottom: 4 },
   timeline: { gap: 8, marginBottom: 12 },
@@ -160,6 +188,16 @@ const styles = StyleSheet.create({
   rejectCard: { padding: 10, borderWidth: 1, borderColor: "#fca5a5", borderRadius: 10, marginBottom: 10, backgroundColor: "#fff1f2" },
   rejectTitle: { fontWeight: "800", color: "#991b1b", marginBottom: 4 },
   rejectText: { color: "#7f1d1d" },
+  blockersCard: {
+    padding: 10,
+    borderWidth: 1,
+    borderColor: "#fbbf24",
+    borderRadius: 10,
+    marginBottom: 10,
+    backgroundColor: "#fffbeb",
+  },
+  blockersTitle: { fontWeight: "800", color: "#92400e", marginBottom: 4 },
+  blockersItem: { color: "#78350f" },
   primaryBtn: { backgroundColor: "#000", borderRadius: 12, paddingVertical: 12, alignItems: "center", marginTop: 4 },
   primaryText: { color: "#fff", fontWeight: "900" },
   secondaryBtn: { alignItems: "center", marginTop: 10, padding: 10 },
