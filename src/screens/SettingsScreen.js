@@ -132,24 +132,37 @@ export default function SettingsScreen({ navigation }) {
 
   function canNavigateTo(routeName) {
     const routeNames = navigation?.getState?.()?.routeNames || [];
-    return routeNames.includes(routeName);
+    const parentRouteNames = navigation?.getParent?.()?.getState?.()?.routeNames || [];
+    return routeNames.includes(routeName) || parentRouteNames.includes(routeName);
+  }
+
+  function navigateRoute(routeName) {
+    const routeNames = navigation?.getState?.()?.routeNames || [];
+    if (routeNames.includes(routeName)) {
+      navigation.navigate(routeName);
+      return true;
+    }
+    const parentNavigation = navigation?.getParent?.();
+    const parentRouteNames = parentNavigation?.getState?.()?.routeNames || [];
+    if (parentRouteNames.includes(routeName)) {
+      parentNavigation.navigate(routeName);
+      return true;
+    }
+    return false;
   }
 
   function openAccount() {
-    if (canNavigateTo("Account")) {
-      navigation.navigate("Account");
+    if (navigateRoute("Account")) {
       return;
     }
     Alert.alert("Navigation", "Account screen is unavailable in this build.");
   }
 
   function openPortingStatus() {
-    if (canNavigateTo("PortingStatus")) {
-      navigation.navigate("PortingStatus");
+    if (navigateRoute("PortingStatus")) {
       return;
     }
-    if (canNavigateTo("PortingForm")) {
-      navigation.navigate("PortingForm");
+    if (navigateRoute("PortingForm")) {
       return;
     }
     Alert.alert("Navigation", "Porting screen is unavailable in this build.");
