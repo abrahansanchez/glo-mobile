@@ -341,7 +341,7 @@ const styles = StyleSheet.create({
   },
   fallbackText: {
     marginTop: 6,
-    color: colors.warning,
+    color: "#b45309",
   },
   focusInfo: {
     marginTop: 6,
@@ -361,7 +361,7 @@ const styles = StyleSheet.create({
   },
   meta: {
     marginTop: 4,
-    color: colors.textSecondary,
+    color: "#4b5563",
   },
   badgeRow: {
     marginTop: 8,

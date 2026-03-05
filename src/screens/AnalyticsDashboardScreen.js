@@ -203,10 +203,10 @@ const styles = StyleSheet.create({
   errorCard: {
     marginBottom: spacing.md,
     borderWidth: 1,
-    borderColor: colors.danger,
+    borderColor: "#b00020",
   },
   errorText: {
-    color: colors.danger,
+    color: "#b00020",
     fontWeight: "700",
   },
   grid: {
