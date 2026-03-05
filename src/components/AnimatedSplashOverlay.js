@@ -20,6 +20,8 @@ try {
 const {
   durationMs,
   fadeOutMs,
+  wordmarkDelayMs,
+  wordmarkSlidePx,
   useLottie,
   lottieSource,
   gifSource,
@@ -34,6 +36,8 @@ export default function AnimatedSplashOverlay({ onFinish }) {
   const glowOpacity = useRef(new Animated.Value(0)).current;
   const arcSpin = useRef(new Animated.Value(0)).current;
   const arcOpacity = useRef(new Animated.Value(0.95)).current;
+  const wordmarkOpacity = useRef(new Animated.Value(0)).current;
+  const wordmarkTranslateY = useRef(new Animated.Value(wordmarkSlidePx)).current;
 
   const canUseLottie = useLottie && !!LottieView && !!lottieSource;
   const canUseGif = !canUseLottie && !!gifSource;
@@ -92,6 +96,23 @@ export default function AnimatedSplashOverlay({ onFinish }) {
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
+        Animated.sequence([
+          Animated.delay(wordmarkDelayMs),
+          Animated.parallel([
+            Animated.timing(wordmarkOpacity, {
+              toValue: 1,
+              duration: 380,
+              easing: Easing.out(Easing.cubic),
+              useNativeDriver: true,
+            }),
+            Animated.timing(wordmarkTranslateY, {
+              toValue: 0,
+              duration: 380,
+              easing: Easing.out(Easing.cubic),
+              useNativeDriver: true,
+            }),
+          ]),
+        ]),
       ]).start();
 
       const doneTimer = setTimeout(() => {
@@ -123,6 +144,10 @@ export default function AnimatedSplashOverlay({ onFinish }) {
     overlayOpacity,
     ringOpacity,
     ringScale,
+    wordmarkDelayMs,
+    wordmarkOpacity,
+    wordmarkSlidePx,
+    wordmarkTranslateY,
   ]);
 
   if (!visible) {
@@ -160,6 +185,17 @@ export default function AnimatedSplashOverlay({ onFinish }) {
               },
             ]}
           />
+          <Animated.Text
+            style={[
+              styles.wordmark,
+              {
+                opacity: wordmarkOpacity,
+                transform: [{ translateY: wordmarkTranslateY }],
+              },
+            ]}
+          >
+            Glō
+          </Animated.Text>
         </View>
       )}
     </Animated.View>
@@ -177,10 +213,10 @@ const styles = StyleSheet.create({
     zIndex: 9999,
   },
   circleWrap: {
-    width: RING_SIZE,
-    height: RING_SIZE,
+    width: 320,
+    height: 280,
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "flex-start",
   },
   glowRing: {
     position: "absolute",
@@ -206,6 +242,13 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 5,
     borderColor: "#cae8ff",
+  },
+  wordmark: {
+    marginTop: 26,
+    color: "#e6eaef",
+    fontSize: 58,
+    fontWeight: "500",
+    letterSpacing: 0.6,
   },
   assetWrap: {
     width: 280,

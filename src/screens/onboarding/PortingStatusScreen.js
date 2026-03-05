@@ -7,6 +7,7 @@ import AppCard from "../../components/ui/AppCard";
 import AppText from "../../components/ui/AppText";
 import AppBadge from "../../components/ui/AppBadge";
 import AppButton from "../../components/ui/AppButton";
+import OnboardingHero from "../../components/onboarding/OnboardingHero";
 import { colors, spacing } from "../../ui/tokens";
 import { track } from "../../analytics/track";
 
@@ -142,7 +143,11 @@ export default function PortingStatusScreen({ navigation, route }) {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onPullRefresh} />}
     >
       <OnboardingHeader />
-      <AppText variant="title" style={styles.title}>Porting Status</AppText>
+      <OnboardingHero
+        stepLabel="Step 7 of 9"
+        title="Porting Status"
+        subtitle="Track your transfer and resolve any issues quickly."
+      />
       <AppBadge
         label={String(status).toUpperCase()}
         tone={status === "completed" || status === "approved" ? "success" : status === "rejected" ? "warning" : "neutral"}
@@ -247,7 +252,6 @@ export default function PortingStatusScreen({ navigation, route }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff", padding: 24, justifyContent: "center" },
-  title: { marginBottom: spacing.xs },
   statusBadge: { marginBottom: spacing.xs },
   note: { color: colors.textMuted, marginBottom: spacing.md },
   metaCard: { marginBottom: spacing.md, padding: spacing.md },

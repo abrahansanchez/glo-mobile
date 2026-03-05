@@ -1,9 +1,14 @@
 import React, { useContext, useState } from "react";
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import { View, Pressable, StyleSheet } from "react-native";
 import { OnboardingContext } from "../../onboarding/OnboardingContext";
 import api from "../../config/api";
 import OnboardingHeader from "../../onboarding/OnboardingHeader";
 import { STEPS } from "../../onboarding/stepKeys";
+import AppButton from "../../components/ui/AppButton";
+import AppText from "../../components/ui/AppText";
+import AppCard from "../../components/ui/AppCard";
+import OnboardingHero from "../../components/onboarding/OnboardingHero";
+import { spacing } from "../../ui/tokens";
 
 export default function NumberStrategyScreen({ navigation }) {
   const { updateStep, updateData, onboardingData } = useContext(OnboardingContext);
@@ -43,57 +48,53 @@ export default function NumberStrategyScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <OnboardingHeader />
-      <Text style={styles.title}>Keep Your Current Number?</Text>
-      <Text style={styles.subtitle}>Most businesses keep their number so clients don’t update contacts.</Text>
+      <OnboardingHero
+        stepLabel="Step 4 of 9"
+        title="Choose Your Number Strategy"
+        subtitle="Port your current number or start with a new Glō number."
+      />
 
       <Pressable
         onPress={() => setChoice("port_existing")}
-        style={[styles.card, choice === "port_existing" && styles.cardSelected]}
+        style={styles.cardPressable}
       >
-        <Text style={styles.cardTitle}>Port my existing number</Text>
-        <Text style={styles.cardDesc}>Transfer your current business line into Glō.</Text>
+        <AppCard style={[styles.card, choice === "port_existing" && styles.cardSelected]}>
+          <AppText style={styles.cardTitle}>Port my existing number</AppText>
+          <AppText style={styles.cardDesc}>Transfer your current business line into Glō.</AppText>
+        </AppCard>
       </Pressable>
 
       <Pressable
         onPress={() => setChoice("new_number")}
-        style={[styles.card, choice === "new_number" && styles.cardSelected]}
+        style={styles.cardPressable}
       >
-        <Text style={styles.cardTitle}>Get a new Glō number</Text>
-        <Text style={styles.cardDesc}>Start faster with a new number now.</Text>
+        <AppCard style={[styles.card, choice === "new_number" && styles.cardSelected]}>
+          <AppText style={styles.cardTitle}>Get a new Glō number</AppText>
+          <AppText style={styles.cardDesc}>Start faster with a new number now.</AppText>
+        </AppCard>
       </Pressable>
 
-      {!!error ? <Text style={styles.error}>{error}</Text> : null}
+      {!!error ? <AppText style={styles.error}>{error}</AppText> : null}
 
-      <Pressable style={[styles.button, submitting && styles.buttonDisabled]} onPress={submit} disabled={submitting}>
-        <Text style={styles.buttonText}>{submitting ? "Saving..." : "Continue"}</Text>
-      </Pressable>
+      <AppButton
+        style={styles.button}
+        disabled={submitting}
+        onPress={submit}
+        label={submitting ? "Saving..." : "Continue"}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 24, justifyContent: "center" },
-  title: { fontSize: 26, fontWeight: "900", marginBottom: 8 },
-  subtitle: { fontSize: 14, color: "#555", marginBottom: 20 },
+  cardPressable: { marginBottom: spacing.sm },
   card: {
-    borderWidth: 1,
-    borderColor: "#d1d5db",
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 12,
-    backgroundColor: "#fff",
+    padding: spacing.md,
   },
   cardSelected: { borderColor: "#111827", borderWidth: 2 },
   cardTitle: { fontWeight: "800", fontSize: 16, marginBottom: 6 },
-  cardDesc: { color: "#4b5563", fontSize: 13 },
-  button: {
-    marginTop: 10,
-    backgroundColor: "#000",
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: "center",
-  },
-  buttonDisabled: { opacity: 0.7 },
-  buttonText: { color: "#fff", fontWeight: "900" },
+  cardDesc: { fontSize: 13 },
+  button: { marginTop: 10 },
   error: { color: "#b00020", fontWeight: "700", marginBottom: 8 },
 });

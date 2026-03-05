@@ -1,7 +1,6 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
 import {
   View,
-  Text,
   TextInput,
   Pressable,
   StyleSheet,
@@ -15,6 +14,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { OnboardingContext } from "../../onboarding/OnboardingContext";
 import OnboardingHeader from "../../onboarding/OnboardingHeader";
 import { STEPS } from "../../onboarding/stepKeys";
+import AppButton from "../../components/ui/AppButton";
+import OnboardingHero from "../../components/onboarding/OnboardingHero";
+import AppText from "../../components/ui/AppText";
+import AppCard from "../../components/ui/AppCard";
+import { spacing } from "../../ui/tokens";
 
 export default function BusinessSetupScreen({ navigation }) {
   const { updateStep, setLocalStep, updateData, onboardingData } = useContext(OnboardingContext);
@@ -111,25 +115,32 @@ export default function BusinessSetupScreen({ navigation }) {
             contentContainerStyle={styles.container}
           >
             <OnboardingHeader showLogout={false} showRestart={true} />
-            <Text style={styles.title}>Business Snapshot</Text>
+            <OnboardingHero
+              stepLabel="Step 3 of 9"
+              title="Business Snapshot"
+              subtitle="Set your business profile and hours to personalize call handling."
+            />
 
-        <Text style={styles.label}>Shop Name</Text>
-        <TextInput
-          value={shopName}
-          onChangeText={setShopName}
-          placeholder="Your Shop Name"
-          style={styles.input}
-        />
+        <AppCard style={styles.sectionCard}>
+          <AppText style={styles.label}>Shop Name</AppText>
+          <TextInput
+            value={shopName}
+            onChangeText={setShopName}
+            placeholder="Your Shop Name"
+            style={styles.input}
+          />
 
-        <Text style={styles.label}>City</Text>
-        <TextInput
-          value={city}
-          onChangeText={setCity}
-          placeholder="New York"
-          style={styles.input}
-        />
+          <AppText style={styles.label}>City</AppText>
+          <TextInput
+            value={city}
+            onChangeText={setCity}
+            placeholder="New York"
+            style={styles.input}
+          />
+        </AppCard>
 
-        <Text style={styles.label}>Timezone</Text>
+        <AppCard style={styles.sectionCard}>
+        <AppText style={styles.label}>Timezone</AppText>
         <View style={styles.pickerContainer}>
           {timezones.map((tz) => (
             <Pressable
@@ -140,22 +151,22 @@ export default function BusinessSetupScreen({ navigation }) {
                 timezone === tz && styles.timezonePillSelected,
               ]}
             >
-              <Text
+              <AppText
                 style={[
                   styles.timezonePillText,
                   timezone === tz && styles.timezonePillTextSelected,
                 ]}
               >
                 {tz.split("/")[1] || tz}
-              </Text>
+              </AppText>
             </Pressable>
           ))}
         </View>
 
-        <Text style={styles.label}>Business Hours</Text>
+        <AppText style={styles.label}>Business Hours</AppText>
         <View style={styles.hoursRow}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.hoursLabel}>Open</Text>
+            <AppText style={styles.hoursLabel}>Open</AppText>
             <TextInput
               value={formatTime12Hour(openTime)}
               onFocus={() => setOpenTime(formatTime12Hour(openTime))}
@@ -166,7 +177,7 @@ export default function BusinessSetupScreen({ navigation }) {
             />
           </View>
           <View style={{ flex: 1, marginLeft: 10 }}>
-            <Text style={styles.hoursLabel}>Close</Text>
+            <AppText style={styles.hoursLabel}>Close</AppText>
             <TextInput
               value={formatTime12Hour(closeTime)}
               onFocus={() => setCloseTime(formatTime12Hour(closeTime))}
@@ -177,9 +188,9 @@ export default function BusinessSetupScreen({ navigation }) {
             />
           </View>
         </View>
-        <Text style={styles.timeHint}>Use AM/PM format (example: 9:00 AM)</Text>
+        <AppText style={styles.timeHint}>Use AM/PM format (example: 9:00 AM)</AppText>
 
-        <Text style={styles.label}>Open on these days:</Text>
+        <AppText style={styles.label}>Open on these days:</AppText>
         <View style={styles.daysGrid}>
           {Object.keys(businessDays).map((day) => (
             <Pressable
@@ -190,23 +201,22 @@ export default function BusinessSetupScreen({ navigation }) {
                 businessDays[day] && styles.dayPillOn,
               ]}
             >
-              <Text
+              <AppText
                 style={[
                   styles.dayText,
                   businessDays[day] && styles.dayTextOn,
                 ]}
               >
                 {day.slice(0, 3)}
-              </Text>
+              </AppText>
             </Pressable>
           ))}
         </View>
+        </AppCard>
 
-        {!!error && <Text style={styles.error}>{error}</Text>}
+        {!!error && <AppText style={styles.error}>{error}</AppText>}
 
-        <Pressable style={styles.button} onPress={next}>
-          <Text style={styles.buttonText}>Continue</Text>
-        </Pressable>
+        <AppButton style={styles.button} onPress={next} label="Continue" />
           </ScrollView>
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
@@ -217,7 +227,7 @@ export default function BusinessSetupScreen({ navigation }) {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#fff" },
   container: { flexGrow: 1, paddingHorizontal: 20, paddingTop: 16, paddingBottom: 140 },
-  title: { fontSize: 24, fontWeight: "900", marginBottom: 20 },
+  sectionCard: { marginBottom: spacing.md },
   label: { fontWeight: "800", marginBottom: 8, marginTop: 12 },
   input: {
     borderWidth: 1,
@@ -272,14 +282,7 @@ const styles = StyleSheet.create({
   dayPillOn: { backgroundColor: "#000", borderColor: "#000" },
   dayText: { fontWeight: "600", color: "#000", fontSize: 12 },
   dayTextOn: { color: "#fff" },
-  button: {
-    backgroundColor: "#000",
-    padding: 14,
-    borderRadius: 12,
-    alignItems: "center",
-    marginTop: 20,
-  },
-  buttonText: { color: "#fff", fontWeight: "900" },
+  button: { marginTop: 20 },
   error: { color: "red", marginBottom: 10, fontWeight: "700" },
 });
   function formatTime12Hour(time24) {

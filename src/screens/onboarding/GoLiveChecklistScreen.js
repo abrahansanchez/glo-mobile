@@ -9,6 +9,7 @@ import AppBadge from "../../components/ui/AppBadge";
 import AppText from "../../components/ui/AppText";
 import AppButton from "../../components/ui/AppButton";
 import EmptyState from "../../components/ui/EmptyState";
+import OnboardingHero from "../../components/onboarding/OnboardingHero";
 import { colors, spacing } from "../../ui/tokens";
 
 const BLOCKER_UI = {
@@ -345,10 +346,11 @@ export default function GoLiveChecklistScreen({ navigation }) {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onPullRefresh} />}
     >
       <OnboardingHeader />
-      <AppText variant="title" style={styles.title}>You’re Almost Live</AppText>
-      <AppText variant="body" style={styles.subtitle}>
-        {ready ? "All systems ready." : "Complete these items to go live."}
-      </AppText>
+      <OnboardingHero
+        stepLabel="Step 9 of 9"
+        title="You’re Almost Live"
+        subtitle={ready ? "All systems ready." : "Complete these items to go live."}
+      />
       <AppBadge label={ready ? "READY" : "ACTION REQUIRED"} tone={ready ? "success" : "warning"} style={styles.statusBadge} />
 
       {loading ? <AppText style={styles.loading}>Loading…</AppText> : null}
@@ -421,8 +423,6 @@ export default function GoLiveChecklistScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flexGrow: 1, backgroundColor: "#fff", padding: 24 },
-  title: { marginBottom: spacing.xs },
-  subtitle: { color: colors.textSecondary, marginBottom: spacing.xs },
   statusBadge: { marginBottom: spacing.md },
   loading: { color: colors.textMuted, marginBottom: spacing.sm, fontWeight: "700" },
   row: {

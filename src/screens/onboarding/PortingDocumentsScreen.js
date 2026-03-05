@@ -6,6 +6,7 @@ import AppCard from "../../components/ui/AppCard";
 import AppText from "../../components/ui/AppText";
 import AppBadge from "../../components/ui/AppBadge";
 import AppButton from "../../components/ui/AppButton";
+import OnboardingHero from "../../components/onboarding/OnboardingHero";
 import { colors, spacing } from "../../ui/tokens";
 
 function getPortingId(payload) {
@@ -151,8 +152,11 @@ export default function PortingDocumentsScreen({ navigation, route }) {
   return (
     <View style={styles.container}>
       <OnboardingHeader />
-      <AppText variant="title" style={styles.title}>Upload Porting Documents</AppText>
-      <AppText variant="body" style={styles.subtitle}>Upload signed LOA and a recent bill.</AppText>
+      <OnboardingHero
+        stepLabel="Step 6 of 9"
+        title="Upload Porting Documents"
+        subtitle="Upload a signed LOA and a recent bill."
+      />
 
       <View style={styles.badgeRow}>
         <AppBadge label={`LOA: ${loaUploaded ? "UPLOADED" : "MISSING"}`} tone={loaUploaded ? "success" : "warning"} />
@@ -217,8 +221,6 @@ export default function PortingDocumentsScreen({ navigation, route }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff", padding: 24, justifyContent: "center" },
-  title: { marginBottom: spacing.xs },
-  subtitle: { color: colors.textSecondary, marginBottom: spacing.md },
   badgeRow: { flexDirection: "row", gap: spacing.xs, marginBottom: spacing.sm },
   statusRow: {
     flexDirection: "row",

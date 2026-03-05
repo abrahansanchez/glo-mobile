@@ -9,6 +9,7 @@ import AppCard from "../../components/ui/AppCard";
 import AppText from "../../components/ui/AppText";
 import AppBadge from "../../components/ui/AppBadge";
 import AppButton from "../../components/ui/AppButton";
+import OnboardingHero from "../../components/onboarding/OnboardingHero";
 import { colors, spacing } from "../../ui/tokens";
 import { track } from "../../analytics/track";
 
@@ -54,8 +55,11 @@ export default function TrialStartScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <OnboardingHeader />
-      <AppText variant="title" style={styles.title}>Start Your Free Trial</AppText>
-      <AppText variant="body" style={styles.subtitle}>Full access for 14 days. Cancel anytime.</AppText>
+      <OnboardingHero
+        stepLabel="Step 8 of 9"
+        title="Start Your Free Trial"
+        subtitle="Full access for 14 days. Cancel anytime."
+      />
       <AppBadge label="14 DAY TRIAL" tone="success" style={styles.badge} />
 
       <AppCard style={styles.disclosure}>
@@ -95,8 +99,6 @@ export default function TrialStartScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 24, justifyContent: "center" },
-  title: { marginBottom: spacing.xs },
-  subtitle: { color: colors.textSecondary, marginBottom: spacing.md },
   badge: { marginBottom: spacing.md },
   disclosure: { borderWidth: 1, borderColor: colors.border, marginBottom: spacing.md },
   disclosureTitle: { fontWeight: "800", marginBottom: spacing.xs },

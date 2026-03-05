@@ -17,6 +17,7 @@ import AppCard from "../../components/ui/AppCard";
 import AppText from "../../components/ui/AppText";
 import AppBadge from "../../components/ui/AppBadge";
 import AppButton from "../../components/ui/AppButton";
+import OnboardingHero from "../../components/onboarding/OnboardingHero";
 import { colors, spacing } from "../../ui/tokens";
 import { track } from "../../analytics/track";
 
@@ -362,8 +363,11 @@ export default function PortingFormScreen({ navigation, route }) {
           contentContainerStyle={styles.container}
         >
           <OnboardingHeader />
-          <AppText variant="title" style={styles.title}>Port Your Number</AppText>
-          <AppText variant="body" style={styles.subtitle}>Usually 3-10 business days depending on your carrier.</AppText>
+          <OnboardingHero
+            stepLabel="Step 5 of 9"
+            title="Port Your Number"
+            subtitle="Usually 3-10 business days depending on your carrier."
+          />
           <AppBadge label="Number Porting" style={styles.badge} />
 
         {[
@@ -422,8 +426,6 @@ export default function PortingFormScreen({ navigation, route }) {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#fff" },
   container: { paddingHorizontal: spacing.xl, paddingBottom: 140, paddingTop: spacing.sm },
-  title: { marginBottom: spacing.xs },
-  subtitle: { color: colors.textSecondary, marginBottom: spacing.xs },
   badge: { marginBottom: spacing.md },
   fieldCard: { marginBottom: spacing.sm, padding: spacing.md },
   label: { fontWeight: "700", marginBottom: spacing.xs },
