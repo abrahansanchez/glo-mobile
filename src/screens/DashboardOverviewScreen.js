@@ -138,21 +138,6 @@ export default function DashboardOverviewScreen() {
     });
   }
 
-  function navigateRoute(routeName, params) {
-    const routeNames = navigation?.getState?.()?.routeNames || [];
-    if (routeNames.includes(routeName)) {
-      navigation.navigate(routeName, params);
-      return true;
-    }
-    const parentNavigation = navigation?.getParent?.();
-    const parentRouteNames = parentNavigation?.getState?.()?.routeNames || [];
-    if (parentRouteNames.includes(routeName)) {
-      parentNavigation.navigate(routeName, params);
-      return true;
-    }
-    return false;
-  }
-
   return (
     <ScreenContainer>
       <View style={styles.container}>
@@ -161,48 +146,20 @@ export default function DashboardOverviewScreen() {
 
       {/* ===== STATS ===== */}
       <View style={styles.row}>
-        <Pressable
-          style={styles.statPressable}
-          onPress={() => {
-            navigateRoute("Calls", { filter: "all", source: "overview_total_calls" });
-          }}
-        >
-          <StatCard label="Total Calls" value={String(totalCalls)} />
-        </Pressable>
-        <Pressable
-          style={styles.statPressable}
-          onPress={() => {
-            navigateRoute("Calls", { filter: "ai_handled", source: "overview_ai_handled" });
-          }}
-        >
-          <StatCard label="AI Handled" value={`${aiPct}%`} />
-        </Pressable>
+        <StatCard label="Total Calls" value={String(totalCalls)} />
+        <StatCard label="AI Handled" value={`${aiPct}%`} />
       </View>
 
       <View style={styles.row}>
-        <Pressable
-          style={styles.statPressable}
-          onPress={() => {
-            navigation.navigate("Schedule");
-          }}
-        >
-          <StatCard
-            label="Appointments"
-            value={String(appointments.length)}
-            sublabel="Upcoming"
-          />
-        </Pressable>
-        <Pressable
-          style={styles.statPressable}
-          onPress={() => {
-            navigateRoute("Calls", { filter: "missed", source: "overview_missed_calls" });
-          }}
-        >
-          <StatCard
-            label="Missed Calls"
-            value={String(overview?.missed ?? 0)}
-          />
-        </Pressable>
+        <StatCard
+          label="Appointments"
+          value={String(appointments.length)}
+          sublabel="Upcoming"
+        />
+        <StatCard
+          label="Missed Calls"
+          value={String(overview?.missed ?? 0)}
+        />
       </View>
 
       <AppText variant="section" style={styles.sectionTitle}>Upcoming Appointments</AppText>
@@ -244,7 +201,6 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 12,
   },
-  statPressable: { flex: 1 },
   sectionTitle: {
     marginTop: 24,
     marginBottom: 10,
