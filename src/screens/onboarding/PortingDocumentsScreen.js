@@ -11,6 +11,28 @@ function isUploaded(value) {
   return Boolean(value);
 }
 
+function formatMimeType(file) {
+  if (!file) return "";
+  const type = file.mimeType || file.type || "";
+  if (!type) return "unknown";
+  if (type.includes("/")) {
+    const [, subtype] = type.split("/");
+    return subtype || type;
+  }
+  return type;
+}
+
+function getBackendErrorMessage(errorResponse) {
+  const data = errorResponse?.data;
+  if (typeof data?.message === "string" && data.message.trim()) return data.message.trim();
+  if (Array.isArray(data?.errors) && data.errors.length) {
+    const first = data.errors[0];
+    if (typeof first === "string") return first;
+    if (typeof first?.message === "string") return first.message;
+  }
+  return "Failed to upload documents.";
+}
+
 export default function PortingDocumentsScreen({ navigation, route }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -19,6 +41,8 @@ export default function PortingDocumentsScreen({ navigation, route }) {
   const [billFile, setBillFile] = useState(null);
   const [loaUploaded, setLoaUploaded] = useState(false);
   const [billUploaded, setBillUploaded] = useState(false);
+  const [loaUploadSuccess, setLoaUploadSuccess] = useState(false);
+  const [billUploadSuccess, setBillUploadSuccess] = useState(false);
 
   useEffect(() => {
     loadStatus();
@@ -53,8 +77,10 @@ export default function PortingDocumentsScreen({ navigation, route }) {
 
       if (kind === "loa") {
         setLoaFile(asset);
+        setLoaUploadSuccess(false);
       } else {
         setBillFile(asset);
+        setBillUploadSuccess(false);
       }
     } catch (e) {
       Alert.alert(
@@ -96,10 +122,22 @@ export default function PortingDocumentsScreen({ navigation, route }) {
       await api.post(`/phone/porting/${portingId}/docs`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
+
+      if (loaFile) {
+        setLoaUploaded(true);
+        setLoaUploadSuccess(true);
+      }
+      if (billFile) {
+        setBillUploaded(true);
+        setBillUploadSuccess(true);
+      }
+
+      setLoaFile(null);
+      setBillFile(null);
       await loadStatus();
-      Alert.alert("Success", "Documents uploaded successfully.");
+      navigation.navigate("PortingStatus", { portingId, refreshedAt: Date.now() });
     } catch (e) {
-      setError(e?.response?.data?.message || "Failed to upload documents.");
+      setError(getBackendErrorMessage(e?.response));
     } finally {
       setLoading(false);
     }
@@ -126,14 +164,20 @@ export default function PortingDocumentsScreen({ navigation, route }) {
 
       <Pressable style={styles.secondaryBtn} onPress={() => pickDoc("loa")}>
         <Text style={styles.secondaryText}>
-          {loaFile ? `Selected LOA: ${loaFile.name || "file"}` : "Select LOA file"}
+          {loaFile
+            ? `Selected LOA: ${loaFile.name || "file"} (${formatMimeType(loaFile)})`
+            : "Select LOA file"}
         </Text>
       </Pressable>
+      {loaUploadSuccess ? <Text style={styles.success}>LOA uploaded successfully.</Text> : null}
       <Pressable style={styles.secondaryBtn} onPress={() => pickDoc("bill")}>
         <Text style={styles.secondaryText}>
-          {billFile ? `Selected bill: ${billFile.name || "file"}` : "Select bill file"}
+          {billFile
+            ? `Selected bill: ${billFile.name || "file"} (${formatMimeType(billFile)})`
+            : "Select bill file"}
         </Text>
       </Pressable>
+      {billUploadSuccess ? <Text style={styles.success}>Bill uploaded successfully.</Text> : null}
 
       {!!error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -142,7 +186,7 @@ export default function PortingDocumentsScreen({ navigation, route }) {
         onPress={uploadDocs}
         disabled={loading}
       >
-        <Text style={styles.primaryText}>{loading ? "Uploading..." : "Upload documents"}</Text>
+        <Text style={styles.primaryText}>{loading ? "Uploading bill + LOA..." : "Upload documents"}</Text>
       </Pressable>
 
       <Pressable style={styles.secondaryBtn} onPress={() => navigation.navigate("PortingStatus")}>
@@ -176,5 +220,5 @@ const styles = StyleSheet.create({
   secondaryText: { textDecorationLine: "underline", fontWeight: "700", color: "#111827" },
   disabled: { opacity: 0.6 },
   error: { color: "#b00020", fontWeight: "700", marginTop: 8 },
+  success: { color: "#065f46", fontWeight: "700", marginTop: 4 },
 });
-
