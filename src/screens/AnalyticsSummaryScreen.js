@@ -1,9 +1,14 @@
-import { View, Text, StyleSheet } from "react-native";
+import { View, StyleSheet } from "react-native";
 import { useEffect, useState } from "react";
 import api from "../config/api";
 import StatCard from "../components/StatCard";
 import LoadingState from "../components/LoadingState";
 import ScreenContainer from "../components/layout/ScreenContainer";
+import AppCard from "../components/ui/AppCard";
+import AppBadge from "../components/ui/AppBadge";
+import AppText from "../components/ui/AppText";
+import EmptyState from "../components/ui/EmptyState";
+import { spacing, colors } from "../ui/tokens";
 
 export default function AnalyticsSummaryScreen() {
   const [loading, setLoading] = useState(true);
@@ -42,7 +47,9 @@ export default function AnalyticsSummaryScreen() {
   if (error) {
     return (
       <ScreenContainer>
-        <Text style={styles.error}>{error}</Text>
+        <AppCard>
+          <AppText variant="section" style={styles.error}>{error}</AppText>
+        </AppCard>
       </ScreenContainer>
     );
   }
@@ -55,7 +62,15 @@ export default function AnalyticsSummaryScreen() {
   return (
     <ScreenContainer>
       <View style={styles.container}>
-        <Text style={styles.title}>Analytics</Text>
+        <AppText variant="title" style={styles.title}>Analytics</AppText>
+        <AppBadge label="Insights" style={styles.badge} />
+
+        {!analytics ? (
+          <EmptyState
+            title="No analytics yet"
+            message="Metrics will appear after calls and appointments are tracked."
+          />
+        ) : null}
 
         <View style={styles.row}>
           <StatCard label="Total Calls" value={String(totalCalls)} />
@@ -75,18 +90,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  title: {
-    fontSize: 34,
-    fontWeight: "800",
-    marginBottom: 18,
-  },
+  title: { marginBottom: spacing.xs },
+  badge: { marginBottom: spacing.md },
   row: {
     flexDirection: "row",
     gap: 12,
     marginBottom: 12,
   },
   error: {
-    padding: 20,
-    color: "red",
+    color: colors.danger,
   },
 });

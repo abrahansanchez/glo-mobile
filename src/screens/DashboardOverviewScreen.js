@@ -1,5 +1,5 @@
 import { useEffect, useState, useContext } from "react";
-import { View, Text, StyleSheet, Pressable } from "react-native";
+import { View, StyleSheet, Pressable } from "react-native";
 
 import { useNavigation } from "@react-navigation/native";
 
@@ -10,6 +10,11 @@ import api from "../config/api";
 import StatCard from "../components/StatCard";
 import LoadingState from "../components/LoadingState";
 import ScreenContainer from "../components/layout/ScreenContainer";
+import AppCard from "../components/ui/AppCard";
+import AppBadge from "../components/ui/AppBadge";
+import AppText from "../components/ui/AppText";
+import EmptyState from "../components/ui/EmptyState";
+import { colors, spacing } from "../ui/tokens";
 
 export default function DashboardOverviewScreen() {
   const navigation = useNavigation();
@@ -97,7 +102,9 @@ export default function DashboardOverviewScreen() {
   if (error) {
     return (
       <ScreenContainer>
-        <Text style={styles.error}>{error}</Text>
+        <AppCard>
+          <AppText variant="section" style={styles.error}>{error}</AppText>
+        </AppCard>
       </ScreenContainer>
     );
   }
@@ -134,7 +141,8 @@ export default function DashboardOverviewScreen() {
   return (
     <ScreenContainer>
       <View style={styles.container}>
-      <Text style={styles.title}>Overview</Text>
+      <AppText variant="title" style={styles.title}>Overview</AppText>
+      <AppBadge label="Home" style={styles.badge} />
       {/* ===== DEV CONTROLS ===== */}
       <View style={{ marginBottom: 16, gap: 10 }}>
         <Pressable
@@ -143,7 +151,7 @@ export default function DashboardOverviewScreen() {
           }}
           style={styles.devPrimary}
         >
-          <Text style={styles.devPrimaryText}>Restart Onboarding (Dev)</Text>
+          <AppText style={styles.devPrimaryText}>Restart Onboarding (Dev)</AppText>
         </Pressable>
 
         <Pressable
@@ -152,7 +160,7 @@ export default function DashboardOverviewScreen() {
           }}
           style={styles.devSecondary}
         >
-          <Text style={styles.devSecondaryText}>Log Out</Text>
+          <AppText style={styles.devSecondaryText}>Log Out</AppText>
         </Pressable>
       </View>
 
@@ -175,19 +183,24 @@ export default function DashboardOverviewScreen() {
       </View>
 
       {/* ===== UPCOMING APPOINTMENTS ===== */}
-      <Text style={styles.sectionTitle}>Upcoming Appointments</Text>
+      <AppText variant="section" style={styles.sectionTitle}>Upcoming Appointments</AppText>
 
       {appointments.length === 0 ? (
-        <Text style={styles.empty}>No upcoming appointments</Text>
+        <EmptyState
+          title="No upcoming appointments"
+          message="New bookings will appear here."
+        />
       ) : (
         appointments.slice(0, 3).map((appt) => (
-          <Pressable key={appt._id} style={styles.apptCard} onPress={() => handleAppointmentPress(appt)}>
-            <Text style={styles.client}>{appt.clientName || "Client"}</Text>
-            <Text style={styles.meta}>{new Date(getAppointmentDate(appt)).toLocaleString()}</Text>
+          <Pressable key={appt._id} onPress={() => handleAppointmentPress(appt)}>
+            <AppCard style={styles.apptCard}>
+            <AppText style={styles.client}>{appt.clientName || "Client"}</AppText>
+            <AppText style={styles.meta}>{new Date(getAppointmentDate(appt)).toLocaleString()}</AppText>
             <View style={styles.tapRow}>
-              <Text style={styles.tapHint}>Tap to view details</Text>
-              <Text style={styles.chevron}>›</Text>
+              <AppText variant="caption" style={styles.tapHint}>Tap to view details</AppText>
+              <AppText style={styles.chevron}>›</AppText>
             </View>
+            </AppCard>
           </Pressable>
         ))
       )}
@@ -200,11 +213,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  title: {
-    fontSize: 34,
-    fontWeight: "800",
-    marginBottom: 18,
-  },
+  title: { marginBottom: spacing.xs },
+  badge: { marginBottom: spacing.md },
   row: {
     flexDirection: "row",
     gap: 12,
@@ -216,16 +226,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
   },
-  apptCard: {
-    backgroundColor: "#fff",
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 10,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
-  },
+  apptCard: { marginBottom: spacing.sm },
   client: {
     fontSize: 15,
     fontWeight: "600",
@@ -233,16 +234,10 @@ const styles = StyleSheet.create({
   meta: {
     marginTop: 4,
     fontSize: 13,
-    color: "#666",
-  },
-  empty: {
-    color: "#777",
-    fontSize: 14,
-    marginTop: 8,
+    color: colors.textSecondary,
   },
   error: {
-    padding: 20,
-    color: "red",
+    color: colors.danger,
   },
   devPrimary: {
     padding: 14,
@@ -261,9 +256,7 @@ const styles = StyleSheet.create({
   },
   devSecondaryText: { color: "#000", fontWeight: "800" },
   tapHint: {
-    marginTop: 8,
-    fontSize: 12,
-    color: "#9ca3af",
+    color: colors.textMuted,
     fontWeight: "600",
   },
   tapRow: {
@@ -273,7 +266,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   chevron: {
-    color: "#9ca3af",
+    color: colors.textMuted,
     fontSize: 18,
     fontWeight: "700",
   },

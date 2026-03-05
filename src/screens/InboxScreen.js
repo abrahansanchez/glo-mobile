@@ -1,7 +1,11 @@
 import React from "react";
-import { View, Text, StyleSheet, Pressable } from "react-native";
+import { View, StyleSheet, Pressable } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import ScreenContainer from "../components/layout/ScreenContainer";
+import AppCard from "../components/ui/AppCard";
+import AppBadge from "../components/ui/AppBadge";
+import AppText from "../components/ui/AppText";
+import { spacing } from "../ui/tokens";
 
 export default function InboxScreen() {
   const navigation = useNavigation();
@@ -20,34 +24,40 @@ export default function InboxScreen() {
   return (
     <ScreenContainer>
       <View style={styles.container}>
-        <Text style={styles.title}>Inbox</Text>
-        <Text style={styles.body}>Calls, voicemail, and transcripts in one place.</Text>
+        <AppText variant="title" style={styles.title}>Inbox</AppText>
+        <AppText variant="body" style={styles.body}>Calls, voicemail, and transcripts in one place.</AppText>
 
         <Pressable
-          style={styles.card}
           onPress={() => go("Calls")}
           disabled={!canNavigateTo("Calls")}
         >
-          <Text style={styles.cardTitle}>Calls</Text>
-          <Text style={styles.cardText}>Open call tools and test flow.</Text>
+          <AppCard style={styles.card}>
+            <AppText variant="section" style={styles.cardTitle}>Calls</AppText>
+            <AppText variant="body" style={styles.cardText}>Open call tools and test flow.</AppText>
+            <AppBadge label="Entry point" style={styles.badge} />
+          </AppCard>
         </Pressable>
 
         <Pressable
-          style={styles.card}
           onPress={() => go("Voicemails")}
           disabled={!canNavigateTo("Voicemails")}
         >
-          <Text style={styles.cardTitle}>Voicemail</Text>
-          <Text style={styles.cardText}>Review recent voicemail messages.</Text>
+          <AppCard style={styles.card}>
+            <AppText variant="section" style={styles.cardTitle}>Voicemail</AppText>
+            <AppText variant="body" style={styles.cardText}>Review recent voicemail messages.</AppText>
+            <AppBadge label="Entry point" style={styles.badge} />
+          </AppCard>
         </Pressable>
 
         <Pressable
-          style={styles.card}
           onPress={() => go("Transcripts")}
           disabled={!canNavigateTo("Transcripts")}
         >
-          <Text style={styles.cardTitle}>Transcripts</Text>
-          <Text style={styles.cardText}>Read conversation transcripts.</Text>
+          <AppCard style={styles.card}>
+            <AppText variant="section" style={styles.cardTitle}>Transcripts</AppText>
+            <AppText variant="body" style={styles.cardText}>Read conversation transcripts.</AppText>
+            <AppBadge label="Entry point" style={styles.badge} />
+          </AppCard>
         </Pressable>
       </View>
     </ScreenContainer>
@@ -56,16 +66,10 @@ export default function InboxScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  title: { fontSize: 28, fontWeight: "900", marginBottom: 8 },
-  body: { color: "#4b5563", fontSize: 15, marginBottom: 12 },
-  card: {
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 10,
-    backgroundColor: "#fff",
-  },
-  cardTitle: { fontSize: 16, fontWeight: "800", color: "#111827", marginBottom: 4 },
-  cardText: { color: "#4b5563" },
+  title: { marginBottom: spacing.xs },
+  body: { marginBottom: spacing.md },
+  card: { marginBottom: spacing.sm },
+  cardTitle: { marginBottom: spacing.xs },
+  cardText: { marginBottom: spacing.sm },
+  badge: { marginTop: spacing.xs },
 });
