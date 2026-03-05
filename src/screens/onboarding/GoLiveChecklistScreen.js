@@ -38,6 +38,21 @@ const BLOCKER_UI = {
   },
 };
 
+const READINESS_EXCLUDE_KEYS = new Set([
+  "readiness",
+  "checks",
+  "checklist",
+  "blockers",
+  "launchReady",
+  "isReady",
+  "status",
+  "message",
+  "error",
+  "nextStep",
+  "currentStep",
+  "updatedAt",
+]);
+
 function mapStepToRoute(step) {
   switch (step) {
     case STEPS.ACCOUNT:
@@ -54,30 +69,87 @@ function mapStepToRoute(step) {
   }
 }
 
+function normalizeReadiness(payload) {
+  const sourceReadiness = payload?.readiness;
+  const sourceChecks = payload?.checks;
+  const sourceChecklist = payload?.checklist;
+
+  let raw = null;
+  if (sourceReadiness && typeof sourceReadiness === "object") raw = sourceReadiness;
+  else if (sourceChecks && typeof sourceChecks === "object") raw = sourceChecks;
+  else if (sourceChecklist && typeof sourceChecklist === "object") raw = sourceChecklist;
+  else if (payload && typeof payload === "object") {
+    raw = Object.fromEntries(
+      Object.entries(payload).filter(([key, value]) => !READINESS_EXCLUDE_KEYS.has(key) && typeof value === "boolean")
+    );
+  } else {
+    raw = {};
+  }
+
+  return Object.entries(raw)
+    .filter(([, value]) => typeof value === "boolean")
+    .map(([key, value]) => ({ key, value }));
+}
+
+function normalizeBlocker(rawBlocker) {
+  if (typeof rawBlocker === "string") {
+    const code = rawBlocker.toUpperCase();
+    const ui = BLOCKER_UI[code] || null;
+    return {
+      code,
+      title: ui?.title || "Action needed",
+      message: ui?.description || rawBlocker,
+      action: ui?.action || null,
+      actionText: ui?.actionText || "Fix",
+    };
+  }
+
+  if (rawBlocker && typeof rawBlocker === "object") {
+    const code = String(rawBlocker.code || rawBlocker.type || rawBlocker.key || "UNKNOWN_BLOCKER").toUpperCase();
+    const ui = BLOCKER_UI[code] || null;
+    return {
+      code,
+      title: ui?.title || rawBlocker.title || "Action needed",
+      message: ui?.description || rawBlocker.message || rawBlocker.reason || "Resolve this blocker to continue.",
+      action: rawBlocker.action || ui?.action || null,
+      actionText: rawBlocker.actionLabel || rawBlocker.buttonText || ui?.actionText || "Fix",
+    };
+  }
+
+  return {
+    code: "UNKNOWN_BLOCKER",
+    title: "Action needed",
+    message: "Resolve this blocker to continue.",
+    action: null,
+    actionText: "Fix",
+  };
+}
+
 export default function GoLiveChecklistScreen({ navigation }) {
   const { setLocalStep, markComplete } = useContext(OnboardingContext);
   const [ready, setReady] = useState(false);
-  const [readiness, setReadiness] = useState({});
+  const [readinessRows, setReadinessRows] = useState([]);
   const [blockers, setBlockers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
-  const trialStarted = Boolean(readiness?.trialStarted);
+  const trialStarted = Boolean(readinessRows.find((row) => row.key === "trialStarted")?.value);
 
-  function hasRoute(routeName) {
+  function canNavigateTo(routeName) {
     const routeNames = navigation?.getState?.()?.routeNames || [];
     return routeNames.includes(routeName);
   }
 
-  function navigateSafe(primaryRoute, fallbackRoute) {
-    if (primaryRoute && hasRoute(primaryRoute)) {
+  function navigateSafely(primaryRoute, fallbackRoute, alertTitle, alertMessage) {
+    if (primaryRoute && canNavigateTo(primaryRoute)) {
       navigation.navigate(primaryRoute);
       return true;
     }
-    if (fallbackRoute && hasRoute(fallbackRoute)) {
+    if (fallbackRoute && canNavigateTo(fallbackRoute)) {
       navigation.navigate(fallbackRoute);
       return true;
     }
+    Alert.alert(alertTitle || "Action unavailable", alertMessage || "This action is not available in this app build.");
     return false;
   }
 
@@ -116,7 +188,7 @@ export default function GoLiveChecklistScreen({ navigation }) {
     if (code.includes("CALENDAR")) return "calendar";
     if (code.includes("AVAILABILITY")) return "availability";
     if (code.includes("TEST_CALL")) return "testCall";
-    return "resumeOnboarding";
+    return "settings";
   }
 
   async function loadChecklist() {
@@ -127,18 +199,25 @@ export default function GoLiveChecklistScreen({ navigation }) {
       await setLocalStep("go_live_checklist");
       const response = await api.get("/launch/checklist");
       const payload = response.data || {};
-      const nextReadiness = payload.readiness || payload.checklist || {};
-      const nextBlockers = Array.isArray(payload.blockers) ? payload.blockers : [];
-      setReadiness(nextReadiness);
+      const nextReadinessRows = normalizeReadiness(payload);
+      const nextBlockersRaw = Array.isArray(payload.blockers) ? payload.blockers : [];
+      const nextBlockers = nextBlockersRaw.map(normalizeBlocker);
+      const derivedReady =
+        typeof payload.launchReady === "boolean"
+          ? payload.launchReady
+          : nextReadinessRows.length > 0 && nextReadinessRows.every((row) => row.value === true);
+      setReadinessRows(nextReadinessRows);
       setBlockers(nextBlockers);
-      setReady(Boolean(payload.launchReady));
+      setReady(Boolean(derivedReady));
       console.log(
-        `[LAUNCH_CHECKLIST] loaded launchReady=${Boolean(payload.launchReady)} blockers=${nextBlockers.join(",") || "none"}`
+        `[LAUNCH_CHECKLIST] loaded launchReady=${Boolean(derivedReady)} blockers=${nextBlockers
+          .map((item) => item.code)
+          .join(",") || "none"}`
       );
     } catch (e) {
       setError(e?.response?.data?.message || "Failed to load checklist");
       setReady(false);
-      setReadiness({});
+      setReadinessRows([]);
       setBlockers([]);
     } finally {
       setLoading(false);
@@ -168,46 +247,82 @@ export default function GoLiveChecklistScreen({ navigation }) {
   }
 
   async function handleBlockerAction(action) {
-    if (action === "resumeOnboarding") {
+    const resolvedAction = action || "settings";
+    const symbolicActions = new Set([
+      "resumeOnboarding",
+      "porting",
+      "goPortStatus",
+      "startPorting",
+      "fixResubmit",
+      "portingDocs",
+      "uploadDocs",
+      "numberStrategy",
+      "trial",
+      "calendar",
+      "availability",
+      "testCall",
+      "settings",
+    ]);
+
+    if (!symbolicActions.has(resolvedAction) && canNavigateTo(resolvedAction)) {
+      navigation.navigate(resolvedAction);
+      return;
+    }
+
+    if (resolvedAction === "resumeOnboarding") {
       await handleFinishSetup();
       return;
     }
-    if (action === "porting" || action === "goPortStatus" || action === "startPorting" || action === "fixResubmit") {
-      const ok = navigateSafe("PortingStatus", "PortingForm");
-      if (!ok) await handleFinishSetup();
+    if (resolvedAction === "porting" || resolvedAction === "goPortStatus" || resolvedAction === "startPorting" || resolvedAction === "fixResubmit") {
+      navigateSafely(
+        "PortingStatus",
+        "PortingForm",
+        "Porting setup",
+        "Porting routes are unavailable in this build. Open Settings to continue setup."
+      );
       return;
     }
-    if (action === "portingDocs" || action === "uploadDocs") {
-      const ok = navigateSafe("PortingDocuments", "PortingStatus");
-      if (!ok) await handleFinishSetup();
+    if (resolvedAction === "portingDocs" || resolvedAction === "uploadDocs") {
+      navigateSafely(
+        "PortingDocuments",
+        "PortingStatus",
+        "Documents upload",
+        "Document upload route is unavailable in this build."
+      );
       return;
     }
-    if (action === "numberStrategy") {
-      const ok = navigateSafe("NumberStrategy", "Welcome");
-      if (!ok) await handleFinishSetup();
+    if (resolvedAction === "numberStrategy") {
+      navigateSafely(
+        "NumberStrategy",
+        "Settings",
+        "Number strategy",
+        "Number strategy route is unavailable in this build."
+      );
       return;
     }
-    if (action === "trial") {
-      const ok = navigateSafe("TrialStart", "Welcome");
-      if (!ok) await handleFinishSetup();
+    if (resolvedAction === "trial") {
+      navigateSafely("TrialStart", "Settings", "Trial setup", "Trial route is unavailable in this build.");
       return;
     }
-    if (action === "calendar") {
-      const ok = navigateSafe("CalendarConnect", "Settings");
-      if (!ok) await handleFinishSetup();
+    if (resolvedAction === "calendar") {
+      navigateSafely(
+        "CalendarConnect",
+        "Settings",
+        "Calendar setup",
+        "Calendar connection route is unavailable in this build."
+      );
       return;
     }
-    if (action === "availability") {
-      const ok = navigateSafe("Availability", "Settings");
-      if (!ok) await handleFinishSetup();
+    if (resolvedAction === "availability") {
+      navigateSafely("Availability", "Settings", "Availability setup", "Availability route is unavailable.");
       return;
     }
-    if (action === "testCall") {
-      const ok = navigateSafe("TestCall", null);
-      if (!ok) {
-        Alert.alert("Test call required", "Please complete a test call from your call setup flow.");
-      }
+    if (resolvedAction === "testCall") {
+      navigateSafely("TestCall", null, "Test call required", "Please complete a test call from your call setup flow.");
+      return;
     }
+
+    navigateSafely("Settings", null, "Action unavailable", "Open Settings to resolve this blocker.");
   }
 
   async function onPullRefresh() {
@@ -216,7 +331,7 @@ export default function GoLiveChecklistScreen({ navigation }) {
     setRefreshing(false);
   }
 
-  const checklistItems = Object.entries(readiness || {});
+  const checklistItems = readinessRows;
 
   return (
     <ScrollView
@@ -234,7 +349,7 @@ export default function GoLiveChecklistScreen({ navigation }) {
       {checklistItems.length === 0 && !loading ? (
         <Text style={styles.empty}>Checklist unavailable right now.</Text>
       ) : (
-        checklistItems.map(([key, value]) => (
+        checklistItems.map(({ key, value }) => (
           <View key={key} style={[styles.row, value ? styles.rowReady : styles.rowPending]}>
             <View style={styles.rowLeft}>
               <Text style={styles.rowLabel}>{getReadinessLabel(key)}</Text>
@@ -251,19 +366,17 @@ export default function GoLiveChecklistScreen({ navigation }) {
       {blockers.length > 0 ? (
         <View style={styles.blockers}>
           <Text style={styles.blockerTitle}>Blockers</Text>
-          {blockers.map((rawBlocker, idx) => {
-            const code = String(rawBlocker || "").toUpperCase();
-            const ui = BLOCKER_UI[code] || null;
-            const action = ui?.action || getBlockerAction(code);
+          {blockers.map((blocker, idx) => {
+            const action = blocker.action || getBlockerAction(blocker.code);
             return (
-              <View key={`bl-${idx}`} style={styles.blockerCard}>
-                <Text style={styles.blockerCardTitle}>{ui?.title || "Action needed"}</Text>
-                <Text style={styles.blockerText}>{ui?.description || String(rawBlocker)}</Text>
+              <View key={`bl-${idx}-${blocker.code}`} style={styles.blockerCard}>
+                <Text style={styles.blockerCardTitle}>{blocker.title}</Text>
+                <Text style={styles.blockerText}>{blocker.message}</Text>
                 <Pressable
                   style={styles.blockerBtn}
                   onPress={() => handleBlockerAction(action)}
                 >
-                  <Text style={styles.blockerBtnText}>{ui?.actionText || "Fix"}</Text>
+                  <Text style={styles.blockerBtnText}>{blocker.actionText || "Fix"}</Text>
                 </Pressable>
               </View>
             );
