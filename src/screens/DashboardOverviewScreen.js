@@ -4,7 +4,6 @@ import { View, StyleSheet, Pressable } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 
 import { AuthContext } from "../auth/authContext";
-import { OnboardingContext } from "../onboarding/OnboardingContext";
 
 import api from "../config/api";
 import StatCard from "../components/StatCard";
@@ -18,8 +17,7 @@ import { colors, spacing } from "../ui/tokens";
 
 export default function DashboardOverviewScreen() {
   const navigation = useNavigation();
-  const { authenticated, barber, subscriptionStatus, logout, setSubscriptionStatus } = useContext(AuthContext);
-  const { reset: restartOnboarding } = useContext(OnboardingContext);
+  const { authenticated, barber, subscriptionStatus, setSubscriptionStatus } = useContext(AuthContext);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [overview, setOverview] = useState(null);
@@ -143,26 +141,6 @@ export default function DashboardOverviewScreen() {
       <View style={styles.container}>
       <AppText variant="title" style={styles.title}>Overview</AppText>
       <AppBadge label="Home" style={styles.badge} />
-      {/* ===== DEV CONTROLS ===== */}
-      <View style={{ marginBottom: 16, gap: 10 }}>
-        <Pressable
-          onPress={async () => {
-            await restartOnboarding();
-          }}
-          style={styles.devPrimary}
-        >
-          <AppText style={styles.devPrimaryText}>Restart Onboarding (Dev)</AppText>
-        </Pressable>
-
-        <Pressable
-          onPress={async () => {
-            await logout();
-          }}
-          style={styles.devSecondary}
-        >
-          <AppText style={styles.devSecondaryText}>Log Out</AppText>
-        </Pressable>
-      </View>
 
       {/* ===== STATS ===== */}
       <View style={styles.row}>
@@ -182,7 +160,6 @@ export default function DashboardOverviewScreen() {
         />
       </View>
 
-      {/* ===== UPCOMING APPOINTMENTS ===== */}
       <AppText variant="section" style={styles.sectionTitle}>Upcoming Appointments</AppText>
 
       {appointments.length === 0 ? (
@@ -197,7 +174,7 @@ export default function DashboardOverviewScreen() {
             <AppText style={styles.client}>{appt.clientName || "Client"}</AppText>
             <AppText style={styles.meta}>{new Date(getAppointmentDate(appt)).toLocaleString()}</AppText>
             <View style={styles.tapRow}>
-              <AppText variant="caption" style={styles.tapHint}>Tap to view details</AppText>
+              <AppText variant="caption" style={styles.tapHint}>View details</AppText>
               <AppText style={styles.chevron}>›</AppText>
             </View>
             </AppCard>
@@ -239,22 +216,6 @@ const styles = StyleSheet.create({
   error: {
     color: colors.danger,
   },
-  devPrimary: {
-    padding: 14,
-    borderRadius: 12,
-    backgroundColor: "#111",
-    alignItems: "center",
-  },
-  devPrimaryText: { color: "#fff", fontWeight: "800" },
-  devSecondary: {
-    padding: 14,
-    borderRadius: 12,
-    backgroundColor: "#eee",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#ccc",
-  },
-  devSecondaryText: { color: "#000", fontWeight: "800" },
   tapHint: {
     color: colors.textMuted,
     fontWeight: "600",

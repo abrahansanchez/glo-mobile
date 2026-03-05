@@ -33,7 +33,7 @@ export default function InboxScreen() {
         >
           <AppCard style={styles.card}>
             <AppText variant="section" style={styles.cardTitle}>Calls</AppText>
-            <AppText variant="body" style={styles.cardText}>Open call tools and test flow.</AppText>
+            <AppText variant="body" style={styles.cardText}>Open call tools and active conversations.</AppText>
             <AppBadge label="Entry point" style={styles.badge} />
           </AppCard>
         </Pressable>

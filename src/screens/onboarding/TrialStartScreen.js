@@ -1,5 +1,5 @@
 import React, { useContext, useState } from "react";
-import { View, Pressable, StyleSheet } from "react-native";
+import { View, StyleSheet } from "react-native";
 import { OnboardingContext } from "../../onboarding/OnboardingContext";
 import { AuthContext } from "../../auth/authContext";
 import api from "../../config/api";
@@ -8,6 +8,7 @@ import { STEPS } from "../../onboarding/stepKeys";
 import AppCard from "../../components/ui/AppCard";
 import AppText from "../../components/ui/AppText";
 import AppBadge from "../../components/ui/AppBadge";
+import AppButton from "../../components/ui/AppButton";
 import { colors, spacing } from "../../ui/tokens";
 
 export default function TrialStartScreen({ navigation }) {
@@ -59,25 +60,27 @@ export default function TrialStartScreen({ navigation }) {
       {!!success ? <AppText style={styles.success}>Trial started successfully.</AppText> : null}
       {!!error ? <AppText style={styles.error}>{error}</AppText> : null}
 
-      <Pressable style={[styles.button, loading && styles.buttonDisabled]} disabled={loading} onPress={startTrial}>
-        <AppText style={styles.buttonText}>{loading ? "Starting..." : "Start Free Trial"}</AppText>
-      </Pressable>
+      <AppButton
+        label={loading ? "Starting..." : "Start Free Trial"}
+        onPress={startTrial}
+        disabled={loading}
+        variant="primary"
+        style={styles.button}
+      />
 
-      <Pressable
+      <AppButton
+        label="Continue"
+        variant="secondary"
         style={styles.secondaryBtn}
         onPress={() => {
           if (canNavigateTo("GoLiveChecklist")) {
             navigation.navigate("GoLiveChecklist");
           }
         }}
-      >
-        <AppText style={styles.secondaryText}>Continue</AppText>
-      </Pressable>
+      />
 
       {!!error ? (
-        <Pressable style={styles.retryBtn} onPress={startTrial}>
-          <AppText style={styles.retryText}>Retry</AppText>
-        </Pressable>
+        <AppButton label="Try Again" variant="secondary" style={styles.retryBtn} onPress={startTrial} />
       ) : null}
     </View>
   );
@@ -92,18 +95,10 @@ const styles = StyleSheet.create({
   disclosureTitle: { fontWeight: "800", marginBottom: spacing.xs },
   disclosureText: { color: colors.textSecondary, marginBottom: 3 },
   button: {
-    backgroundColor: "#000",
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: "center",
     marginTop: 4,
   },
-  buttonDisabled: { opacity: 0.7 },
-  buttonText: { color: "#fff", fontWeight: "900" },
-  secondaryBtn: { marginTop: 10, alignItems: "center", padding: 10 },
-  secondaryText: { color: colors.textPrimary, fontWeight: "700", textDecorationLine: "underline" },
-  retryBtn: { marginTop: 8, alignItems: "center" },
-  retryText: { color: colors.textPrimary, fontWeight: "800" },
+  secondaryBtn: { marginTop: spacing.sm },
+  retryBtn: { marginTop: spacing.sm },
   success: { color: colors.success, fontWeight: "700", marginBottom: spacing.sm },
   error: { color: colors.danger, fontWeight: "700", marginBottom: spacing.sm },
 });

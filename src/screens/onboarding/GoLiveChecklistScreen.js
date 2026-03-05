@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState } from "react";
-import { View, Pressable, StyleSheet, ScrollView, RefreshControl, Alert } from "react-native";
+import { View, StyleSheet, ScrollView, RefreshControl, Alert } from "react-native";
 import { OnboardingContext } from "../../onboarding/OnboardingContext";
 import api from "../../config/api";
 import OnboardingHeader from "../../onboarding/OnboardingHeader";
@@ -7,6 +7,7 @@ import { STEPS } from "../../onboarding/stepKeys";
 import AppCard from "../../components/ui/AppCard";
 import AppBadge from "../../components/ui/AppBadge";
 import AppText from "../../components/ui/AppText";
+import AppButton from "../../components/ui/AppButton";
 import EmptyState from "../../components/ui/EmptyState";
 import { colors, spacing } from "../../ui/tokens";
 
@@ -165,7 +166,7 @@ export default function GoLiveChecklistScreen({ navigation }) {
       trialStarted: "Trial started",
       calendarConnected: "Calendar connected",
       availabilitySet: "Availability set",
-      testCallCompleted: "Test call",
+      testCallCompleted: "Verification call",
       documentsUploaded: "Porting documents",
     };
     return labels[key] || key.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase());
@@ -178,7 +179,7 @@ export default function GoLiveChecklistScreen({ navigation }) {
       trialStarted: "Start your trial to unlock go-live.",
       calendarConnected: "Connect your calendar to sync appointments.",
       availabilitySet: "Set business hours and available times.",
-      testCallCompleted: "Run one test call to verify setup.",
+      testCallCompleted: "Run one verification call to confirm setup.",
       documentsUploaded: "Upload LOA and phone bill for porting.",
     };
     return helper[key] || "Resolve this item to continue go-live setup.";
@@ -323,7 +324,7 @@ export default function GoLiveChecklistScreen({ navigation }) {
       return;
     }
     if (resolvedAction === "testCall") {
-      navigateSafely("TestCall", null, "Test call required", "Please complete a test call from your call setup flow.");
+      navigateSafely("TestCall", null, "Verification call required", "Please complete one verification call from your call setup flow.");
       return;
     }
 
@@ -381,35 +382,39 @@ export default function GoLiveChecklistScreen({ navigation }) {
               <AppCard key={`bl-${idx}-${blocker.code}`} style={styles.blockerCard}>
                 <AppText style={styles.blockerCardTitle}>{blocker.title}</AppText>
                 <AppText style={styles.blockerText}>{blocker.message}</AppText>
-                <Pressable
+                <AppButton
+                  label={blocker.actionText || "Fix"}
+                  variant="primary"
                   style={styles.blockerBtn}
                   onPress={() => handleBlockerAction(action)}
-                >
-                  <AppText style={styles.blockerBtnText}>{blocker.actionText || "Fix"}</AppText>
-                </Pressable>
+                />
               </AppCard>
             );
           })}
         </AppCard>
       ) : null}
 
-      <Pressable style={styles.secondaryBtn} onPress={loadChecklist}>
-        <AppText style={styles.secondaryText}>{loading ? "Refreshing..." : "Refresh Checklist"}</AppText>
-      </Pressable>
+      <AppButton
+        label={loading ? "Refreshing..." : "Refresh Checklist"}
+        variant="secondary"
+        style={styles.secondaryBtn}
+        onPress={loadChecklist}
+      />
 
-      <Pressable
-        style={[styles.primaryBtn, !trialStarted && styles.primaryDisabled]}
+      <AppButton
+        label={trialStarted ? "Go to Dashboard" : "Start trial to continue"}
+        variant="primary"
+        style={styles.primaryBtn}
         onPress={handleGoLive}
         disabled={!trialStarted}
-      >
-        <AppText style={styles.primaryText}>
-          {trialStarted ? "Go to Dashboard" : "Start trial to continue"}
-        </AppText>
-      </Pressable>
+      />
 
-      <Pressable style={styles.secondaryBtn} onPress={handleFinishSetup}>
-        <AppText style={styles.secondaryText}>Finish Setup</AppText>
-      </Pressable>
+      <AppButton
+        label="Finish Setup"
+        variant="secondary"
+        style={styles.secondaryBtn}
+        onPress={handleFinishSetup}
+      />
     </ScrollView>
   );
 }
@@ -451,22 +456,10 @@ const styles = StyleSheet.create({
   blockerBtn: {
     marginTop: spacing.sm,
     alignSelf: "flex-start",
-    backgroundColor: "#111827",
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
   },
-  blockerBtnText: { color: "#fff", fontWeight: "700", fontSize: 12 },
-  primaryBtn: {
-    marginTop: 14,
-    backgroundColor: "#000",
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  primaryDisabled: { opacity: 0.5 },
-  primaryText: { color: "#fff", fontWeight: "900" },
-  secondaryBtn: { alignItems: "center", marginTop: spacing.sm, padding: spacing.sm },
-  secondaryText: { textDecorationLine: "underline", fontWeight: "700" },
+  primaryBtn: { marginTop: spacing.md },
+  secondaryBtn: { marginTop: spacing.sm },
   error: { color: colors.danger, fontWeight: "700", marginTop: spacing.sm },
 });

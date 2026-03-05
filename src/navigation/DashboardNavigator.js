@@ -40,6 +40,9 @@ function DashboardTabs() {
         tabBarItemStyle: {
           paddingVertical: 4,
         },
+        tabBarIconStyle: {
+          alignSelf: "center",
+        },
       }}
     >
       <Tab.Screen

@@ -6,6 +6,7 @@ import ScreenContainer from "../components/layout/ScreenContainer";
 import AppCard from "../components/ui/AppCard";
 import AppBadge from "../components/ui/AppBadge";
 import AppText from "../components/ui/AppText";
+import AppButton from "../components/ui/AppButton";
 import { colors, spacing } from "../ui/tokens";
 
 export default function SettingsScreen({ navigation }) {
@@ -135,13 +136,13 @@ export default function SettingsScreen({ navigation }) {
           </AppText>
         ) : null}
 
-        <Pressable
-          style={[styles.btn, !canManageBilling && styles.btnDisabled]}
+        <AppButton
+          label="Manage Billing"
           onPress={openBillingPortal}
           disabled={!canManageBilling}
-        >
-          <AppText style={styles.btnText}>Manage Billing</AppText>
-        </Pressable>
+          variant="primary"
+          style={styles.btn}
+        />
       </AppCard>
 
       <AppCard style={styles.card}>
@@ -155,17 +156,17 @@ export default function SettingsScreen({ navigation }) {
           <AppText style={styles.rowText}>Porting Status</AppText>
         </Pressable>
 
-        <Pressable
-          style={[styles.btn, styles.logoutBtn]}
+        <AppButton
+          label="Log out"
+          variant="danger"
+          style={styles.btn}
           onPress={() =>
             Alert.alert("Log out", "Are you sure?", [
               { text: "Cancel", style: "cancel" },
               { text: "Log out", style: "destructive", onPress: logout },
             ])
           }
-        >
-          <AppText style={[styles.btnText, styles.logoutText]}>Log out</AppText>
-        </Pressable>
+        />
       </AppCard>
       </View>
     </ScreenContainer>
@@ -183,16 +184,8 @@ const styles = StyleSheet.create({
   error: { color: colors.danger },
   btn: {
     marginTop: spacing.sm,
-    backgroundColor: "#000",
-    paddingVertical: 12,
-    borderRadius: 12,
-    alignItems: "center",
   },
-  btnDisabled: { opacity: 0.5 },
-  btnText: { color: "#fff", fontWeight: "900" },
   helperText: { marginBottom: 2, color: colors.textMuted },
-  logoutBtn: { backgroundColor: "#eee" },
-  logoutText: { color: "#b00" },
   rowButton: { paddingVertical: 12 },
   rowText: { fontSize: 16, color: colors.textPrimary, fontWeight: "700", marginBottom: 6 },
 });

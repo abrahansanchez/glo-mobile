@@ -219,7 +219,7 @@ export default function AppointmentsScreen({ route }) {
 
         <AppText variant="caption" style={styles.tzText}>Times shown in {timezone}</AppText>
         {isFallbackList ? (
-          <AppText variant="caption" style={styles.fallbackText}>Showing upcoming list (range view fallback).</AppText>
+          <AppText variant="caption" style={styles.fallbackText}>Showing upcoming appointments while date-range view updates.</AppText>
         ) : null}
         {!!focusDateLabel ? (
           <AppText variant="caption" style={styles.focusInfo}>Focused date: {focusDateLabel}</AppText>

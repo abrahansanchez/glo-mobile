@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { View, Pressable, StyleSheet, Alert } from "react-native";
+import { View, StyleSheet, Alert } from "react-native";
 import api from "../../config/api";
 import OnboardingHeader from "../../onboarding/OnboardingHeader";
 import AppCard from "../../components/ui/AppCard";
 import AppText from "../../components/ui/AppText";
 import AppBadge from "../../components/ui/AppBadge";
+import AppButton from "../../components/ui/AppButton";
 import { colors, spacing } from "../../ui/tokens";
 
 function getPortingId(payload) {
@@ -171,36 +172,45 @@ export default function PortingDocumentsScreen({ navigation, route }) {
         </AppText>
       </AppCard>
 
-      <Pressable style={styles.secondaryBtn} onPress={() => pickDoc("loa")}>
-        <AppText style={styles.secondaryText}>
-          {loaFile
+      <AppButton
+        variant="secondary"
+        style={styles.secondaryBtn}
+        label={
+          loaFile
             ? `Selected LOA: ${loaFile.name || "file"} (${formatMimeType(loaFile)})`
-            : "Select LOA file"}
-        </AppText>
-      </Pressable>
+            : "Select LOA file"
+        }
+        onPress={() => pickDoc("loa")}
+      />
       {loaUploadSuccess ? <AppText style={styles.success}>LOA uploaded successfully.</AppText> : null}
-      <Pressable style={styles.secondaryBtn} onPress={() => pickDoc("bill")}>
-        <AppText style={styles.secondaryText}>
-          {billFile
+      <AppButton
+        variant="secondary"
+        style={styles.secondaryBtn}
+        label={
+          billFile
             ? `Selected bill: ${billFile.name || "file"} (${formatMimeType(billFile)})`
-            : "Select bill file"}
-        </AppText>
-      </Pressable>
+            : "Select bill file"
+        }
+        onPress={() => pickDoc("bill")}
+      />
       {billUploadSuccess ? <AppText style={styles.success}>Bill uploaded successfully.</AppText> : null}
 
       {!!error ? <AppText style={styles.error}>{error}</AppText> : null}
 
-      <Pressable
-        style={[styles.primaryBtn, loading && styles.disabled]}
+      <AppButton
+        variant="primary"
+        style={styles.primaryBtn}
+        label={loading ? "Uploading bill + LOA..." : "Upload documents"}
         onPress={uploadDocs}
         disabled={loading}
-      >
-        <AppText style={styles.primaryText}>{loading ? "Uploading bill + LOA..." : "Upload documents"}</AppText>
-      </Pressable>
+      />
 
-      <Pressable style={styles.secondaryBtn} onPress={() => navigation.navigate("PortingStatus")}>
-        <AppText style={styles.secondaryText}>View status</AppText>
-      </Pressable>
+      <AppButton
+        variant="secondary"
+        style={styles.secondaryBtn}
+        label="View status"
+        onPress={() => navigation.navigate("PortingStatus")}
+      />
     </View>
   );
 }
@@ -219,11 +229,8 @@ const styles = StyleSheet.create({
   statusValue: { fontWeight: "800" },
   ok: { color: colors.success },
   missing: { color: colors.warning },
-  primaryBtn: { backgroundColor: "#000", borderRadius: 12, paddingVertical: 12, alignItems: "center", marginTop: spacing.sm },
-  primaryText: { color: "#fff", fontWeight: "900" },
-  secondaryBtn: { alignItems: "center", marginTop: spacing.sm, padding: spacing.sm },
-  secondaryText: { textDecorationLine: "underline", fontWeight: "700", color: colors.textPrimary },
-  disabled: { opacity: 0.6 },
+  primaryBtn: { marginTop: spacing.sm },
+  secondaryBtn: { marginTop: spacing.sm },
   error: { color: colors.danger, fontWeight: "700", marginTop: spacing.sm },
   success: { color: colors.success, fontWeight: "700", marginTop: spacing.xs },
 });

@@ -2,7 +2,6 @@ import React, { useContext, useEffect, useState } from "react";
 import {
   View,
   TextInput,
-  Pressable,
   StyleSheet,
   ScrollView,
   KeyboardAvoidingView,
@@ -17,6 +16,7 @@ import OnboardingHeader from "../../onboarding/OnboardingHeader";
 import AppCard from "../../components/ui/AppCard";
 import AppText from "../../components/ui/AppText";
 import AppBadge from "../../components/ui/AppBadge";
+import AppButton from "../../components/ui/AppButton";
 import { colors, spacing } from "../../ui/tokens";
 
 export default function PortingFormScreen({ navigation, route }) {
@@ -303,15 +303,21 @@ export default function PortingFormScreen({ navigation, route }) {
 
           {!!error ? <AppText style={styles.error}>{error}</AppText> : null}
 
-          <Pressable style={[styles.primaryBtn, loading && styles.disabled]} disabled={loading || skipLoading} onPress={submitPorting}>
-            <AppText style={styles.primaryText}>{loading ? "Submitting..." : "Submit Port Request"}</AppText>
-          </Pressable>
+          <AppButton
+            label={loading ? "Submitting..." : "Submit Port Request"}
+            onPress={submitPorting}
+            disabled={loading || skipLoading}
+            variant="primary"
+            style={styles.primaryBtn}
+          />
 
-          <Pressable style={styles.secondaryBtn} onPress={skipPorting} disabled={loading || skipLoading || checkingSkipPolicy}>
-            <AppText style={styles.secondaryText}>
-              {checkingSkipPolicy ? "Checking policy..." : skipLoading ? "Skipping..." : "I'll do this later"}
-            </AppText>
-          </Pressable>
+          <AppButton
+            label={checkingSkipPolicy ? "Checking policy..." : skipLoading ? "Skipping..." : "I'll do this later"}
+            onPress={skipPorting}
+            disabled={loading || skipLoading || checkingSkipPolicy}
+            variant="secondary"
+            style={styles.secondaryBtn}
+          />
         </ScrollView>
       </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
@@ -327,16 +333,7 @@ const styles = StyleSheet.create({
   fieldCard: { marginBottom: spacing.sm, padding: spacing.md },
   label: { fontWeight: "700", marginBottom: spacing.xs },
   input: { borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, color: colors.textPrimary },
-  primaryBtn: {
-    backgroundColor: "#000",
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: "center",
-    marginTop: spacing.md,
-  },
-  disabled: { opacity: 0.7 },
-  primaryText: { color: "#fff", fontWeight: "900" },
-  secondaryBtn: { marginTop: spacing.sm, alignItems: "center", paddingVertical: spacing.sm },
-  secondaryText: { color: colors.textPrimary, textDecorationLine: "underline", fontWeight: "700" },
+  primaryBtn: { marginTop: spacing.md },
+  secondaryBtn: { marginTop: spacing.sm },
   error: { color: colors.danger, fontWeight: "700", marginTop: spacing.sm },
 });

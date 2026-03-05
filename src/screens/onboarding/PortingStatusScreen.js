@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { View, Pressable, StyleSheet, Linking, ScrollView, RefreshControl } from "react-native";
+import { View, StyleSheet, Linking, ScrollView, RefreshControl } from "react-native";
 import api from "../../config/api";
 import OnboardingHeader from "../../onboarding/OnboardingHeader";
 import { useFocusEffect } from "@react-navigation/native";
 import AppCard from "../../components/ui/AppCard";
 import AppText from "../../components/ui/AppText";
 import AppBadge from "../../components/ui/AppBadge";
+import AppButton from "../../components/ui/AppButton";
 import { colors, spacing } from "../../ui/tokens";
 
 const STATUS_STEPS = [
@@ -155,46 +156,55 @@ export default function PortingStatusScreen({ navigation, route }) {
 
       {!!error ? <AppText style={styles.error}>{error}</AppText> : null}
 
-      <Pressable style={styles.primaryBtn} onPress={loadStatus}>
-        <AppText style={styles.primaryText}>{loading ? "Refreshing..." : "Refresh"}</AppText>
-      </Pressable>
+      <AppButton
+        label={loading ? "Refreshing..." : "Refresh"}
+        onPress={loadStatus}
+        variant="primary"
+        style={styles.primaryBtn}
+      />
 
-      <Pressable
-        style={styles.secondaryBtn}
+      <AppButton
+        label="Upload documents"
         onPress={() => navigation.navigate("PortingDocuments", { portingId })}
-      >
-        <AppText style={styles.secondaryText}>Upload documents</AppText>
-      </Pressable>
+        variant="secondary"
+        style={styles.secondaryBtn}
+      />
 
       {status === "rejected" ? (
         <>
-          <Pressable
+          <AppButton
+            label="Fix & Resubmit"
+            variant="secondary"
             style={styles.secondaryBtn}
             onPress={() =>
               navigation.navigate("PortingForm", {
                 prefill: statusPayload?.details || statusPayload?.request || statusPayload || {},
               })
             }
-          >
-            <AppText style={styles.secondaryText}>Fix & Resubmit</AppText>
-          </Pressable>
+          />
 
-          <Pressable
+          <AppButton
+            label="Re-upload Documents"
+            variant="secondary"
             style={styles.secondaryBtn}
             onPress={() => navigation.navigate("PortingDocuments", { portingId })}
-          >
-            <AppText style={styles.secondaryText}>Re-upload Documents</AppText>
-          </Pressable>
+          />
 
-          <Pressable style={styles.secondaryBtn} onPress={() => Linking.openURL("mailto:support@gloai.com")}>
-            <AppText style={styles.secondaryText}>Contact support</AppText>
-          </Pressable>
+          <AppButton
+            label="Contact support"
+            variant="secondary"
+            style={styles.secondaryBtn}
+            onPress={() => Linking.openURL("mailto:support@gloai.com")}
+          />
         </>
       ) : null}
 
-      <Pressable style={styles.secondaryBtn} onPress={() => navigation.navigate("DashboardTabs")}>
-        <AppText style={styles.secondaryText}>Back to dashboard</AppText>
-      </Pressable>
+      <AppButton
+        label="Back to dashboard"
+        variant="secondary"
+        style={styles.secondaryBtn}
+        onPress={() => navigation.navigate("DashboardTabs")}
+      />
     </ScrollView>
   );
 }
@@ -228,9 +238,7 @@ const styles = StyleSheet.create({
   },
   blockersTitle: { fontWeight: "800", color: "#92400e", marginBottom: spacing.xs },
   blockersItem: { color: "#78350f" },
-  primaryBtn: { backgroundColor: "#000", borderRadius: 12, paddingVertical: 12, alignItems: "center", marginTop: 4 },
-  primaryText: { color: "#fff", fontWeight: "900" },
-  secondaryBtn: { alignItems: "center", marginTop: spacing.sm, padding: spacing.sm },
-  secondaryText: { textDecorationLine: "underline", fontWeight: "700", color: colors.textPrimary },
+  primaryBtn: { marginTop: spacing.xs },
+  secondaryBtn: { marginTop: spacing.sm },
   error: { color: colors.danger, fontWeight: "700", marginBottom: spacing.sm },
 });
