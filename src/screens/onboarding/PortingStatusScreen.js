@@ -36,6 +36,29 @@ export default function PortingStatusScreen({ navigation, route }) {
   const resubmittedAt = route?.params?.resubmittedAt || null;
   const previousStatusRef = useRef(null);
 
+  function canNavigateTo(routeName) {
+    const routeNames = navigation?.getState?.()?.routeNames || [];
+    return routeNames.includes(routeName);
+  }
+
+  function goBackToDashboardSafely() {
+    if (canNavigateTo("DashboardTabs")) {
+      navigation.navigate("DashboardTabs");
+      return;
+    }
+    if (canNavigateTo("Home")) {
+      navigation.navigate("Home");
+      return;
+    }
+    if (canNavigateTo("Settings")) {
+      navigation.navigate("Settings");
+      return;
+    }
+    if (navigation?.canGoBack?.()) {
+      navigation.goBack();
+    }
+  }
+
   const status = statusPayload?.status || "draft";
   const rejectionReason = statusPayload?.rejectionReason || statusPayload?.reason || "";
   const blockers = Array.isArray(statusPayload?.blockers) ? statusPayload.blockers : [];
@@ -216,7 +239,7 @@ export default function PortingStatusScreen({ navigation, route }) {
         label="Back to dashboard"
         variant="secondary"
         style={styles.secondaryBtn}
-        onPress={() => navigation.navigate("DashboardTabs")}
+        onPress={goBackToDashboardSafely}
       />
     </ScrollView>
   );
