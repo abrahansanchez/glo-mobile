@@ -11,6 +11,11 @@ export default function WelcomeScreen({ navigation }) {
   const { setLocalStep } = useContext(OnboardingContext);
   const { logout } = useContext(AuthContext);
 
+  function canNavigateTo(routeName) {
+    const routeNames = navigation?.getState?.()?.routeNames || [];
+    return routeNames.includes(routeName);
+  }
+
   useEffect(() => {
     setLocalStep(STEPS.WELCOME);
   }, [setLocalStep]);
@@ -97,7 +102,3 @@ const styles = StyleSheet.create({
   secondary: { backgroundColor: "#eee" },
   secondaryText: { color: "#000", fontWeight: "800" },
 });
-  function canNavigateTo(routeName) {
-    const routeNames = navigation?.getState?.()?.routeNames || [];
-    return routeNames.includes(routeName);
-  }

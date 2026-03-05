@@ -22,6 +22,11 @@ export default function PhoneSignupScreen({ navigation }) {
   const [stage, setStage] = useState("PHONE"); // PHONE -> OTP
   const [error, setError] = useState("");
 
+  function canNavigateTo(routeName) {
+    const routeNames = navigation?.getState?.()?.routeNames || [];
+    return routeNames.includes(routeName);
+  }
+
   useEffect(() => {
     setLocalStep(STEPS.ACCOUNT);
   }, [setLocalStep]);
@@ -120,7 +125,3 @@ const styles = StyleSheet.create({
   linkBtn: { marginTop: 14, alignItems: "center" },
   link: { color: "#111", textDecorationLine: "underline", fontWeight: "700" },
 });
-  function canNavigateTo(routeName) {
-    const routeNames = navigation?.getState?.()?.routeNames || [];
-    return routeNames.includes(routeName);
-  }
