@@ -139,6 +139,38 @@ export default function PortingFormScreen({ navigation, route }) {
     return digits.slice(0, 5);
   }
 
+  function buildPrimaryPayload(idempotencyKey) {
+    return {
+      phoneNumber: normalizePhoneE164(form.phoneNumber),
+      carrier: form.carrier.trim(),
+      accountNumber: form.accountNumber.replace(/\s+/g, "").trim(),
+      pin: form.pin.replace(/\s+/g, "").trim(),
+      billingZip: normalizeZip(form.billingZip),
+      contactName: form.contactName.trim(),
+      contactEmail: form.contactEmail.trim().toLowerCase(),
+      idempotencyKey,
+    };
+  }
+
+  function buildFallbackPayload(idempotencyKey) {
+    return {
+      // Some backends validate strict digits-only phone and/or legacy aliases.
+      phoneNumber: normalizePhone(form.phoneNumber),
+      phone: normalizePhone(form.phoneNumber),
+      carrier: form.carrier.trim(),
+      accountNumber: form.accountNumber.replace(/\s+/g, "").trim(),
+      pin: form.pin.replace(/\s+/g, "").trim(),
+      passcode: form.pin.replace(/\s+/g, "").trim(),
+      billingZip: normalizeZip(form.billingZip) || String(form.billingZip || "").trim(),
+      zip: normalizeZip(form.billingZip) || String(form.billingZip || "").trim(),
+      contactName: form.contactName.trim(),
+      name: form.contactName.trim(),
+      contactEmail: form.contactEmail.trim().toLowerCase(),
+      email: form.contactEmail.trim().toLowerCase(),
+      idempotencyKey,
+    };
+  }
+
   function isValidPhone(value) {
     const cleaned = normalizePhone(value);
     const digitsOnly = cleaned.replace(/\D/g, "");
@@ -263,16 +295,7 @@ export default function PortingFormScreen({ navigation, route }) {
 
       await setLocalStep("porting_form");
       const idempotencyKey = generateIdempotencyKey();
-      const payload = {
-        phoneNumber: normalizePhoneE164(form.phoneNumber),
-        carrier: form.carrier.trim(),
-        accountNumber: form.accountNumber.replace(/\s+/g, "").trim(),
-        pin: form.pin.replace(/\s+/g, "").trim(),
-        billingZip: normalizeZip(form.billingZip),
-        contactName: form.contactName.trim(),
-        contactEmail: form.contactEmail.trim().toLowerCase(),
-        idempotencyKey,
-      };
+      const payload = buildPrimaryPayload(idempotencyKey);
       if (__DEV__) {
         console.log("[PORTING_SUBMIT] payload", {
           ...payload,
@@ -280,9 +303,27 @@ export default function PortingFormScreen({ navigation, route }) {
           pin: payload.pin ? "***" : "",
         });
       }
-      const response = await api.post("/phone/porting/start", payload, {
-        headers: { "Idempotency-Key": idempotencyKey },
-      });
+      let response;
+      try {
+        response = await api.post("/phone/porting/start", payload, {
+          headers: { "Idempotency-Key": idempotencyKey },
+        });
+      } catch (primaryError) {
+        const code =
+          primaryError?.response?.data?.code ||
+          primaryError?.response?.data?.error;
+        if (code !== "PORTING_VALIDATION_FAILED") {
+          throw primaryError;
+        }
+
+        const fallbackPayload = buildFallbackPayload(idempotencyKey);
+        if (__DEV__) {
+          console.log("[PORTING_SUBMIT] retrying fallback payload shape");
+        }
+        response = await api.post("/phone/porting/start", fallbackPayload, {
+          headers: { "Idempotency-Key": idempotencyKey },
+        });
+      }
       const portingId =
         response?.data?.portingId ||
         response?.data?.id ||
