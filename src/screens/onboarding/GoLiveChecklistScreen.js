@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState } from "react";
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import { View, Text, Pressable, StyleSheet, ScrollView, RefreshControl, Alert } from "react-native";
 import { OnboardingContext } from "../../onboarding/OnboardingContext";
 import api from "../../config/api";
 import OnboardingHeader from "../../onboarding/OnboardingHeader";
@@ -60,12 +60,68 @@ export default function GoLiveChecklistScreen({ navigation }) {
   const [readiness, setReadiness] = useState({});
   const [blockers, setBlockers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
   const trialStarted = Boolean(readiness?.trialStarted);
 
+  function hasRoute(routeName) {
+    const routeNames = navigation?.getState?.()?.routeNames || [];
+    return routeNames.includes(routeName);
+  }
+
+  function navigateSafe(primaryRoute, fallbackRoute) {
+    if (primaryRoute && hasRoute(primaryRoute)) {
+      navigation.navigate(primaryRoute);
+      return true;
+    }
+    if (fallbackRoute && hasRoute(fallbackRoute)) {
+      navigation.navigate(fallbackRoute);
+      return true;
+    }
+    return false;
+  }
+
+  function getReadinessLabel(key) {
+    const labels = {
+      numberStrategySelected: "Number strategy",
+      portingComplete: "Porting complete",
+      trialStarted: "Trial started",
+      calendarConnected: "Calendar connected",
+      availabilitySet: "Availability set",
+      testCallCompleted: "Test call",
+      documentsUploaded: "Porting documents",
+    };
+    return labels[key] || key.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase());
+  }
+
+  function getReadinessHelper(key) {
+    const helper = {
+      numberStrategySelected: "Pick new number or port existing to continue.",
+      portingComplete: "Complete number porting to remove this blocker.",
+      trialStarted: "Start your trial to unlock go-live.",
+      calendarConnected: "Connect your calendar to sync appointments.",
+      availabilitySet: "Set business hours and available times.",
+      testCallCompleted: "Run one test call to verify setup.",
+      documentsUploaded: "Upload LOA and phone bill for porting.",
+    };
+    return helper[key] || "Resolve this item to continue go-live setup.";
+  }
+
+  function getBlockerAction(blockerCode) {
+    const code = String(blockerCode || "").toUpperCase();
+    if (code.includes("PORTING") && code.includes("DOC")) return "portingDocs";
+    if (code.includes("PORTING")) return "porting";
+    if (code.includes("NUMBER_STRATEGY")) return "numberStrategy";
+    if (code.includes("TRIAL") || code.includes("SUBSCRIPTION")) return "trial";
+    if (code.includes("CALENDAR")) return "calendar";
+    if (code.includes("AVAILABILITY")) return "availability";
+    if (code.includes("TEST_CALL")) return "testCall";
+    return "resumeOnboarding";
+  }
+
   async function loadChecklist() {
     console.log("[LAUNCH_CHECKLIST] fetching");
-    setLoading(true);
+    setLoading((prev) => (refreshing ? prev : true));
     setError("");
     try {
       await setLocalStep("go_live_checklist");
@@ -116,40 +172,77 @@ export default function GoLiveChecklistScreen({ navigation }) {
       await handleFinishSetup();
       return;
     }
-    if (action === "goPortStatus") {
-      navigation.navigate("PortingStatus");
+    if (action === "porting" || action === "goPortStatus" || action === "startPorting" || action === "fixResubmit") {
+      const ok = navigateSafe("PortingStatus", "PortingForm");
+      if (!ok) await handleFinishSetup();
       return;
     }
-    if (action === "uploadDocs") {
-      navigation.navigate("PortingDocuments");
+    if (action === "portingDocs" || action === "uploadDocs") {
+      const ok = navigateSafe("PortingDocuments", "PortingStatus");
+      if (!ok) await handleFinishSetup();
       return;
     }
-    if (action === "fixResubmit") {
-      navigation.navigate("PortingForm");
+    if (action === "numberStrategy") {
+      const ok = navigateSafe("NumberStrategy", "Welcome");
+      if (!ok) await handleFinishSetup();
       return;
     }
-    if (action === "startPorting") {
-      navigation.navigate("PortingForm");
+    if (action === "trial") {
+      const ok = navigateSafe("TrialStart", "Welcome");
+      if (!ok) await handleFinishSetup();
+      return;
+    }
+    if (action === "calendar") {
+      const ok = navigateSafe("CalendarConnect", "Settings");
+      if (!ok) await handleFinishSetup();
+      return;
+    }
+    if (action === "availability") {
+      const ok = navigateSafe("Availability", "Settings");
+      if (!ok) await handleFinishSetup();
+      return;
+    }
+    if (action === "testCall") {
+      const ok = navigateSafe("TestCall", null);
+      if (!ok) {
+        Alert.alert("Test call required", "Please complete a test call from your call setup flow.");
+      }
     }
   }
 
-  const checklistItems = Object.entries(readiness);
+  async function onPullRefresh() {
+    setRefreshing(true);
+    await loadChecklist();
+    setRefreshing(false);
+  }
+
+  const checklistItems = Object.entries(readiness || {});
 
   return (
-    <View style={styles.container}>
+    <ScrollView
+      contentContainerStyle={styles.container}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onPullRefresh} />}
+    >
       <OnboardingHeader />
       <Text style={styles.title}>You’re Almost Live</Text>
       <Text style={styles.subtitle}>
         {ready ? "All systems ready." : "Complete these items to go live."}
       </Text>
 
+      {loading ? <Text style={styles.loading}>Loading…</Text> : null}
+
       {checklistItems.length === 0 && !loading ? (
         <Text style={styles.empty}>Checklist unavailable right now.</Text>
       ) : (
         checklistItems.map(([key, value]) => (
-          <View key={key} style={styles.row}>
-            <Text style={styles.rowLabel}>{key}</Text>
-            <Text style={[styles.rowValue, value ? styles.ok : styles.notOk]}>{value ? "Ready" : "Pending"}</Text>
+          <View key={key} style={[styles.row, value ? styles.rowReady : styles.rowPending]}>
+            <View style={styles.rowLeft}>
+              <Text style={styles.rowLabel}>{getReadinessLabel(key)}</Text>
+              {!value ? <Text style={styles.helperText}>{getReadinessHelper(key)}</Text> : null}
+            </View>
+            <Text style={[styles.rowValue, value ? styles.ok : styles.notOk]}>
+              {value ? "✅ Ready" : "⏳ Not ready"}
+            </Text>
           </View>
         ))
       )}
@@ -157,24 +250,20 @@ export default function GoLiveChecklistScreen({ navigation }) {
       {!!error ? <Text style={styles.error}>{error}</Text> : null}
       {blockers.length > 0 ? (
         <View style={styles.blockers}>
-          <Text style={styles.blockerTitle}>Action items</Text>
+          <Text style={styles.blockerTitle}>Blockers</Text>
           {blockers.map((rawBlocker, idx) => {
-            const code = String(rawBlocker || "");
-            const ui = BLOCKER_UI[code] || {
-              title: "Action needed",
-              description: "There is one remaining setup item to resolve.",
-              actionText: "Review setup",
-              action: "resumeOnboarding",
-            };
+            const code = String(rawBlocker || "").toUpperCase();
+            const ui = BLOCKER_UI[code] || null;
+            const action = ui?.action || getBlockerAction(code);
             return (
               <View key={`bl-${idx}`} style={styles.blockerCard}>
-                <Text style={styles.blockerCardTitle}>{ui.title}</Text>
-                <Text style={styles.blockerText}>{ui.description}</Text>
+                <Text style={styles.blockerCardTitle}>{ui?.title || "Action needed"}</Text>
+                <Text style={styles.blockerText}>{ui?.description || String(rawBlocker)}</Text>
                 <Pressable
                   style={styles.blockerBtn}
-                  onPress={() => handleBlockerAction(ui.action)}
+                  onPress={() => handleBlockerAction(action)}
                 >
-                  <Text style={styles.blockerBtnText}>{ui.actionText}</Text>
+                  <Text style={styles.blockerBtnText}>{ui?.actionText || "Fix"}</Text>
                 </Pressable>
               </View>
             );
@@ -199,17 +288,18 @@ export default function GoLiveChecklistScreen({ navigation }) {
       <Pressable style={styles.secondaryBtn} onPress={handleFinishSetup}>
         <Text style={styles.secondaryText}>Finish Setup</Text>
       </Pressable>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff", padding: 24, justifyContent: "center" },
+  container: { flexGrow: 1, backgroundColor: "#fff", padding: 24 },
   title: { fontSize: 28, fontWeight: "900", marginBottom: 6 },
   subtitle: { color: "#4b5563", marginBottom: 14 },
+  loading: { color: "#6b7280", marginBottom: 10, fontWeight: "700" },
   row: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    alignItems: "center",
     borderWidth: 1,
     borderColor: "#e5e7eb",
     borderRadius: 10,
@@ -217,7 +307,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     marginBottom: 8,
   },
+  rowReady: { backgroundColor: "#f9fafb" },
+  rowPending: { backgroundColor: "#fff" },
+  rowLeft: { flex: 1, paddingRight: 8 },
   rowLabel: { color: "#111827", fontWeight: "700" },
+  helperText: { color: "#6b7280", fontSize: 12, marginTop: 2 },
   rowValue: { fontWeight: "800" },
   ok: { color: "#065f46" },
   notOk: { color: "#92400e" },
