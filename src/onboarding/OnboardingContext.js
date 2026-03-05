@@ -71,6 +71,7 @@ export function OnboardingProvider({ children }) {
   useEffect(() => {
     (async () => {
       try {
+        setLoading(true);
         if (!barberId) {
           // no barber yet — keep defaults
           setComplete(false);

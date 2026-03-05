@@ -8,7 +8,7 @@ import api from "../../config/api";
 import { STEPS } from "../../onboarding/stepKeys";
 
 export default function WelcomeScreen({ navigation }) {
-  const { updateStep, setLocalStep } = useContext(OnboardingContext);
+  const { setLocalStep } = useContext(OnboardingContext);
   const { logout } = useContext(AuthContext);
 
   useEffect(() => {
@@ -62,9 +62,7 @@ export default function WelcomeScreen({ navigation }) {
 
       <Pressable
         style={[styles.button, styles.primary]}
-        onPress={async () => {
-          const result = await updateStep(STEPS.WELCOME);
-          if (result?.complete) return;
+        onPress={() => {
           if (canNavigateTo("Account")) {
             navigation.navigate("Account");
           }
