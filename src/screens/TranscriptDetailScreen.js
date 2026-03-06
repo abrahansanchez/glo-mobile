@@ -94,6 +94,39 @@ function buildAssistantLines(transcript) {
   return normalizeStringOrArrayToLines(transcript?.aiResponses, "assistant");
 }
 
+function hasNormalizedTranscriptFields(value) {
+  if (!value || typeof value !== "object") return false;
+  return Boolean(
+    value.preview != null ||
+      value.summary != null ||
+      value.status != null ||
+      value.transcriptLines != null ||
+      value.assistantLines != null ||
+      value.messages != null ||
+      value.transcript != null ||
+      value.aiResponses != null
+  );
+}
+
+function pickTranscriptPayload(responseData) {
+  const candidates = [
+    { source: "response.data.transcript", value: responseData?.transcript },
+    { source: "response.data.data.transcript", value: responseData?.data?.transcript },
+    { source: "response.data.payload.transcript", value: responseData?.payload?.transcript },
+    { source: "response.data.data", value: responseData?.data },
+    { source: "response.data", value: responseData },
+  ];
+
+  for (const candidate of candidates) {
+    if (hasNormalizedTranscriptFields(candidate.value)) {
+      return candidate;
+    }
+  }
+
+  // Last-resort fallback, preserving existing behavior if backend returns a non-normalized shape.
+  return candidates.find((candidate) => candidate.value != null) || { source: "none", value: null };
+}
+
 export default function TranscriptDetailScreen({ route }) {
   const transcriptId = route?.params?.transcriptId;
   const [loading, setLoading] = useState(true);
@@ -112,14 +145,26 @@ export default function TranscriptDetailScreen({ route }) {
         setLoading(true);
         setError("");
         const response = await api.get(`/dashboard/transcripts/${transcriptId}`);
-        const data =
-          response.data?.transcript ||
-          response.data?.data?.transcript ||
-          response.data?.payload?.transcript ||
-          response.data?.data ||
-          response.data;
-        setDetail(data || null);
+        const picked = pickTranscriptPayload(response.data);
+        setDetail(picked.value || null);
         console.log(`[TRANSCRIPT_DETAIL] loaded id=${transcriptId}`);
+        if (__DEV__) {
+          console.log("[TRANSCRIPT_DETAIL_RAW_RESPONSE]", response.data);
+          console.log("[TRANSCRIPT_DETAIL_PICKED_SOURCE]", picked.source);
+          console.log("[TRANSCRIPT_DETAIL_PICKED_KEYS]", Object.keys(picked.value || {}).slice(0, 30));
+          console.log("[TRANSCRIPT_DETAIL_FIELDS]", {
+            status: picked.value?.status ?? null,
+            preview: toText(picked.value?.preview),
+            summary: toText(picked.value?.summary),
+            transcriptLines: Array.isArray(picked.value?.transcriptLines)
+              ? picked.value.transcriptLines.length
+              : typeof picked.value?.transcriptLines,
+            assistantLines: Array.isArray(picked.value?.assistantLines)
+              ? picked.value.assistantLines.length
+              : typeof picked.value?.assistantLines,
+            messages: Array.isArray(picked.value?.messages) ? picked.value.messages.length : typeof picked.value?.messages,
+          });
+        }
       } catch (err) {
         console.log("[TRANSCRIPT_DETAIL] load failed", err?.response?.data || err?.message || err);
         setError("Failed to load transcript");
@@ -138,13 +183,15 @@ export default function TranscriptDetailScreen({ route }) {
 
   useEffect(() => {
     if (!detail) return;
-    console.log("[TRANSCRIPT_DETAIL_STATUS]", transcriptStatus || "unknown");
-    console.log("[TRANSCRIPT_DETAIL_COUNTS]", {
-      callerLines: callerLines.length,
-      assistantLines: assistantLines.length,
-      hasSummary: Boolean(summaryText),
-      hasPreview: Boolean(previewText),
-    });
+    if (__DEV__) {
+      console.log("[TRANSCRIPT_DETAIL_STATUS]", transcriptStatus || "unknown");
+      console.log("[TRANSCRIPT_DETAIL_COUNTS]", {
+        callerLines: callerLines.length,
+        assistantLines: assistantLines.length,
+        hasSummary: Boolean(summaryText),
+        hasPreview: Boolean(previewText),
+      });
+    }
   }, [detail, transcriptStatus, callerLines.length, assistantLines.length, summaryText, previewText]);
 
   if (loading) {
