@@ -9,9 +9,11 @@ import AppText from "../../components/ui/AppText";
 import AppCard from "../../components/ui/AppCard";
 import OnboardingHero from "../../components/onboarding/OnboardingHero";
 import { spacing } from "../../ui/tokens";
+import { useTheme } from "../../theme/ThemeContext";
 
 export default function NumberStrategyScreen({ navigation }) {
   const { updateStep, updateData, onboardingData } = useContext(OnboardingContext);
+  const { colors } = useTheme();
   const [choice, setChoice] = useState(onboardingData?.numberStrategy || "new_number");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -21,15 +23,39 @@ export default function NumberStrategyScreen({ navigation }) {
     return routeNames.includes(routeName);
   }
 
+  function normalizePhoneToE164(value) {
+    const digits = String(value || "").replace(/[^\d]/g, "");
+    if (!digits) return "";
+    if (digits.length === 10) return `+1${digits}`;
+    if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
+    if (digits.length >= 11 && digits.length <= 15) return `+${digits}`;
+    return "";
+  }
+
   async function submit() {
     setSubmitting(true);
     setError("");
     try {
-      await api.post("/phone/number-strategy", { strategy: choice });
+      const payload = { strategy: choice };
+      if (choice === "forward_existing") {
+        const forwardFromNumber = normalizePhoneToE164(onboardingData?.phoneNumber);
+        if (!forwardFromNumber) {
+          setError("We couldn't find the number from Step 2. Go back and confirm your business phone number.");
+          setSubmitting(false);
+          return;
+        }
+        payload.forwardFromNumber = forwardFromNumber;
+      }
+
+      await api.post("/phone/number-strategy", payload);
       await updateData({ numberStrategy: choice });
       const result = await updateStep(STEPS.NUMBER_STRATEGY);
       if (result?.complete) return;
-      if (choice === "port_existing") {
+      if (choice === "forward_existing") {
+        if (canNavigateTo("ForwardingSetup")) {
+          navigation.navigate("ForwardingSetup");
+        }
+      } else if (choice === "port_existing") {
         if (canNavigateTo("PortingForm")) {
           navigation.navigate("PortingForm");
         }
@@ -46,20 +72,32 @@ export default function NumberStrategyScreen({ navigation }) {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.bg }]}>
       <OnboardingHeader />
       <OnboardingHero
         stepLabel="Step 4 of 9"
         title="Choose Your Number Strategy"
-        subtitle="Port your current number or start with a new Glō number."
+        subtitle="Keep your number, port it over, or start fresh with a new Glō number."
       />
+
+      <Pressable
+        onPress={() => setChoice("forward_existing")}
+        style={styles.cardPressable}
+      >
+        <AppCard style={[styles.card, choice === "forward_existing" && styles.cardSelected, choice === "forward_existing" && { borderColor: colors.textPrimary }]}>
+          <AppText style={styles.cardTitle}>Keep my number</AppText>
+          <AppText style={styles.cardTag}>Fastest setup</AppText>
+          <AppText style={styles.cardDesc}>Keep your current business number and route calls into Glō.</AppText>
+        </AppCard>
+      </Pressable>
 
       <Pressable
         onPress={() => setChoice("port_existing")}
         style={styles.cardPressable}
       >
-        <AppCard style={[styles.card, choice === "port_existing" && styles.cardSelected]}>
-          <AppText style={styles.cardTitle}>Port my existing number</AppText>
+        <AppCard style={[styles.card, choice === "port_existing" && styles.cardSelected, choice === "port_existing" && { borderColor: colors.textPrimary }]}>
+          <AppText style={styles.cardTitle}>Port my number</AppText>
+          <AppText style={styles.cardTag}>Best long-term</AppText>
           <AppText style={styles.cardDesc}>Transfer your current business line into Glō.</AppText>
         </AppCard>
       </Pressable>
@@ -68,13 +106,14 @@ export default function NumberStrategyScreen({ navigation }) {
         onPress={() => setChoice("new_number")}
         style={styles.cardPressable}
       >
-        <AppCard style={[styles.card, choice === "new_number" && styles.cardSelected]}>
+        <AppCard style={[styles.card, choice === "new_number" && styles.cardSelected, choice === "new_number" && { borderColor: colors.textPrimary }]}>
           <AppText style={styles.cardTitle}>Get a new Glō number</AppText>
+          <AppText style={styles.cardTag}>Instant</AppText>
           <AppText style={styles.cardDesc}>Start faster with a new number now.</AppText>
         </AppCard>
       </Pressable>
 
-      {!!error ? <AppText style={styles.error}>{error}</AppText> : null}
+      {!!error ? <AppText style={[styles.error, { color: colors.danger }]}>{error}</AppText> : null}
 
       <AppButton
         style={styles.button}
@@ -92,9 +131,10 @@ const styles = StyleSheet.create({
   card: {
     padding: spacing.md,
   },
-  cardSelected: { borderColor: "#111827", borderWidth: 2 },
+  cardSelected: { borderWidth: 2 },
   cardTitle: { fontWeight: "800", fontSize: 16, marginBottom: 6 },
+  cardTag: { fontSize: 12, fontWeight: "800", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.4 },
   cardDesc: { fontSize: 13 },
   button: { marginTop: 10 },
-  error: { color: "#b00020", fontWeight: "700", marginBottom: 8 },
+  error: { fontWeight: "700", marginBottom: 8 },
 });

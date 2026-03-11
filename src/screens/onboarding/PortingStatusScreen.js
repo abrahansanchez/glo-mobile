@@ -8,8 +8,9 @@ import AppText from "../../components/ui/AppText";
 import AppBadge from "../../components/ui/AppBadge";
 import AppButton from "../../components/ui/AppButton";
 import OnboardingHero from "../../components/onboarding/OnboardingHero";
-import { colors, spacing } from "../../ui/tokens";
+import { spacing } from "../../ui/tokens";
 import { track } from "../../analytics/track";
+import { useTheme } from "../../theme/ThemeContext";
 
 const STATUS_STEPS = [
   { key: "draft", label: "Draft" },
@@ -28,6 +29,7 @@ function formatDate(value) {
 }
 
 export default function PortingStatusScreen({ navigation, route }) {
+  const { colors, resolvedTheme } = useTheme();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [statusPayload, setStatusPayload] = useState(null);
@@ -139,6 +141,7 @@ export default function PortingStatusScreen({ navigation, route }) {
 
   return (
     <ScrollView
+      style={{ backgroundColor: colors.bg }}
       contentContainerStyle={styles.container}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onPullRefresh} />}
     >
@@ -153,13 +156,13 @@ export default function PortingStatusScreen({ navigation, route }) {
         tone={status === "completed" || status === "approved" ? "success" : status === "rejected" ? "warning" : "neutral"}
         style={styles.statusBadge}
       />
-      <AppText variant="body" style={styles.note}>Usually 3-10 business days depending on carrier response times.</AppText>
+      <AppText variant="body" style={[styles.note, { color: colors.textMuted }]}>Usually 3-10 business days depending on carrier response times.</AppText>
 
       <AppCard style={styles.metaCard}>
-        <AppText variant="caption" style={styles.metaText}>Submitted: {formatDate(statusPayload?.submittedAt)}</AppText>
-        <AppText variant="caption" style={styles.metaText}>Updated: {formatDate(statusPayload?.updatedAt)}</AppText>
-        <AppText variant="caption" style={styles.metaText}>LOA: {loaUploaded ? "Uploaded" : "Missing"}</AppText>
-        <AppText variant="caption" style={styles.metaText}>Bill: {billUploaded ? "Uploaded" : "Missing"}</AppText>
+        <AppText variant="caption" style={[styles.metaText, { color: colors.textSecondary }]}>Submitted: {formatDate(statusPayload?.submittedAt)}</AppText>
+        <AppText variant="caption" style={[styles.metaText, { color: colors.textSecondary }]}>Updated: {formatDate(statusPayload?.updatedAt)}</AppText>
+        <AppText variant="caption" style={[styles.metaText, { color: colors.textSecondary }]}>LOA: {loaUploaded ? "Uploaded" : "Missing"}</AppText>
+        <AppText variant="caption" style={[styles.metaText, { color: colors.textSecondary }]}>Bill: {billUploaded ? "Uploaded" : "Missing"}</AppText>
       </AppCard>
 
       <View style={styles.timeline}>
@@ -169,33 +172,47 @@ export default function PortingStatusScreen({ navigation, route }) {
           return (
             <View
               key={step.key}
-              style={[styles.stage, done && styles.stageDone, rejectedStep && styles.stageRejected]}
+              style={[
+                styles.stage,
+                { borderColor: colors.border, backgroundColor: colors.card },
+                done && { borderColor: colors.success, backgroundColor: resolvedTheme === "dark" ? "#12382c" : "#ecfdf5" },
+                rejectedStep && { borderColor: colors.danger, backgroundColor: resolvedTheme === "dark" ? "#3b1010" : "#fef2f2" },
+              ]}
             >
-              <AppText style={[styles.stageText, done && styles.stageTextDone]}>{step.label}</AppText>
+              <AppText
+                style={[
+                  styles.stageText,
+                  { color: colors.textSecondary },
+                  done && { color: colors.success },
+                  rejectedStep && { color: colors.danger },
+                ]}
+              >
+                {step.label}
+              </AppText>
             </View>
           );
         })}
       </View>
 
       {!!rejectionReason && status === "rejected" ? (
-        <AppCard style={styles.rejectCard}>
-          <AppText style={styles.rejectTitle}>Action Needed: Port Request Rejected</AppText>
-          <AppText style={styles.rejectText}>{rejectionReason}</AppText>
+        <AppCard style={[styles.rejectCard, { borderColor: colors.danger, backgroundColor: resolvedTheme === "dark" ? "#3b1010" : "#fff1f2" }]}>
+          <AppText style={[styles.rejectTitle, { color: colors.danger }]}>Action Needed: Port Request Rejected</AppText>
+          <AppText style={[styles.rejectText, { color: colors.danger }]}>{rejectionReason}</AppText>
         </AppCard>
       ) : null}
 
       {blockers.length ? (
-        <AppCard style={styles.blockersCard}>
-          <AppText style={styles.blockersTitle}>Blockers</AppText>
+        <AppCard style={[styles.blockersCard, { borderColor: colors.warning, backgroundColor: resolvedTheme === "dark" ? "#3a2a14" : "#fffbeb" }]}>
+          <AppText style={[styles.blockersTitle, { color: colors.warning }]}>Blockers</AppText>
           {blockers.map((item, idx) => (
-            <AppText key={`${idx}-${item}`} style={styles.blockersItem}>
+            <AppText key={`${idx}-${item}`} style={[styles.blockersItem, { color: colors.warning }]}>
               • {String(item)}
             </AppText>
           ))}
         </AppCard>
       ) : null}
 
-      {!!error ? <AppText style={styles.error}>{error}</AppText> : null}
+      {!!error ? <AppText style={[styles.error, { color: colors.danger }]}>{error}</AppText> : null}
 
       <AppButton
         label={loading ? "Refreshing..." : "Refresh"}
@@ -251,34 +268,30 @@ export default function PortingStatusScreen({ navigation, route }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff", padding: 24, justifyContent: "center" },
+  container: { flex: 1, padding: 24, justifyContent: "center" },
   statusBadge: { marginBottom: spacing.xs },
-  note: { color: colors.textMuted, marginBottom: spacing.md },
+  note: { marginBottom: spacing.md },
   metaCard: { marginBottom: spacing.md, padding: spacing.md },
-  metaText: { color: colors.textSecondary, marginBottom: spacing.xs },
+  metaText: { marginBottom: spacing.xs },
   timeline: { gap: spacing.sm, marginBottom: spacing.md },
-  stage: { borderWidth: 1, borderColor: "#d1d5db", borderRadius: 10, paddingVertical: 10, paddingHorizontal: 12 },
-  stageDone: { backgroundColor: "#ecfdf5", borderColor: "#10b981" },
-  stageRejected: { backgroundColor: "#fef2f2", borderColor: "#ef4444" },
-  stageText: { fontWeight: "700", color: "#374151" },
-  stageTextDone: { color: "#065f46" },
+  stage: { borderWidth: 1, borderRadius: 10, paddingVertical: 10, paddingHorizontal: 12 },
+  stageDone: {},
+  stageRejected: {},
+  stageText: { fontWeight: "700" },
+  stageTextDone: {},
   rejectCard: {
     borderWidth: 2,
-    borderColor: "#dc2626",
     marginBottom: spacing.sm,
-    backgroundColor: "#fff1f2",
   },
-  rejectTitle: { fontWeight: "900", color: "#7f1d1d", marginBottom: spacing.xs, fontSize: 15 },
-  rejectText: { color: "#7f1d1d", fontWeight: "700" },
+  rejectTitle: { fontWeight: "900", marginBottom: spacing.xs, fontSize: 15 },
+  rejectText: { fontWeight: "700" },
   blockersCard: {
     borderWidth: 1,
-    borderColor: "#fbbf24",
     marginBottom: spacing.sm,
-    backgroundColor: "#fffbeb",
   },
-  blockersTitle: { fontWeight: "800", color: "#92400e", marginBottom: spacing.xs },
-  blockersItem: { color: "#78350f" },
+  blockersTitle: { fontWeight: "800", marginBottom: spacing.xs },
+  blockersItem: {},
   primaryBtn: { marginTop: spacing.xs },
   secondaryBtn: { marginTop: spacing.sm },
-  error: { color: colors.danger, fontWeight: "700", marginBottom: spacing.sm },
+  error: { fontWeight: "700", marginBottom: spacing.sm },
 });

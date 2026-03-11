@@ -1,9 +1,11 @@
 import React, { useContext } from "react";
-import { View, Pressable, Text, StyleSheet, Alert } from "react-native";
+import { View, Pressable, StyleSheet, Alert } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AuthContext } from "../auth/authContext";
 import { OnboardingContext } from "./OnboardingContext";
+import AppText from "../components/ui/AppText";
+import { useTheme } from "../theme/ThemeContext";
 
 /**
  * OnboardingHeader
@@ -18,6 +20,7 @@ export default function OnboardingHeader({
   const navigation = useNavigation();
   const canGoBack = navigation.canGoBack();
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
 
   const { logout } = useContext(AuthContext);
   const { reset: resetOnboarding } = useContext(OnboardingContext);
@@ -71,7 +74,7 @@ export default function OnboardingHeader({
       {/* Back (only if stack can go back) */}
       {canGoBack ? (
         <Pressable onPress={() => navigation.goBack()} style={styles.btn}>
-          <Text style={styles.text}>Back</Text>
+          <AppText style={[styles.text, { color: colors.textPrimary }]}>Back</AppText>
         </Pressable>
       ) : (
         <View style={styles.btnPlaceholder} />
@@ -82,14 +85,14 @@ export default function OnboardingHeader({
       {/* Dev Restart (recommended while building) */}
       {showRestart ? (
         <Pressable onPress={handleRestart} style={styles.btn}>
-          <Text style={styles.text}>Restart</Text>
+          <AppText style={[styles.text, { color: colors.textPrimary }]}>Restart</AppText>
         </Pressable>
       ) : null}
 
       {/* Logout (optional) */}
       {showLogout ? (
         <Pressable onPress={handleLogout} style={[styles.btn, styles.logout]}>
-          <Text style={[styles.text, styles.logoutText]}>Log out</Text>
+          <AppText style={[styles.text, { color: colors.danger }]}>Log out</AppText>
         </Pressable>
       ) : null}
     </View>
@@ -105,7 +108,6 @@ const styles = StyleSheet.create({
   },
   btn: { padding: 8 },
   btnPlaceholder: { width: 44, height: 32 }, // keeps layout aligned
-  text: { fontWeight: "700", color: "#111" },
+  text: { fontWeight: "700" },
   logout: { marginLeft: 6 },
-  logoutText: { color: "#b00" },
 });

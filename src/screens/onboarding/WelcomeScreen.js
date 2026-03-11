@@ -11,10 +11,12 @@ import AppButton from "../../components/ui/AppButton";
 import AppCard from "../../components/ui/AppCard";
 import OnboardingHero from "../../components/onboarding/OnboardingHero";
 import { spacing } from "../../ui/tokens";
+import { useTheme } from "../../theme/ThemeContext";
 
 export default function WelcomeScreen({ navigation }) {
   const { setLocalStep } = useContext(OnboardingContext);
   const { logout } = useContext(AuthContext);
+  const { colors } = useTheme();
 
   function canNavigateTo(routeName) {
     const routeNames = navigation?.getState?.()?.routeNames || [];
@@ -57,7 +59,7 @@ export default function WelcomeScreen({ navigation }) {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.bg }]}>
       <OnboardingHero
         stepLabel="Step 1 of 9"
         title="Welcome to Glō"

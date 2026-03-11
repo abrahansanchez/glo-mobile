@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useMemo, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import {
   View,
   TextInput,
@@ -19,9 +19,11 @@ import OnboardingHero from "../../components/onboarding/OnboardingHero";
 import AppText from "../../components/ui/AppText";
 import AppCard from "../../components/ui/AppCard";
 import { spacing } from "../../ui/tokens";
+import { useTheme } from "../../theme/ThemeContext";
 
 export default function BusinessSetupScreen({ navigation }) {
   const { updateStep, setLocalStep, updateData, onboardingData } = useContext(OnboardingContext);
+  const { colors } = useTheme();
   function canNavigateTo(routeName) {
     const routeNames = navigation?.getState?.()?.routeNames || [];
     return routeNames.includes(routeName);
@@ -103,7 +105,7 @@ export default function BusinessSetupScreen({ navigation }) {
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: colors.bg }]}>
       <KeyboardAvoidingView
         style={styles.safe}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -127,7 +129,8 @@ export default function BusinessSetupScreen({ navigation }) {
             value={shopName}
             onChangeText={setShopName}
             placeholder="Your Shop Name"
-            style={styles.input}
+            placeholderTextColor={colors.textMuted}
+            style={[styles.input, { borderColor: colors.border, color: colors.textPrimary }]}
           />
 
           <AppText style={styles.label}>City</AppText>
@@ -135,7 +138,8 @@ export default function BusinessSetupScreen({ navigation }) {
             value={city}
             onChangeText={setCity}
             placeholder="New York"
-            style={styles.input}
+            placeholderTextColor={colors.textMuted}
+            style={[styles.input, { borderColor: colors.border, color: colors.textPrimary }]}
           />
         </AppCard>
 
@@ -148,13 +152,16 @@ export default function BusinessSetupScreen({ navigation }) {
               onPress={() => setTimezone(tz)}
               style={[
                 styles.timezonePill,
+                { borderColor: colors.border, backgroundColor: colors.card },
                 timezone === tz && styles.timezonePillSelected,
+                timezone === tz && { borderColor: colors.textPrimary, backgroundColor: colors.textPrimary },
               ]}
             >
               <AppText
                 style={[
                   styles.timezonePillText,
-                  timezone === tz && styles.timezonePillTextSelected,
+                  { color: colors.textPrimary },
+                  timezone === tz && { color: colors.bg },
                 ]}
               >
                 {tz.split("/")[1] || tz}
@@ -173,7 +180,8 @@ export default function BusinessSetupScreen({ navigation }) {
               onBlur={() => setOpenTime(normalizeTimeInput(openTime, "09:00"))}
               onChangeText={setOpenTime}
               placeholder="9:00 AM"
-              style={styles.timeInput}
+              placeholderTextColor={colors.textMuted}
+              style={[styles.timeInput, { borderColor: colors.border, color: colors.textPrimary }]}
             />
           </View>
           <View style={{ flex: 1, marginLeft: 10 }}>
@@ -184,11 +192,12 @@ export default function BusinessSetupScreen({ navigation }) {
               onBlur={() => setCloseTime(normalizeTimeInput(closeTime, "17:00"))}
               onChangeText={setCloseTime}
               placeholder="5:00 PM"
-              style={styles.timeInput}
+              placeholderTextColor={colors.textMuted}
+              style={[styles.timeInput, { borderColor: colors.border, color: colors.textPrimary }]}
             />
           </View>
         </View>
-        <AppText style={styles.timeHint}>Use AM/PM format (example: 9:00 AM)</AppText>
+        <AppText style={[styles.timeHint, { color: colors.textMuted }]}>Use AM/PM format (example: 9:00 AM)</AppText>
 
         <AppText style={styles.label}>Open on these days:</AppText>
         <View style={styles.daysGrid}>
@@ -198,13 +207,16 @@ export default function BusinessSetupScreen({ navigation }) {
               onPress={() => toggleDay(day)}
               style={[
                 styles.dayPill,
+                { borderColor: colors.border, backgroundColor: colors.card },
                 businessDays[day] && styles.dayPillOn,
+                businessDays[day] && { backgroundColor: colors.textPrimary, borderColor: colors.textPrimary },
               ]}
             >
               <AppText
                 style={[
                   styles.dayText,
-                  businessDays[day] && styles.dayTextOn,
+                  { color: colors.textPrimary },
+                  businessDays[day] && { color: colors.bg },
                 ]}
               >
                 {day.slice(0, 3)}
@@ -214,7 +226,7 @@ export default function BusinessSetupScreen({ navigation }) {
         </View>
         </AppCard>
 
-        {!!error && <AppText style={styles.error}>{error}</AppText>}
+        {!!error && <AppText style={[styles.error, { color: colors.danger }]}>{error}</AppText>}
 
         <AppButton style={styles.button} onPress={next} label="Continue" />
           </ScrollView>
@@ -225,13 +237,12 @@ export default function BusinessSetupScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#fff" },
+  safe: { flex: 1 },
   container: { flexGrow: 1, paddingHorizontal: 20, paddingTop: 16, paddingBottom: 140 },
   sectionCard: { marginBottom: spacing.md },
   label: { fontWeight: "800", marginBottom: 8, marginTop: 12 },
   input: {
     borderWidth: 1,
-    borderColor: "#ccc",
     borderRadius: 12,
     padding: 12,
     marginBottom: 14,
@@ -245,27 +256,21 @@ const styles = StyleSheet.create({
   },
   timezonePill: {
     borderWidth: 1,
-    borderColor: "#ccc",
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
-  timezonePillSelected: {
-    backgroundColor: "#000",
-    borderColor: "#000",
-  },
-  timezonePillText: { fontWeight: "600", color: "#000", fontSize: 12 },
-  timezonePillTextSelected: { color: "#fff" },
+  timezonePillSelected: {},
+  timezonePillText: { fontWeight: "600", fontSize: 12 },
   hoursRow: { flexDirection: "row", gap: 10, marginBottom: 14 },
-  hoursLabel: { fontWeight: "700", fontSize: 12, marginBottom: 4, color: "#666" },
+  hoursLabel: { fontWeight: "700", fontSize: 12, marginBottom: 4 },
   timeInput: {
     borderWidth: 1,
-    borderColor: "#ccc",
     borderRadius: 8,
     padding: 10,
     fontSize: 14,
   },
-  timeHint: { color: "#6b7280", fontSize: 12, marginTop: -6, marginBottom: 10 },
+  timeHint: { fontSize: 12, marginTop: -6, marginBottom: 10 },
   daysGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -274,16 +279,15 @@ const styles = StyleSheet.create({
   },
   dayPill: {
     borderWidth: 1,
-    borderColor: "#ccc",
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
-  dayPillOn: { backgroundColor: "#000", borderColor: "#000" },
-  dayText: { fontWeight: "600", color: "#000", fontSize: 12 },
-  dayTextOn: { color: "#fff" },
+  dayPillOn: {},
+  dayText: { fontWeight: "600", fontSize: 12 },
+  dayTextOn: {},
   button: { marginTop: 20 },
-  error: { color: "red", marginBottom: 10, fontWeight: "700" },
+  error: { marginBottom: 10, fontWeight: "700" },
 });
   function formatTime12Hour(time24) {
     if (!time24 || typeof time24 !== "string") return "";

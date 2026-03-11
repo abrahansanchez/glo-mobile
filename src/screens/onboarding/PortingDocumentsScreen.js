@@ -7,7 +7,8 @@ import AppText from "../../components/ui/AppText";
 import AppBadge from "../../components/ui/AppBadge";
 import AppButton from "../../components/ui/AppButton";
 import OnboardingHero from "../../components/onboarding/OnboardingHero";
-import { colors, spacing } from "../../ui/tokens";
+import { spacing } from "../../ui/tokens";
+import { useTheme } from "../../theme/ThemeContext";
 
 function getPortingId(payload) {
   return payload?.portingId || payload?.id || payload?._id || null;
@@ -40,6 +41,7 @@ function getBackendErrorMessage(errorResponse) {
 }
 
 export default function PortingDocumentsScreen({ navigation, route }) {
+  const { colors } = useTheme();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [portingId, setPortingId] = useState(route?.params?.portingId || null);
@@ -150,7 +152,7 @@ export default function PortingDocumentsScreen({ navigation, route }) {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.bg }]}>
       <OnboardingHeader />
       <OnboardingHero
         stepLabel="Step 6 of 9"
@@ -165,13 +167,13 @@ export default function PortingDocumentsScreen({ navigation, route }) {
 
       <AppCard style={styles.statusRow}>
         <AppText style={styles.statusLabel}>LOA</AppText>
-        <AppText style={[styles.statusValue, loaUploaded ? styles.ok : styles.missing]}>
+        <AppText style={[styles.statusValue, loaUploaded ? { color: colors.success } : { color: colors.warning }]}>
           {loaUploaded ? "Uploaded" : "Missing"}
         </AppText>
       </AppCard>
       <AppCard style={styles.statusRow}>
         <AppText style={styles.statusLabel}>Recent bill</AppText>
-        <AppText style={[styles.statusValue, billUploaded ? styles.ok : styles.missing]}>
+        <AppText style={[styles.statusValue, billUploaded ? { color: colors.success } : { color: colors.warning }]}>
           {billUploaded ? "Uploaded" : "Missing"}
         </AppText>
       </AppCard>
@@ -186,7 +188,7 @@ export default function PortingDocumentsScreen({ navigation, route }) {
         }
         onPress={() => pickDoc("loa")}
       />
-      {loaUploadSuccess ? <AppText style={styles.success}>LOA uploaded successfully.</AppText> : null}
+      {loaUploadSuccess ? <AppText style={[styles.success, { color: colors.success }]}>LOA uploaded successfully.</AppText> : null}
       <AppButton
         variant="secondary"
         style={styles.secondaryBtn}
@@ -197,9 +199,9 @@ export default function PortingDocumentsScreen({ navigation, route }) {
         }
         onPress={() => pickDoc("bill")}
       />
-      {billUploadSuccess ? <AppText style={styles.success}>Bill uploaded successfully.</AppText> : null}
+      {billUploadSuccess ? <AppText style={[styles.success, { color: colors.success }]}>Bill uploaded successfully.</AppText> : null}
 
-      {!!error ? <AppText style={styles.error}>{error}</AppText> : null}
+      {!!error ? <AppText style={[styles.error, { color: colors.danger }]}>{error}</AppText> : null}
 
       <AppButton
         variant="primary"
@@ -220,19 +222,17 @@ export default function PortingDocumentsScreen({ navigation, route }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff", padding: 24, justifyContent: "center" },
+  container: { flex: 1, padding: 24, justifyContent: "center" },
   badgeRow: { flexDirection: "row", gap: spacing.xs, marginBottom: spacing.sm },
   statusRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginBottom: spacing.sm,
   },
-  statusLabel: { fontWeight: "700", color: colors.textPrimary },
+  statusLabel: { fontWeight: "700" },
   statusValue: { fontWeight: "800" },
-  ok: { color: colors.success },
-  missing: { color: colors.warning },
   primaryBtn: { marginTop: spacing.sm },
   secondaryBtn: { marginTop: spacing.sm },
-  error: { color: colors.danger, fontWeight: "700", marginTop: spacing.sm },
-  success: { color: colors.success, fontWeight: "700", marginTop: spacing.xs },
+  error: { fontWeight: "700", marginTop: spacing.sm },
+  success: { fontWeight: "700", marginTop: spacing.xs },
 });

@@ -1,4 +1,16 @@
 function toArray(value) {
+  if (typeof value === "string") {
+    const raw = value.trim();
+    if (!raw) return [];
+    if ((raw.startsWith("[") && raw.endsWith("]")) || (raw.startsWith("{") && raw.endsWith("}"))) {
+      try {
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+  }
   return Array.isArray(value) ? value : [];
 }
 
@@ -43,8 +55,41 @@ function normalizeMessageEntry(entry, index, fallbackRole = "system") {
   };
 }
 
+function valueAtPath(source, path) {
+  if (!source || typeof source !== "object") return undefined;
+  return path.split(".").reduce((acc, key) => (acc == null ? undefined : acc[key]), source);
+}
+
+function findCandidateMessageArray(transcript) {
+  const candidatePaths = [
+    "messages",
+    "transcript",
+    "lines",
+    "conversation",
+    "dialogue",
+    "utterances",
+    "segments",
+    "turns",
+    "entries",
+    "data.messages",
+    "data.transcript",
+    "data.lines",
+    "payload.messages",
+    "payload.transcript",
+    "call.messages",
+    "call.transcript",
+  ];
+
+  for (const path of candidatePaths) {
+    const arr = toArray(valueAtPath(transcript, path));
+    if (arr.length > 0) return arr;
+  }
+
+  return [];
+}
+
 function normalizeFromMessages(transcript) {
-  const messages = toArray(transcript?.messages);
+  const messages = findCandidateMessageArray(transcript);
   return messages
     .map((entry, index) => normalizeMessageEntry(entry, index, "system"))
     .filter(Boolean);
@@ -74,6 +119,63 @@ function normalizeFromLegacy(transcript) {
     .filter(Boolean);
 }
 
+function normalizeFromTranscriptText(transcript) {
+  const candidates = [
+    transcript?.transcriptText,
+    transcript?.transcript_text,
+    transcript?.fullTranscript,
+    transcript?.full_transcript,
+    transcript?.rawTranscript,
+    transcript?.raw_transcript,
+    transcript?.transcript,
+  ];
+
+  for (const candidate of candidates) {
+    if (typeof candidate !== "string") continue;
+    const text = candidate.trim();
+    if (!text) continue;
+
+    return text
+      .split(/\r?\n+/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line, index) => {
+        const match = line.match(/^(assistant|ai|caller|user|customer|human|system)\s*:\s*(.+)$/i);
+        if (match) {
+          return {
+            id: `line-${index}`,
+            role: normalizeRole(match[1], "system"),
+            text: String(match[2] || "").trim(),
+          };
+        }
+        return { id: `line-${index}`, role: "system", text: line };
+      });
+  }
+
+  return [];
+}
+
+function extractPreviewText(transcript) {
+  const directCandidates = [
+    transcript?.preview,
+    transcript?.transcriptPreview,
+    transcript?.transcript_preview,
+    transcript?.snippet,
+    transcript?.summary,
+    transcript?.shortSummary,
+    transcript?.callSummary,
+    transcript?.analysis?.summary,
+    transcript?.meta?.preview,
+  ];
+
+  for (const value of directCandidates) {
+    const text = toText(value);
+    if (text) return text;
+  }
+
+  return "";
+}
+
 export function normalizeTranscriptTimeline(transcript) {
   const fromMessages = normalizeFromMessages(transcript);
   if (fromMessages.length > 0) {
@@ -83,9 +185,33 @@ export function normalizeTranscriptTimeline(transcript) {
     };
   }
 
+  const fromLegacy = normalizeFromLegacy(transcript);
+  if (fromLegacy.length > 0) {
+    return {
+      mode: "legacy",
+      timeline: fromLegacy,
+    };
+  }
+
+  const fromText = normalizeFromTranscriptText(transcript);
+  if (fromText.length > 0) {
+    return {
+      mode: "text",
+      timeline: fromText,
+    };
+  }
+
+  const preview = extractPreviewText(transcript);
+  if (preview) {
+    return {
+      mode: "preview",
+      timeline: [{ id: "preview-0", role: "system", text: preview }],
+    };
+  }
+
   return {
-    mode: "legacy",
-    timeline: normalizeFromLegacy(transcript),
+    mode: "empty",
+    timeline: [],
   };
 }
 
@@ -93,3 +219,10 @@ export function transcriptCallSid(transcript) {
   return transcript?.callSid || transcript?.call_sid || null;
 }
 
+export function transcriptPreview(transcript) {
+  const normalized = normalizeTranscriptTimeline(transcript);
+  const first = normalized.timeline[0];
+  if (!first) return "No transcript preview";
+  if (normalized.mode === "preview") return first.text;
+  return `${first.role || "system"}: ${first.text || ""}`;
+}

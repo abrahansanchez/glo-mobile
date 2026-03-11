@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { FlatList, Pressable, StyleSheet, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import api from "../config/api";
-import { normalizeTranscriptTimeline } from "../utils/transcriptTimeline";
+import { normalizeTranscriptTimeline, transcriptPreview } from "../utils/transcriptTimeline";
 import ScreenContainer from "../components/layout/ScreenContainer";
 import AppCard from "../components/ui/AppCard";
 import AppText from "../components/ui/AppText";
@@ -38,6 +38,9 @@ export default function TranscriptsScreen() {
         list.forEach((item) => {
           const mode = normalizeTranscriptTimeline(item).mode;
           console.log(`[TRANSCRIPT_RENDER_MODE] ${mode}`);
+          if (mode === "empty") {
+            console.log("[TRANSCRIPT_EMPTY_SHAPE_KEYS]", Object.keys(item || {}).slice(0, 20));
+          }
         });
         console.log(`[TRANSCRIPTS] loaded count=${list.length}`);
         setTranscripts(list);
@@ -83,11 +86,7 @@ export default function TranscriptsScreen() {
         renderItem={({ item }) => {
           const transcriptId = getTranscriptId(item);
           const caller = item?.callerNumber || item?.from || "Unknown";
-          const normalized = normalizeTranscriptTimeline(item);
-          const previewEntry = normalized.timeline[0];
-          const previewText = previewEntry
-            ? `${previewEntry.role || "system"}: ${previewEntry.text || ""}`
-            : "No transcript preview";
+          const previewText = transcriptPreview(item);
           return (
             <Pressable
               onPress={() => {

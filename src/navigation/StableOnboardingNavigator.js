@@ -7,7 +7,7 @@ import PhoneSignupScreen from "../screens/onboarding/PhoneSignupScreen";
 import BusinessSetupScreen from "../screens/onboarding/BusinessSetupScreen";
 import TrialStartScreen from "../screens/onboarding/TrialStartScreen";
 import SettingsScreen from "../screens/SettingsScreen";
-import { STEPS } from "../onboarding/stepKeys";
+import { routeForOnboardingStep } from "../onboarding/routeForStep";
 
 const Stack = createNativeStackNavigator();
 
@@ -16,22 +16,11 @@ export default function StableOnboardingNavigator() {
 
   // Stable flow intentionally skips elite-only steps while keeping route names safe.
   function getInitialRouteName() {
-    switch (onboardingStep) {
-      case STEPS.ACCOUNT:
-        return "Account";
-      case STEPS.BUSINESS_SNAPSHOT:
-        return "BusinessSnapshot";
-      case STEPS.TRIAL_START:
-      case STEPS.NUMBER_STRATEGY:
-      case "porting_form":
-      case "porting_tracker":
-      case "go_live_checklist":
-      case "porting_documents":
-        return "TrialStart";
-      case STEPS.WELCOME:
-      default:
-        return "Welcome";
+    const mappedRoute = routeForOnboardingStep(onboardingStep);
+    if (mappedRoute === "Account" || mappedRoute === "BusinessSnapshot" || mappedRoute === "Welcome") {
+      return mappedRoute;
     }
+    return "TrialStart";
   }
 
   return (
@@ -46,6 +35,9 @@ export default function StableOnboardingNavigator() {
 
       {/* Keep known route names available to avoid navigation crashes in rollback mode. */}
       <Stack.Screen name="NumberStrategy" component={TrialStartScreen} />
+      <Stack.Screen name="ForwardingSetup" component={TrialStartScreen} />
+      <Stack.Screen name="ForwardingVerify" component={TrialStartScreen} />
+      <Stack.Screen name="ForwardingSuccess" component={TrialStartScreen} />
       <Stack.Screen name="PortingForm" component={TrialStartScreen} />
       <Stack.Screen name="PortingTracker" component={TrialStartScreen} />
       <Stack.Screen name="PortingStatus" component={TrialStartScreen} />

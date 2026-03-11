@@ -1,13 +1,19 @@
 import React, { useContext, useEffect, useState } from "react";
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import { View, StyleSheet } from "react-native";
 import { OnboardingContext } from "../../onboarding/OnboardingContext";
 import api from "../../config/api";
 import OnboardingHeader from "../../onboarding/OnboardingHeader";
+import AppText from "../../components/ui/AppText";
+import AppButton from "../../components/ui/AppButton";
+import OnboardingHero from "../../components/onboarding/OnboardingHero";
+import { spacing } from "../../ui/tokens";
+import { useTheme } from "../../theme/ThemeContext";
 
 const STATUS_ORDER = ["draft", "submitted", "carrier_review", "approved", "completed", "rejected"];
 
 export default function PortingTrackerScreen({ navigation }) {
   const { setLocalStep } = useContext(OnboardingContext);
+  const { colors, resolvedTheme } = useTheme();
   const [status, setStatus] = useState("draft");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -32,54 +38,67 @@ export default function PortingTrackerScreen({ navigation }) {
   }, []);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.bg }]}>
       <OnboardingHeader />
-      <Text style={styles.title}>Porting Status</Text>
-      <Text style={styles.subtitle}>Current status: {status}</Text>
+      <OnboardingHero
+        stepLabel="Porting"
+        title="Porting Status"
+        subtitle={`Current status: ${status}`}
+      />
 
       <View style={styles.timeline}>
         {STATUS_ORDER.map((item) => {
           const done = STATUS_ORDER.indexOf(item) <= STATUS_ORDER.indexOf(status) && status !== "rejected";
           const rejected = status === "rejected" && item === "rejected";
           return (
-            <View key={item} style={[styles.stage, done && styles.stageDone, rejected && styles.stageRejected]}>
-              <Text style={[styles.stageText, done && styles.stageTextDone]}>{item}</Text>
+            <View
+              key={item}
+              style={[
+                styles.stage,
+                { borderColor: colors.border, backgroundColor: colors.card },
+                done && { backgroundColor: resolvedTheme === "dark" ? "#12382c" : "#ecfdf5", borderColor: colors.success },
+                rejected && { backgroundColor: resolvedTheme === "dark" ? "#3b1010" : "#fef2f2", borderColor: colors.danger },
+              ]}
+            >
+              <AppText
+                style={[
+                  styles.stageText,
+                  { color: colors.textSecondary },
+                  done && { color: colors.success },
+                  rejected && { color: colors.danger },
+                ]}
+              >
+                {item}
+              </AppText>
             </View>
           );
         })}
       </View>
 
-      {!!error ? <Text style={styles.error}>{error}</Text> : null}
-      <Pressable style={styles.primaryBtn} onPress={loadStatus}>
-        <Text style={styles.primaryText}>{loading ? "Refreshing..." : "Refresh Status"}</Text>
-      </Pressable>
+      {!!error ? <AppText style={[styles.error, { color: colors.danger }]}>{error}</AppText> : null}
+      <AppButton
+        variant="primary"
+        style={styles.primaryBtn}
+        onPress={loadStatus}
+        label={loading ? "Refreshing..." : "Refresh Status"}
+      />
 
-      <Pressable style={styles.secondaryBtn} onPress={() => navigation.navigate("TrialStart")}>
-        <Text style={styles.secondaryText}>Continue</Text>
-      </Pressable>
+      <AppButton
+        variant="secondary"
+        style={styles.secondaryBtn}
+        onPress={() => navigation.navigate("TrialStart")}
+        label="Continue"
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, backgroundColor: "#fff", justifyContent: "center" },
-  title: { fontSize: 26, fontWeight: "900", marginBottom: 8 },
-  subtitle: { color: "#4b5563", marginBottom: 14 },
-  timeline: { gap: 8, marginBottom: 14 },
-  stage: { borderWidth: 1, borderColor: "#d1d5db", borderRadius: 10, paddingVertical: 10, paddingHorizontal: 12 },
-  stageDone: { backgroundColor: "#ecfdf5", borderColor: "#34d399" },
-  stageRejected: { backgroundColor: "#fef2f2", borderColor: "#f87171" },
-  stageText: { fontWeight: "700", color: "#374151", textTransform: "capitalize" },
-  stageTextDone: { color: "#065f46" },
-  primaryBtn: {
-    backgroundColor: "#000",
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: "center",
-    marginTop: 16,
-  },
-  primaryText: { color: "#fff", fontWeight: "900" },
-  secondaryBtn: { marginTop: 10, alignItems: "center", padding: 10 },
-  secondaryText: { textDecorationLine: "underline", fontWeight: "700" },
-  error: { color: "#b00020", fontWeight: "700", marginBottom: 8 },
+  container: { flex: 1, padding: 24, justifyContent: "center" },
+  timeline: { gap: spacing.sm, marginBottom: spacing.md },
+  stage: { borderWidth: 1, borderRadius: 10, paddingVertical: 10, paddingHorizontal: 12 },
+  stageText: { fontWeight: "700", textTransform: "capitalize" },
+  primaryBtn: { marginTop: spacing.sm },
+  secondaryBtn: { marginTop: spacing.sm },
+  error: { fontWeight: "700", marginBottom: spacing.xs },
 });

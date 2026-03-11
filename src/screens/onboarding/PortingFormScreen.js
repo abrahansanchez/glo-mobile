@@ -18,11 +18,14 @@ import AppText from "../../components/ui/AppText";
 import AppBadge from "../../components/ui/AppBadge";
 import AppButton from "../../components/ui/AppButton";
 import OnboardingHero from "../../components/onboarding/OnboardingHero";
-import { colors, spacing } from "../../ui/tokens";
+import { routeForOnboardingStep } from "../../onboarding/routeForStep";
+import { spacing } from "../../ui/tokens";
 import { track } from "../../analytics/track";
+import { useTheme } from "../../theme/ThemeContext";
 
 export default function PortingFormScreen({ navigation, route }) {
   const { setLocalStep } = useContext(OnboardingContext);
+  const { colors } = useTheme();
   const [form, setForm] = useState({
     phoneNumber: "",
     carrier: "",
@@ -102,20 +105,6 @@ export default function PortingFormScreen({ navigation, route }) {
     } finally {
       setCheckingSkipPolicy(false);
     }
-  }
-
-  function mapNextStepToRoute(rawStep) {
-    const step = String(rawStep || "").toLowerCase();
-    if (step === "go_live_checklist") return "GoLiveChecklist";
-    if (step === "trial_start") return "TrialStart";
-    if (step === "porting_form") return "PortingForm";
-    if (step === "porting_documents") return "PortingDocuments";
-    if (step === "porting_tracker") return "PortingStatus";
-    if (step === "number_strategy") return "NumberStrategy";
-    if (step === "business_snapshot") return "BusinessSnapshot";
-    if (step === "account") return "Account";
-    if (step === "welcome") return "Welcome";
-    return "TrialStart";
   }
 
   function canNavigateTo(routeName) {
@@ -241,7 +230,7 @@ export default function PortingFormScreen({ navigation, route }) {
       const response = await api.post("/onboarding/step", payload);
       const nextStep = response?.data?.nextStep || response?.data?.currentStep || "trial_start";
       track("onboarding_step_skipped", { step: "porting" });
-      const mappedRoute = mapNextStepToRoute(nextStep);
+      const mappedRoute = routeForOnboardingStep(nextStep);
       const nextRoute = canNavigateTo(mappedRoute) ? mappedRoute : "TrialStart";
       await setLocalStep(String(nextStep).toLowerCase());
       navigation.navigate(nextRoute);
@@ -353,7 +342,7 @@ export default function PortingFormScreen({ navigation, route }) {
 
   return (
     <KeyboardAvoidingView
-      style={styles.safe}
+      style={[styles.safe, { backgroundColor: colors.bg }]}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       keyboardVerticalOffset={24}
     >
@@ -395,12 +384,13 @@ export default function PortingFormScreen({ navigation, route }) {
                       : "default"
               }
               textContentType={key === "contactEmail" ? "emailAddress" : "none"}
-              style={styles.input}
+              placeholderTextColor={colors.textMuted}
+              style={[styles.input, { borderColor: colors.border, color: colors.textPrimary }]}
             />
           </AppCard>
         ))}
 
-          {!!error ? <AppText style={styles.error}>{error}</AppText> : null}
+          {!!error ? <AppText style={[styles.error, { color: colors.danger }]}>{error}</AppText> : null}
 
           <AppButton
             label={loading ? "Submitting..." : "Submit Port Request"}
@@ -424,13 +414,13 @@ export default function PortingFormScreen({ navigation, route }) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#fff" },
+  safe: { flex: 1 },
   container: { paddingHorizontal: spacing.xl, paddingBottom: 140, paddingTop: spacing.sm },
   badge: { marginBottom: spacing.md },
   fieldCard: { marginBottom: spacing.sm, padding: spacing.md },
   label: { fontWeight: "700", marginBottom: spacing.xs },
-  input: { borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, color: colors.textPrimary },
+  input: { borderWidth: 1, borderRadius: 10, padding: 12 },
   primaryBtn: { marginTop: spacing.md },
   secondaryBtn: { marginTop: spacing.sm },
-  error: { color: colors.danger, fontWeight: "700", marginTop: spacing.sm },
+  error: { fontWeight: "700", marginTop: spacing.sm },
 });

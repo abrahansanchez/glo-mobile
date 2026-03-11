@@ -195,3 +195,39 @@
 - Trial conversion rate
 - D7 retention
 - Calls handled in first 72h
+
+## Status Audit (Code-Verified)
+Legend:
+- `🟢` completed with code-level certainty in this repo
+- `⚪` not completed or not verifiable with 100% certainty from this repo alone
+
+### Target Funnel
+1. `🟢` Welcome
+2. `🟢` Account (login/register)
+3. `🟢` Business Snapshot
+4. `🟢` Number Strategy
+5. `🟢` Number Porting
+6. `⚪` AI Preview
+7. `⚪` Calendar Connect
+8. `⚪` Permissions (just-in-time)
+9. `🟢` Start Free Trial
+10. `🟢` Go Live Checklist
+
+### Backend Contracts (Mobile Wiring)
+- `🟢` `GET /onboarding/status`
+- `🟢` `POST /onboarding/step`
+- `🟢` `POST /phone/number-strategy`
+- `🟢` `POST /phone/porting/start`
+- `⚪` `POST /phone/porting/documents` (current mobile uses `/phone/porting/:id/docs`)
+- `🟢` `GET /phone/porting/status`
+- `🟢` `POST /billing/trial/start`
+- `🟢` `GET /launch/checklist`
+
+### Frontend State Strategy
+- `🟢` Backend-first onboarding status with local cache fallback
+- `🟢` App-start reconciliation via `/onboarding/status`
+
+### Not Verifiable Here
+- `⚪` Visual direction completion
+- `⚪` Rollout plan execution
+- `⚪` Success metric outcomes

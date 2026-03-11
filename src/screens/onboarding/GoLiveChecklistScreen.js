@@ -10,7 +10,9 @@ import AppText from "../../components/ui/AppText";
 import AppButton from "../../components/ui/AppButton";
 import EmptyState from "../../components/ui/EmptyState";
 import OnboardingHero from "../../components/onboarding/OnboardingHero";
-import { colors, spacing } from "../../ui/tokens";
+import { routeForOnboardingStep } from "../../onboarding/routeForStep";
+import { spacing } from "../../ui/tokens";
+import { useTheme } from "../../theme/ThemeContext";
 
 const BLOCKER_UI = {
   ONBOARDING_INCOMPLETE: {
@@ -59,22 +61,6 @@ const READINESS_EXCLUDE_KEYS = new Set([
   "currentStep",
   "updatedAt",
 ]);
-
-function mapStepToRoute(step) {
-  switch (step) {
-    case STEPS.ACCOUNT:
-      return "Account";
-    case STEPS.BUSINESS_SNAPSHOT:
-      return "BusinessSnapshot";
-    case STEPS.NUMBER_STRATEGY:
-      return "NumberStrategy";
-    case STEPS.TRIAL_START:
-      return "TrialStart";
-    case STEPS.WELCOME:
-    default:
-      return "Welcome";
-  }
-}
 
 function normalizeReadiness(payload) {
   const sourceReadiness = payload?.readiness;
@@ -134,6 +120,7 @@ function normalizeBlocker(rawBlocker) {
 
 export default function GoLiveChecklistScreen({ navigation }) {
   const { setLocalStep, markComplete } = useContext(OnboardingContext);
+  const { colors, resolvedTheme } = useTheme();
   const [ready, setReady] = useState(false);
   const [readinessRows, setReadinessRows] = useState([]);
   const [blockers, setBlockers] = useState([]);
@@ -247,7 +234,7 @@ export default function GoLiveChecklistScreen({ navigation }) {
       const payload = response.data || {};
       const nextStep = payload?.nextStep || payload?.currentStep || STEPS.WELCOME;
       console.log(`[ONBOARDING_RESUME] nextStep=${nextStep}`);
-      navigation.navigate(mapStepToRoute(String(nextStep).toLowerCase()));
+      navigation.navigate(routeForOnboardingStep(String(nextStep).toLowerCase()));
     } catch (e) {
       setError(e?.response?.data?.message || "Failed to resume onboarding");
     }
@@ -342,6 +329,7 @@ export default function GoLiveChecklistScreen({ navigation }) {
 
   return (
     <ScrollView
+      style={{ backgroundColor: colors.bg }}
       contentContainerStyle={styles.container}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onPullRefresh} />}
     >
@@ -353,7 +341,7 @@ export default function GoLiveChecklistScreen({ navigation }) {
       />
       <AppBadge label={ready ? "READY" : "ACTION REQUIRED"} tone={ready ? "success" : "warning"} style={styles.statusBadge} />
 
-      {loading ? <AppText style={styles.loading}>Loading…</AppText> : null}
+      {loading ? <AppText style={[styles.loading, { color: colors.textMuted }]}>Loading…</AppText> : null}
 
       {checklistItems.length === 0 && !loading ? (
         <EmptyState
@@ -362,28 +350,35 @@ export default function GoLiveChecklistScreen({ navigation }) {
         />
       ) : (
         checklistItems.map(({ key, value }) => (
-          <AppCard key={key} style={[styles.row, value ? styles.rowReady : styles.rowPending]}>
+          <AppCard
+            key={key}
+            style={[
+              styles.row,
+              value ? styles.rowReady : styles.rowPending,
+              { backgroundColor: value ? colors.surface : colors.card },
+            ]}
+          >
             <View style={styles.rowLeft}>
-              <AppText style={styles.rowLabel}>{getReadinessLabel(key)}</AppText>
-              {!value ? <AppText variant="caption" style={styles.helperText}>{getReadinessHelper(key)}</AppText> : null}
+              <AppText style={[styles.rowLabel, { color: colors.textPrimary }]}>{getReadinessLabel(key)}</AppText>
+              {!value ? <AppText variant="caption" style={[styles.helperText, { color: colors.textMuted }]}>{getReadinessHelper(key)}</AppText> : null}
             </View>
-            <AppText style={[styles.rowValue, value ? styles.ok : styles.notOk]}>
+            <AppText style={[styles.rowValue, value ? { color: colors.success } : { color: colors.warning }]}>
               {value ? "✅ Ready" : "⏳ Not ready"}
             </AppText>
           </AppCard>
         ))
       )}
 
-      {!!error ? <AppText style={styles.error}>{error}</AppText> : null}
+      {!!error ? <AppText style={[styles.error, { color: colors.danger }]}>{error}</AppText> : null}
       {blockers.length > 0 ? (
-        <AppCard style={styles.blockers}>
+        <AppCard style={[styles.blockers, { borderColor: colors.warning, backgroundColor: resolvedTheme === "dark" ? "#3a2a14" : "#fffbeb" }]}>
           <AppText style={styles.blockerTitle}>Blockers</AppText>
           {blockers.map((blocker, idx) => {
             const action = blocker.action || getBlockerAction(blocker.code);
             return (
-              <AppCard key={`bl-${idx}-${blocker.code}`} style={styles.blockerCard}>
-                <AppText style={styles.blockerCardTitle}>{blocker.title}</AppText>
-                <AppText style={styles.blockerText}>{blocker.message}</AppText>
+              <AppCard key={`bl-${idx}-${blocker.code}`} style={[styles.blockerCard, { borderColor: colors.warning, backgroundColor: colors.card }]}>
+                <AppText style={[styles.blockerCardTitle, { color: colors.warning }]}>{blocker.title}</AppText>
+                <AppText style={[styles.blockerText, { color: colors.warning }]}>{blocker.message}</AppText>
                 <AppButton
                   label={blocker.actionText || "Fix"}
                   variant="primary"
@@ -422,37 +417,31 @@ export default function GoLiveChecklistScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flexGrow: 1, backgroundColor: "#fff", padding: 24 },
+  container: { flexGrow: 1, padding: 24 },
   statusBadge: { marginBottom: spacing.md },
-  loading: { color: colors.textMuted, marginBottom: spacing.sm, fontWeight: "700" },
+  loading: { marginBottom: spacing.sm, fontWeight: "700" },
   row: {
     flexDirection: "row",
     alignItems: "center",
     marginBottom: spacing.sm,
   },
-  rowReady: { backgroundColor: "#f9fafb" },
-  rowPending: { backgroundColor: "#fff" },
+  rowReady: {},
+  rowPending: {},
   rowLeft: { flex: 1, paddingRight: 8 },
-  rowLabel: { color: colors.textPrimary, fontWeight: "700" },
-  helperText: { color: colors.textMuted, marginTop: 2 },
+  rowLabel: { fontWeight: "700" },
+  helperText: { marginTop: 2 },
   rowValue: { fontWeight: "800" },
-  ok: { color: colors.success },
-  notOk: { color: colors.warning },
   blockers: {
     marginTop: spacing.sm,
     borderWidth: 1,
-    borderColor: "#fde68a",
-    backgroundColor: "#fffbeb",
   },
   blockerTitle: { fontWeight: "800", marginBottom: spacing.xs },
-  blockerText: { color: "#78350f", marginTop: 2 },
+  blockerText: { marginTop: 2 },
   blockerCard: {
     marginTop: spacing.sm,
     borderWidth: 1,
-    borderColor: "#f59e0b",
-    backgroundColor: "#fff",
   },
-  blockerCardTitle: { fontWeight: "800", color: "#78350f" },
+  blockerCardTitle: { fontWeight: "800" },
   blockerBtn: {
     marginTop: spacing.sm,
     alignSelf: "flex-start",
@@ -461,5 +450,5 @@ const styles = StyleSheet.create({
   },
   primaryBtn: { marginTop: spacing.md },
   secondaryBtn: { marginTop: spacing.sm },
-  error: { color: colors.danger, fontWeight: "700", marginTop: spacing.sm },
+  error: { fontWeight: "700", marginTop: spacing.sm },
 });

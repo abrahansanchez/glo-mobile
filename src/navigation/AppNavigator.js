@@ -1,5 +1,4 @@
 import { useContext, useEffect } from "react";
-import { View, Text } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 
 import { AuthContext } from "../auth/authContext";
@@ -9,6 +8,7 @@ import AuthNavigator from "./AuthNavigator";
 import OnboardingNavigator from "./OnboardingNavigator";
 import DashboardNavigator from "./DashboardNavigator";
 import SubscriptionGateScreen from "../screens/SubscriptionGateScreen";
+import LoadingState from "../components/LoadingState";
 
 export default function AppNavigator() {
   const {
@@ -29,20 +29,12 @@ export default function AppNavigator() {
 
   // Show loading while any async state is being restored
   if (authLoading || onboardingLoading) {
-    return (
-      <View style={{ flex: 1, padding: 24, justifyContent: "center", alignItems: "center" }}>
-        <Text>Loading...</Text>
-      </View>
-    );
+    return <LoadingState message="Loading..." />;
   }
 
   // If authenticated but barber not yet restored, show loading
   if (authenticated && !barber) {
-    return (
-      <View style={{ flex: 1, padding: 24, justifyContent: "center", alignItems: "center" }}>
-        <Text>Restoring your profile...</Text>
-      </View>
-    );
+    return <LoadingState message="Restoring your profile..." />;
   }
 
   // DEV: Log routing truth

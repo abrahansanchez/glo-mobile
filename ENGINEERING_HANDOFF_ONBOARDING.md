@@ -143,3 +143,98 @@ Acceptance Criteria (Sprint 2):
 6. Port approval cycle time
 7. D7 retention
 
+## Status Audit (Code-Verified)
+Legend:
+- `🟢` completed with code-level certainty in this repo
+- `⚪` not completed or not verifiable with 100% certainty from this repo alone
+
+### Non-Negotiables
+1. `🟢` Backend is source of truth for onboarding/trial/porting status (mobile is backend-first with cache fallback)
+2. `🟢` Mobile SecureStore is cache/fallback only
+3. `⚪` All mutating endpoints are idempotent (backend-only verification needed)
+4. `⚪` Event tracking schema frozen before implementation (process-level verification needed)
+5. `🟢` Number porting UX has timeline/status + rejection recovery paths
+
+### Critical Decisions To Lock Before Coding
+1. `⚪` Go-live policy while porting pending (A/B) locked
+2. `⚪` Trial policy locked
+3. `⚪` Porting provider/process locked
+4. `⚪` Legal docs decisions locked
+
+### API Contracts (Mobile Wiring)
+1. `🟢` `GET /onboarding/status`
+2. `🟢` `POST /onboarding/step`
+3. `🟢` `POST /phone/number-strategy`
+4. `🟢` `POST /phone/porting/start`
+5. `⚪` `POST /phone/porting/documents` (mobile currently uses `/phone/porting/:id/docs`)
+6. `🟢` `GET /phone/porting/status`
+7. `🟢` `POST /billing/trial/start`
+8. `🟢` `GET /launch/checklist`
+
+### Analytics Events (Freeze Names/Props)
+- `⚪` Not fully verifiable as complete from this repo alone
+
+### Sprint 1 (Core Conversion)
+Backend:
+1. `⚪` Ship onboarding status + step endpoints
+2. `⚪` Ship trial start endpoint
+3. `⚪` Ship number strategy endpoint
+
+Mobile:
+1. `🟢` Reorder onboarding funnel
+2. `🟢` Implement Number Strategy screen
+3. `🟢` Implement Trial Start screen and backend call
+4. `⚪` Complete event tracking wiring for new screens
+
+QA:
+1. `⚪` Validate fresh signup and returning-user resume
+2. `⚪` Validate trial success/failure paths
+
+Acceptance Criteria (Sprint 1):
+1. `⚪` End-to-end completion verified in QA
+2. `⚪` Resume correctness fully verified in QA
+3. `⚪` Analytics required props fully verified
+
+### Sprint 2 (Porting + Go Live)
+Backend:
+1. `⚪` Ship porting start/documents/status endpoints
+2. `⚪` Integrate carrier/ops path and rejection reasons
+3. `⚪` Ship launch checklist endpoint
+
+Mobile:
+1. `🟢` Implement Number Porting screens + status tracker
+2. `🟢` Implement Go Live checklist with blockers + actions
+3. `🟢` Add support/recovery entry points for rejected porting cases
+
+QA:
+1. `⚪` Validate porting happy path and rejection/retry flow
+2. `⚪` Validate go-live gating behavior per final policy
+
+Acceptance Criteria (Sprint 2):
+1. `⚪` End-to-end porting fully verified in QA
+2. `🟢` Checklist UI reflects readiness + blocker actions
+3. `🟢` Next actions for users are clear in UI
+
+### QA Matrix (Required)
+1. `⚪` New-number path + trial started
+2. `⚪` Port-existing path + submitted + pending review
+3. `⚪` Port-existing path + rejected + resubmitted
+4. `⚪` Trial start fails + retry
+5. `⚪` App reinstall + resume onboarding
+6. `⚪` Offline during step submit + retry on reconnect
+7. `⚪` Multi-device same account state sync
+
+### Release Guardrails
+1. `⚪` Feature-flag new onboarding
+2. `⚪` Internal then beta rollout
+3. `⚪` Daily funnel dashboard review for first 14 days
+4. `⚪` Rollback switch to stable onboarding
+
+### Launch KPIs
+1. `⚪` Onboarding completion rate measured
+2. `⚪` Time-to-go-live median measured
+3. `⚪` Trial start rate measured
+4. `⚪` Trial conversion rate measured
+5. `⚪` Port submission completion rate measured
+6. `⚪` Port approval cycle time measured
+7. `⚪` D7 retention measured

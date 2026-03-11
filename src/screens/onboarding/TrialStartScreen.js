@@ -10,12 +10,14 @@ import AppText from "../../components/ui/AppText";
 import AppBadge from "../../components/ui/AppBadge";
 import AppButton from "../../components/ui/AppButton";
 import OnboardingHero from "../../components/onboarding/OnboardingHero";
-import { colors, spacing } from "../../ui/tokens";
+import { spacing } from "../../ui/tokens";
 import { track } from "../../analytics/track";
+import { useTheme } from "../../theme/ThemeContext";
 
 export default function TrialStartScreen({ navigation }) {
   const { updateStep } = useContext(OnboardingContext);
   const { refreshSession } = useContext(AuthContext);
+  const { colors } = useTheme();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
@@ -53,7 +55,7 @@ export default function TrialStartScreen({ navigation }) {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.bg }]}>
       <OnboardingHeader />
       <OnboardingHero
         stepLabel="Step 8 of 9"
@@ -62,14 +64,14 @@ export default function TrialStartScreen({ navigation }) {
       />
       <AppBadge label="14 DAY TRIAL" tone="success" style={styles.badge} />
 
-      <AppCard style={styles.disclosure}>
+      <AppCard style={[styles.disclosure, { borderColor: colors.border }]}>
         <AppText style={styles.disclosureTitle}>Trial disclosure</AppText>
-        <AppText variant="body" style={styles.disclosureText}>You won’t be charged until your trial ends.</AppText>
-        <AppText variant="body" style={styles.disclosureText}>Renewal amount/date are shown before checkout.</AppText>
+        <AppText variant="body" style={[styles.disclosureText, { color: colors.textSecondary }]}>You won’t be charged until your trial ends.</AppText>
+        <AppText variant="body" style={[styles.disclosureText, { color: colors.textSecondary }]}>Renewal amount/date are shown before checkout.</AppText>
       </AppCard>
 
-      {!!success ? <AppText style={styles.success}>Trial started successfully.</AppText> : null}
-      {!!error ? <AppText style={styles.error}>{error}</AppText> : null}
+      {!!success ? <AppText style={[styles.success, { color: colors.success }]}>Trial started successfully.</AppText> : null}
+      {!!error ? <AppText style={[styles.error, { color: colors.danger }]}>{error}</AppText> : null}
 
       <AppButton
         label={loading ? "Starting..." : "Start Free Trial"}
@@ -100,14 +102,14 @@ export default function TrialStartScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 24, justifyContent: "center" },
   badge: { marginBottom: spacing.md },
-  disclosure: { borderWidth: 1, borderColor: colors.border, marginBottom: spacing.md },
+  disclosure: { borderWidth: 1, marginBottom: spacing.md },
   disclosureTitle: { fontWeight: "800", marginBottom: spacing.xs },
-  disclosureText: { color: colors.textSecondary, marginBottom: 3 },
+  disclosureText: { marginBottom: 3 },
   button: {
     marginTop: 4,
   },
   secondaryBtn: { marginTop: spacing.sm },
   retryBtn: { marginTop: spacing.sm },
-  success: { color: colors.success, fontWeight: "700", marginBottom: spacing.sm },
-  error: { color: colors.danger, fontWeight: "700", marginBottom: spacing.sm },
+  success: { fontWeight: "700", marginBottom: spacing.sm },
+  error: { fontWeight: "700", marginBottom: spacing.sm },
 });

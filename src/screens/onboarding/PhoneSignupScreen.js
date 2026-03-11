@@ -17,10 +17,12 @@ import AppButton from "../../components/ui/AppButton";
 import AppCard from "../../components/ui/AppCard";
 import OnboardingHero from "../../components/onboarding/OnboardingHero";
 import { spacing } from "../../ui/tokens";
+import { useTheme } from "../../theme/ThemeContext";
 
 export default function PhoneSignupScreen({ navigation }) {
-  const { updateStep, setLocalStep } = useContext(OnboardingContext);
-  const [phone, setPhone] = useState("");
+  const { updateStep, setLocalStep, updateData, onboardingData } = useContext(OnboardingContext);
+  const { colors } = useTheme();
+  const [phone, setPhone] = useState(onboardingData?.phoneNumber || "");
   const [otp, setOtp] = useState("");
   const [stage, setStage] = useState("PHONE"); // PHONE -> OTP
   const [error, setError] = useState("");
@@ -28,6 +30,15 @@ export default function PhoneSignupScreen({ navigation }) {
   function canNavigateTo(routeName) {
     const routeNames = navigation?.getState?.()?.routeNames || [];
     return routeNames.includes(routeName);
+  }
+
+  function normalizePhoneToE164(value) {
+    const digits = String(value || "").replace(/[^\d]/g, "");
+    if (!digits) return "";
+    if (digits.length === 10) return `+1${digits}`;
+    if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
+    if (digits.length >= 11 && digits.length <= 15) return `+${digits}`;
+    return "";
   }
 
   useEffect(() => {
@@ -50,8 +61,16 @@ export default function PhoneSignupScreen({ navigation }) {
       setError("Enter a valid code");
       return;
     }
+    const normalizedPhoneNumber = normalizePhoneToE164(phone);
+    if (!normalizedPhoneNumber) {
+      setError("Enter a valid phone number");
+      return;
+    }
     // Placeholder: real verify later -> should authenticate user
     // For now, we continue onboarding after login is handled separately
+    await updateData({
+      phoneNumber: normalizedPhoneNumber,
+    });
     const result = await updateStep(STEPS.ACCOUNT);
     if (result?.complete) return;
     if (canNavigateTo("BusinessSnapshot")) {
@@ -61,7 +80,7 @@ export default function PhoneSignupScreen({ navigation }) {
 
   return (
     <KeyboardAvoidingView
-      style={styles.safe}
+      style={[styles.safe, { backgroundColor: colors.bg }]}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       keyboardVerticalOffset={24}
     >
@@ -85,11 +104,12 @@ export default function PhoneSignupScreen({ navigation }) {
                   value={phone}
                   onChangeText={setPhone}
                   placeholder="(555) 555-5555"
+                  placeholderTextColor={colors.textMuted}
                   keyboardType="phone-pad"
-                  style={styles.input}
+                  style={[styles.input, { borderColor: colors.border, color: colors.textPrimary }]}
                 />
               </AppCard>
-              {!!error && <AppText style={styles.error}>{error}</AppText>}
+              {!!error && <AppText style={[styles.error, { color: colors.danger }]}>{error}</AppText>}
 
               <AppButton style={styles.button} onPress={handleSendOtp} label="Send Code" />
             </>
@@ -101,11 +121,12 @@ export default function PhoneSignupScreen({ navigation }) {
                   value={otp}
                   onChangeText={setOtp}
                   placeholder="123456"
+                  placeholderTextColor={colors.textMuted}
                   keyboardType="number-pad"
-                  style={styles.input}
+                  style={[styles.input, { borderColor: colors.border, color: colors.textPrimary }]}
                 />
               </AppCard>
-              {!!error && <AppText style={styles.error}>{error}</AppText>}
+              {!!error && <AppText style={[styles.error, { color: colors.danger }]}>{error}</AppText>}
 
               <AppButton style={styles.button} onPress={handleVerifyOtp} label="Verify" />
               <AppButton style={styles.linkBtn} variant="secondary" onPress={() => setStage("PHONE")} label="Change phone number" />
@@ -118,12 +139,12 @@ export default function PhoneSignupScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#fff" },
+  safe: { flex: 1 },
   container: { flexGrow: 1, padding: 24, justifyContent: "center", paddingBottom: 140 },
   fieldCard: { marginBottom: spacing.sm },
   label: { fontWeight: "700", marginBottom: 6 },
-  input: { borderWidth: 1, borderColor: "#ccc", borderRadius: 12, padding: 12, marginBottom: 2 },
+  input: { borderWidth: 1, borderRadius: 12, padding: 12, marginBottom: 2 },
   button: { marginTop: 4 },
-  error: { color: "red", marginBottom: spacing.sm, fontWeight: "700" },
+  error: { marginBottom: spacing.sm, fontWeight: "700" },
   linkBtn: { marginTop: 14, alignItems: "center" },
 });

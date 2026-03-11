@@ -26,15 +26,96 @@ function normalizeStep(step) {
     business_snapshot: STEPS.BUSINESS_SNAPSHOT,
     phone_choice: STEPS.NUMBER_STRATEGY,
     number_strategy: STEPS.NUMBER_STRATEGY,
+    forwarding_setup: STEPS.FORWARDING_SETUP,
+    forwarding_verification: STEPS.FORWARDING_VERIFICATION,
     trial_start: STEPS.TRIAL_START,
   };
   return legacyMap[value] || value;
 }
 
+function getStringValue(...values) {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return "";
+}
+
+function normalizeForwardingStatus(raw) {
+  return getStringValue(
+    raw?.forwardingStatus,
+    raw?.forwarding?.status,
+    raw?.phoneSetup?.forwardingStatus,
+    raw?.phoneSetupState?.forwardingStatus,
+    raw?.phone?.forwardingStatus,
+    raw?.stepMap?.forwarding?.status
+  ).toLowerCase();
+}
+
+function normalizeNumberStrategy(raw) {
+  return getStringValue(
+    raw?.numberStrategy,
+    raw?.phoneStrategy,
+    raw?.phone?.strategy,
+    raw?.phoneSetup?.strategy,
+    raw?.phoneSetupState?.strategy,
+    raw?.stepMap?.number_strategy?.strategy
+  ).toLowerCase();
+}
+
+function resolveForwardingResumeStep(raw, fallbackStep, complete) {
+  if (complete) return fallbackStep;
+  const strategy = normalizeNumberStrategy(raw);
+  if (strategy !== "forward_existing") return fallbackStep;
+
+  const explicitStep = normalizeStep(
+    getStringValue(
+      raw?.forwardingNextStep,
+      raw?.phoneSetup?.nextStep,
+      raw?.phoneSetupState?.nextStep
+    )
+  );
+  if (
+    explicitStep === STEPS.FORWARDING_SETUP ||
+    explicitStep === STEPS.FORWARDING_VERIFICATION
+  ) {
+    return explicitStep;
+  }
+
+  const forwardingStatus = normalizeForwardingStatus(raw);
+  if (["verified", "complete", "completed"].includes(forwardingStatus)) {
+    return fallbackStep;
+  }
+
+  if (
+    [
+      "pending_verification",
+      "verification_started",
+      "testing",
+      "verifying",
+      "active",
+      "activated",
+      "failed",
+    ].includes(forwardingStatus)
+  ) {
+    return STEPS.FORWARDING_VERIFICATION;
+  }
+
+  if (fallbackStep === STEPS.TRIAL_START || fallbackStep === "go_live_checklist") {
+    return STEPS.FORWARDING_SETUP;
+  }
+
+  if (fallbackStep === STEPS.NUMBER_STRATEGY) {
+    return STEPS.FORWARDING_SETUP;
+  }
+
+  return fallbackStep;
+}
+
 function parseOnboardingStatus(payload) {
   const raw = payload || {};
-  const step = normalizeStep(raw?.nextStep || raw?.currentStep || STEPS.WELCOME);
   const complete = Boolean(raw?.isComplete);
+  const fallbackStep = normalizeStep(raw?.nextStep || raw?.currentStep || STEPS.WELCOME);
+  const step = resolveForwardingResumeStep(raw, fallbackStep, complete);
   const stepMap = raw?.stepMap || {};
   return { step, complete, stepMap };
 }
