@@ -142,14 +142,17 @@ function resolvePreferredLanguage(raw, barber, cachedData) {
   );
 }
 
+function resolvePhoneNumber(raw, barber, cachedData) {
+  return getStringValue(
+    raw?.phoneNumber,
+    raw?.phone?.number,
+    raw?.phone,
+    barber?.phoneNumber,
+    cachedData?.phoneNumber
+  );
+}
+
 function resolveInitialStep(step, data, complete) {
-  if (complete) return step;
-  if (!normalizeLanguage(data?.preferredLanguage)) {
-    return STEPS.LANGUAGE;
-  }
-  if (step === STEPS.LANGUAGE) {
-    return STEPS.WELCOME;
-  }
   return step;
 }
 
@@ -169,9 +172,12 @@ export function OnboardingProvider({ children }) {
     const cachedData = barberId ? await getOnboardingData(barberId) : {};
     const parsed = parseOnboardingStatus(payload);
     const preferredLanguage = resolvePreferredLanguage(payload, barber, cachedData);
-    const hydratedData = preferredLanguage
-      ? { ...(cachedData || {}), preferredLanguage }
-      : (cachedData || {});
+    const phoneNumber = resolvePhoneNumber(payload, barber, cachedData);
+    const hydratedData = {
+      ...(cachedData || {}),
+      ...(preferredLanguage ? { preferredLanguage } : {}),
+      ...(phoneNumber ? { phoneNumber } : {}),
+    };
     const nextStep = resolveInitialStep(parsed.step, hydratedData, parsed.complete);
 
     setComplete(parsed.complete);
@@ -359,9 +365,17 @@ export function OnboardingProvider({ children }) {
       STEPS.WELCOME;
     const nextRoute = routeForOnboardingStep(nextStep);
     const currentRoute = navigation?.getCurrentRoute?.()?.name || null;
+    const routeNames = navigation?.getState?.()?.routeNames || [];
+    const safeRoute = routeNames.includes(nextRoute)
+      ? nextRoute
+      : routeNames.includes("Welcome")
+      ? "Welcome"
+      : routeNames.includes("DashboardTabs")
+      ? "DashboardTabs"
+      : currentRoute;
 
-    if (currentRoute !== nextRoute && navigation?.replace) {
-      navigation.replace(nextRoute);
+    if (safeRoute && currentRoute !== safeRoute && navigation?.replace) {
+      navigation.replace(safeRoute);
     }
 
     return status;
@@ -373,7 +387,7 @@ export function OnboardingProvider({ children }) {
       return;
     }
     setComplete(false);
-    setStep(STEPS.LANGUAGE);
+    setStep(STEPS.WELCOME);
     setData({});
     try {
       if (__DEV__)

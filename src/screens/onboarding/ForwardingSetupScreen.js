@@ -61,7 +61,7 @@ function getNextRouteFromStatus(status) {
 
 export default function ForwardingSetupScreen({ navigation }) {
   const { colors, resolvedTheme } = useTheme();
-  const { onboardingData, updateData, setLocalStep, navigateFromBackend } = useContext(OnboardingContext);
+  const { onboardingData, updateData, setLocalStep, updateStep, navigateFromBackend } = useContext(OnboardingContext);
   const [carrier, setCarrier] = useState(onboardingData?.forwardingCarrier || "Verizon");
   const [loading, setLoading] = useState(true);
   const [activating, setActivating] = useState(false);
@@ -134,11 +134,11 @@ export default function ForwardingSetupScreen({ navigation }) {
     setActivating(true);
     setError("");
     try {
-      await updateData({
+      const stepData = {
         forwardingCarrier: carrier,
         forwardingActivationDialString: activationCodePreview,
-      });
-      await setLocalStep(STEPS.FORWARDING_VERIFICATION);
+      };
+      await updateStep(STEPS.FORWARDING_VERIFICATION, stepData);
       await Linking.openURL(`tel:${encodeURIComponent(activationCodePreview)}`);
       await navigateFromBackend(navigation);
     } catch (e) {
@@ -152,10 +152,7 @@ export default function ForwardingSetupScreen({ navigation }) {
     setSkipping(true);
     setError("");
     try {
-      await api.post("/onboarding/step", {
-        step: STEPS.FORWARDING_SETUP,
-        status: "skipped",
-      });
+      await updateStep(STEPS.TRIAL_START);
       await navigateFromBackend(navigation);
     } catch (e) {
       setError(e?.response?.data?.message || "Failed to continue onboarding");

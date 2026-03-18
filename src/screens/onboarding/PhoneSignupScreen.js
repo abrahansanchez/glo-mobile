@@ -10,6 +10,7 @@ import {
   Keyboard,
 } from "react-native";
 import { OnboardingContext } from "../../onboarding/OnboardingContext";
+import { AuthContext } from "../../auth/authContext";
 import OnboardingHeader from "../../onboarding/OnboardingHeader";
 import { STEPS } from "../../onboarding/stepKeys";
 import AppText from "../../components/ui/AppText";
@@ -21,10 +22,11 @@ import { useTheme } from "../../theme/ThemeContext";
 
 export default function PhoneSignupScreen({ navigation }) {
   const { updateStep, setLocalStep, updateData, onboardingData, navigateFromBackend } = useContext(OnboardingContext);
+  const { barber } = useContext(AuthContext);
   const { colors } = useTheme();
-  const [phone, setPhone] = useState(onboardingData?.phoneNumber || "");
+  const [phone, setPhone] = useState(onboardingData?.phoneNumber || barber?.phoneNumber || "");
   const [otp, setOtp] = useState("");
-  const [stage, setStage] = useState("PHONE"); // PHONE -> OTP
+  const [stage, setStage] = useState(onboardingData?.phoneNumber || barber?.phoneNumber ? "CONFIRMED" : "PHONE"); // PHONE -> OTP -> CONFIRMED
   const [error, setError] = useState("");
 
   function canNavigateTo(routeName) {
@@ -44,6 +46,16 @@ export default function PhoneSignupScreen({ navigation }) {
   useEffect(() => {
     setLocalStep(STEPS.ACCOUNT);
   }, [setLocalStep]);
+
+  useEffect(() => {
+    const existingPhone = onboardingData?.phoneNumber || barber?.phoneNumber || "";
+    if (existingPhone && !phone) {
+      setPhone(existingPhone);
+    }
+    if (existingPhone) {
+      setStage("CONFIRMED");
+    }
+  }, [barber?.phoneNumber, onboardingData?.phoneNumber, phone]);
 
   function handleSendOtp() {
     setError("");
@@ -68,6 +80,21 @@ export default function PhoneSignupScreen({ navigation }) {
     }
     // Placeholder: real verify later -> should authenticate user
     // For now, we continue onboarding after login is handled separately
+    await updateData({
+      phoneNumber: normalizedPhoneNumber,
+    });
+    await updateStep(STEPS.ACCOUNT);
+    await navigateFromBackend(navigation);
+  }
+
+  async function handleContinueWithExistingPhone() {
+    setError("");
+    const normalizedPhoneNumber = normalizePhoneToE164(phone);
+    if (!normalizedPhoneNumber) {
+      setError("Enter a valid phone number");
+      return;
+    }
+
     await updateData({
       phoneNumber: normalizedPhoneNumber,
     });
@@ -109,6 +136,15 @@ export default function PhoneSignupScreen({ navigation }) {
               {!!error && <AppText style={[styles.error, { color: colors.danger }]}>{error}</AppText>}
 
               <AppButton style={styles.button} onPress={handleSendOtp} label="Send Code" />
+            </>
+          ) : stage === "CONFIRMED" ? (
+            <>
+              <AppCard style={styles.fieldCard}>
+                <AppText style={styles.label}>Phone Number</AppText>
+                <AppText>{phone}</AppText>
+              </AppCard>
+              {!!error && <AppText style={[styles.error, { color: colors.danger }]}>{error}</AppText>}
+              <AppButton style={styles.button} onPress={handleContinueWithExistingPhone} label="Continue" />
             </>
           ) : (
             <>

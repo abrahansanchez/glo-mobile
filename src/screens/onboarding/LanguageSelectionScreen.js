@@ -41,7 +41,7 @@ export default function LanguageSelectionScreen({ navigation }) {
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
       <OnboardingHero
-        stepLabel="Step 1 of 10"
+        stepLabel="Step 2 of 10"
         title={t.chooseLanguage}
         subtitle={t.languageSubtitle}
       />

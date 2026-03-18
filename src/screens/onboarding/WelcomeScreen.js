@@ -15,7 +15,7 @@ import { useTheme } from "../../theme/ThemeContext";
 import { getStrings, normalizeLanguage } from "../../utils/i18n";
 
 export default function WelcomeScreen({ navigation }) {
-  const { setLocalStep, onboardingData, updateStep, navigateFromBackend } = useContext(OnboardingContext);
+  const { setLocalStep, onboardingData, navigateFromBackend } = useContext(OnboardingContext);
   const { logout } = useContext(AuthContext);
   const { colors } = useTheme();
   const t = getStrings(normalizeLanguage(onboardingData?.preferredLanguage));
@@ -63,7 +63,7 @@ export default function WelcomeScreen({ navigation }) {
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
       <OnboardingHero
-        stepLabel="Step 2 of 10"
+        stepLabel="Step 1 of 10"
         title={t.welcomeTitle}
         subtitle={t.welcomeSubtitle}
       />
@@ -79,7 +79,6 @@ export default function WelcomeScreen({ navigation }) {
         label={t.getStarted}
         style={styles.primaryBtn}
         onPress={async () => {
-          await updateStep(STEPS.WELCOME);
           await navigateFromBackend(navigation);
         }}
       />
