@@ -4,6 +4,8 @@ export function routeForOnboardingStep(rawStep) {
   const step = String(rawStep || "").toLowerCase();
 
   switch (step) {
+    case "complete":
+      return "GoLiveChecklist";
     case STEPS.LANGUAGE:
       return "LanguageSelection";
     case STEPS.ACCOUNT:
@@ -12,10 +14,12 @@ export function routeForOnboardingStep(rawStep) {
       return "BusinessSnapshot";
     case STEPS.NUMBER_STRATEGY:
       return "NumberStrategy";
+    case "forwarding_flow":
     case STEPS.FORWARDING_SETUP:
       return "ForwardingSetup";
     case STEPS.FORWARDING_VERIFICATION:
       return "ForwardingVerify";
+    case "porting_flow":
     case "porting_form":
       return "PortingForm";
     case "porting_tracker":

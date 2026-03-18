@@ -7,7 +7,6 @@ import AppButton from "../../components/ui/AppButton";
 import AppCard from "../../components/ui/AppCard";
 import AppText from "../../components/ui/AppText";
 import OnboardingHero from "../../components/onboarding/OnboardingHero";
-import { routeForOnboardingStep } from "../../onboarding/routeForStep";
 import { STEPS } from "../../onboarding/stepKeys";
 import { spacing } from "../../ui/tokens";
 import { useTheme } from "../../theme/ThemeContext";
@@ -62,7 +61,7 @@ function getNextRouteFromStatus(status) {
 
 export default function ForwardingSetupScreen({ navigation }) {
   const { colors, resolvedTheme } = useTheme();
-  const { onboardingData, updateData, setLocalStep, markComplete } = useContext(OnboardingContext);
+  const { onboardingData, updateData, setLocalStep, navigateFromBackend } = useContext(OnboardingContext);
   const [carrier, setCarrier] = useState(onboardingData?.forwardingCarrier || "Verizon");
   const [loading, setLoading] = useState(true);
   const [activating, setActivating] = useState(false);
@@ -101,10 +100,8 @@ export default function ForwardingSetupScreen({ navigation }) {
       setStatusPayload(payload);
 
       const nextRoute = getNextRouteFromStatus(getForwardingStatus(payload));
-      if (nextRoute === "ForwardingSuccess") {
-        navigation.replace("ForwardingSuccess");
-      } else if (nextRoute === "ForwardingVerify") {
-        navigation.replace("ForwardingVerify");
+      if (nextRoute) {
+        await navigateFromBackend(navigation);
       }
     } catch (e) {
       setError(e?.response?.data?.message || "Failed to load forwarding details");
@@ -143,7 +140,7 @@ export default function ForwardingSetupScreen({ navigation }) {
       });
       await setLocalStep(STEPS.FORWARDING_VERIFICATION);
       await Linking.openURL(`tel:${encodeURIComponent(activationCodePreview)}`);
-      navigation.navigate("ForwardingVerify");
+      await navigateFromBackend(navigation);
     } catch (e) {
       setError(e?.message || "Could not open the dialer");
     } finally {
@@ -155,25 +152,11 @@ export default function ForwardingSetupScreen({ navigation }) {
     setSkipping(true);
     setError("");
     try {
-      const response = await api.post("/onboarding/step", {
+      await api.post("/onboarding/step", {
         step: STEPS.FORWARDING_SETUP,
         status: "skipped",
       });
-      const payload = response?.data || {};
-      const nextStep = String(payload?.nextStep || payload?.currentStep || STEPS.TRIAL_START).toLowerCase();
-      const nextRoute = routeForOnboardingStep(nextStep);
-
-      if (payload?.isComplete || nextStep === "dashboard") {
-        await markComplete();
-        return;
-      }
-
-      await setLocalStep(nextStep);
-      if (navigation?.getState?.()?.routeNames?.includes(nextRoute)) {
-        navigation.navigate(nextRoute);
-      } else {
-        navigation.navigate("TrialStart");
-      }
+      await navigateFromBackend(navigation);
     } catch (e) {
       setError(e?.response?.data?.message || "Failed to continue onboarding");
     } finally {

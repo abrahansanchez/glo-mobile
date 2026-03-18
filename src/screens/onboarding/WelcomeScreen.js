@@ -15,7 +15,7 @@ import { useTheme } from "../../theme/ThemeContext";
 import { getStrings, normalizeLanguage } from "../../utils/i18n";
 
 export default function WelcomeScreen({ navigation }) {
-  const { setLocalStep, onboardingData } = useContext(OnboardingContext);
+  const { setLocalStep, onboardingData, updateStep, navigateFromBackend } = useContext(OnboardingContext);
   const { logout } = useContext(AuthContext);
   const { colors } = useTheme();
   const t = getStrings(normalizeLanguage(onboardingData?.preferredLanguage));
@@ -78,10 +78,9 @@ export default function WelcomeScreen({ navigation }) {
         variant="primary"
         label={t.getStarted}
         style={styles.primaryBtn}
-        onPress={() => {
-          if (canNavigateTo("Account")) {
-            navigation.navigate("Account");
-          }
+        onPress={async () => {
+          await updateStep(STEPS.WELCOME);
+          await navigateFromBackend(navigation);
         }}
       />
 

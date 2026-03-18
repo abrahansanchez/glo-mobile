@@ -15,7 +15,7 @@ import { track } from "../../analytics/track";
 import { useTheme } from "../../theme/ThemeContext";
 
 export default function TrialStartScreen({ navigation }) {
-  const { updateStep } = useContext(OnboardingContext);
+  const { updateStep, navigateFromBackend } = useContext(OnboardingContext);
   const { refreshSession } = useContext(AuthContext);
   const { colors } = useTheme();
   const [loading, setLoading] = useState(false);
@@ -42,6 +42,7 @@ export default function TrialStartScreen({ navigation }) {
       await refreshSession?.("trial_started");
       track("trial_started", { step: STEPS.TRIAL_START });
       setSuccess(true);
+      await navigateFromBackend(navigation);
     } catch (e) {
       track("trial_start_failed", {
         step: STEPS.TRIAL_START,
@@ -85,11 +86,7 @@ export default function TrialStartScreen({ navigation }) {
         label="Continue"
         variant="secondary"
         style={styles.secondaryBtn}
-        onPress={() => {
-          if (canNavigateTo("GoLiveChecklist")) {
-            navigation.navigate("GoLiveChecklist");
-          }
-        }}
+        onPress={() => navigateFromBackend(navigation)}
       />
 
       {!!error ? (

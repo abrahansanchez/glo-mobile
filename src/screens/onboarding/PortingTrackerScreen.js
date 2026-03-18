@@ -12,7 +12,7 @@ import { useTheme } from "../../theme/ThemeContext";
 const STATUS_ORDER = ["draft", "submitted", "carrier_review", "approved", "completed", "rejected"];
 
 export default function PortingTrackerScreen({ navigation }) {
-  const { setLocalStep } = useContext(OnboardingContext);
+  const { setLocalStep, navigateFromBackend } = useContext(OnboardingContext);
   const { colors, resolvedTheme } = useTheme();
   const [status, setStatus] = useState("draft");
   const [loading, setLoading] = useState(true);
@@ -86,7 +86,7 @@ export default function PortingTrackerScreen({ navigation }) {
       <AppButton
         variant="secondary"
         style={styles.secondaryBtn}
-        onPress={() => navigation.navigate("TrialStart")}
+        onPress={() => navigateFromBackend(navigation)}
         label="Continue"
       />
     </View>

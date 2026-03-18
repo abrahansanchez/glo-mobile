@@ -1,7 +1,6 @@
 import React, { useContext, useEffect, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { OnboardingContext } from "../../onboarding/OnboardingContext";
-import { routeForOnboardingStep } from "../../onboarding/routeForStep";
 import { STEPS } from "../../onboarding/stepKeys";
 import AppCard from "../../components/ui/AppCard";
 import AppText from "../../components/ui/AppText";
@@ -12,7 +11,7 @@ import { spacing } from "../../ui/tokens";
 
 export default function LanguageSelectionScreen({ navigation }) {
   const { colors } = useTheme();
-  const { onboardingData, setLocalStep, updateStep } = useContext(OnboardingContext);
+  const { onboardingData, setLocalStep, updateStep, navigateFromBackend } = useContext(OnboardingContext);
   const [submitting, setSubmitting] = useState("");
   const language = normalizeLanguage(onboardingData?.preferredLanguage);
   const t = getStrings(language);
@@ -26,15 +25,12 @@ export default function LanguageSelectionScreen({ navigation }) {
 
     setSubmitting(lang);
     try {
-      const result = await updateStep(
+      await updateStep(
         STEPS.LANGUAGE,
         { preferredLanguage: lang },
         { analyticsProps: { preferredLanguage: lang } }
       );
-
-      if (result?.complete) return;
-      const nextStep = result?.step === STEPS.LANGUAGE ? STEPS.WELCOME : (result?.step || STEPS.WELCOME);
-      navigation.replace(routeForOnboardingStep(nextStep));
+      await navigateFromBackend(navigation);
     } catch (error) {
       console.error("Language selection failed", error);
     } finally {

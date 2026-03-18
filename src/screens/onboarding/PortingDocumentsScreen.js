@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { View, StyleSheet, Alert } from "react-native";
 import api from "../../config/api";
+import { OnboardingContext } from "../../onboarding/OnboardingContext";
 import OnboardingHeader from "../../onboarding/OnboardingHeader";
 import AppCard from "../../components/ui/AppCard";
 import AppText from "../../components/ui/AppText";
@@ -42,6 +43,7 @@ function getBackendErrorMessage(errorResponse) {
 
 export default function PortingDocumentsScreen({ navigation, route }) {
   const { colors } = useTheme();
+  const { navigateFromBackend } = useContext(OnboardingContext);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [portingId, setPortingId] = useState(route?.params?.portingId || null);
@@ -143,7 +145,7 @@ export default function PortingDocumentsScreen({ navigation, route }) {
       setLoaFile(null);
       setBillFile(null);
       await loadStatus();
-      navigation.navigate("PortingStatus", { portingId, refreshedAt: Date.now() });
+      await navigateFromBackend(navigation);
     } catch (e) {
       setError(getBackendErrorMessage(e?.response));
     } finally {

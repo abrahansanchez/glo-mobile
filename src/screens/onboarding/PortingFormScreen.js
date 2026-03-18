@@ -18,13 +18,12 @@ import AppText from "../../components/ui/AppText";
 import AppBadge from "../../components/ui/AppBadge";
 import AppButton from "../../components/ui/AppButton";
 import OnboardingHero from "../../components/onboarding/OnboardingHero";
-import { routeForOnboardingStep } from "../../onboarding/routeForStep";
 import { spacing } from "../../ui/tokens";
 import { track } from "../../analytics/track";
 import { useTheme } from "../../theme/ThemeContext";
 
 export default function PortingFormScreen({ navigation, route }) {
-  const { setLocalStep } = useContext(OnboardingContext);
+  const { setLocalStep, navigateFromBackend } = useContext(OnboardingContext);
   const { colors } = useTheme();
   const [form, setForm] = useState({
     phoneNumber: "",
@@ -227,13 +226,9 @@ export default function PortingFormScreen({ navigation, route }) {
         completedAt: new Date().toISOString(),
         idempotencyKey: generateIdempotencyKey(),
       };
-      const response = await api.post("/onboarding/step", payload);
-      const nextStep = response?.data?.nextStep || response?.data?.currentStep || "trial_start";
+      await api.post("/onboarding/step", payload);
       track("onboarding_step_skipped", { step: "porting" });
-      const mappedRoute = routeForOnboardingStep(nextStep);
-      const nextRoute = canNavigateTo(mappedRoute) ? mappedRoute : "TrialStart";
-      await setLocalStep(String(nextStep).toLowerCase());
-      navigation.navigate(nextRoute);
+      await navigateFromBackend(navigation);
     } catch (e) {
       setError(getBackendErrorMessage(e?.response));
     } finally {
@@ -323,11 +318,7 @@ export default function PortingFormScreen({ navigation, route }) {
         step: "porting_form",
         portingId,
       });
-      navigation.navigate("PortingStatus", {
-        portingId,
-        seededStatusPayload: response?.data || null,
-        resubmittedAt: Date.now(),
-      });
+      await navigateFromBackend(navigation);
     } catch (e) {
       track("porting_failed_validation", {
         step: "porting_form",

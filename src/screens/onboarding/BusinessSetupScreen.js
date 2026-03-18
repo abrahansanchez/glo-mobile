@@ -22,7 +22,7 @@ import { spacing } from "../../ui/tokens";
 import { useTheme } from "../../theme/ThemeContext";
 
 export default function BusinessSetupScreen({ navigation }) {
-  const { updateStep, setLocalStep, updateData, onboardingData } = useContext(OnboardingContext);
+  const { updateStep, setLocalStep, updateData, onboardingData, navigateFromBackend } = useContext(OnboardingContext);
   const { colors } = useTheme();
   function canNavigateTo(routeName) {
     const routeNames = navigation?.getState?.()?.routeNames || [];
@@ -97,11 +97,8 @@ export default function BusinessSetupScreen({ navigation }) {
       businessDays,
     });
 
-    const result = await updateStep(STEPS.BUSINESS_SNAPSHOT);
-    if (result?.complete) return;
-    if (canNavigateTo("NumberStrategy")) {
-      navigation.navigate("NumberStrategy");
-    }
+    await updateStep(STEPS.BUSINESS_SNAPSHOT);
+    await navigateFromBackend(navigation);
   }
 
   return (

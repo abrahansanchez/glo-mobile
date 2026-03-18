@@ -10,7 +10,6 @@ import AppText from "../../components/ui/AppText";
 import AppButton from "../../components/ui/AppButton";
 import EmptyState from "../../components/ui/EmptyState";
 import OnboardingHero from "../../components/onboarding/OnboardingHero";
-import { routeForOnboardingStep } from "../../onboarding/routeForStep";
 import { spacing } from "../../ui/tokens";
 import { useTheme } from "../../theme/ThemeContext";
 
@@ -119,7 +118,7 @@ function normalizeBlocker(rawBlocker) {
 }
 
 export default function GoLiveChecklistScreen({ navigation }) {
-  const { setLocalStep, markComplete } = useContext(OnboardingContext);
+  const { setLocalStep, navigateFromBackend } = useContext(OnboardingContext);
   const { colors, resolvedTheme } = useTheme();
   const [ready, setReady] = useState(false);
   const [readinessRows, setReadinessRows] = useState([]);
@@ -225,16 +224,12 @@ export default function GoLiveChecklistScreen({ navigation }) {
   async function handleGoLive() {
     if (!trialStarted) return;
     console.log("[NAV] GoToDashboard allowed trialStarted=true");
-    await markComplete();
+    await navigateFromBackend(navigation);
   }
 
   async function handleFinishSetup() {
     try {
-      const response = await api.get("/onboarding/status");
-      const payload = response.data || {};
-      const nextStep = payload?.nextStep || payload?.currentStep || STEPS.WELCOME;
-      console.log(`[ONBOARDING_RESUME] nextStep=${nextStep}`);
-      navigation.navigate(routeForOnboardingStep(String(nextStep).toLowerCase()));
+      await navigateFromBackend(navigation);
     } catch (e) {
       setError(e?.response?.data?.message || "Failed to resume onboarding");
     }

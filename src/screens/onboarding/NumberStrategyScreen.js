@@ -12,7 +12,7 @@ import { spacing } from "../../ui/tokens";
 import { useTheme } from "../../theme/ThemeContext";
 
 export default function NumberStrategyScreen({ navigation }) {
-  const { updateStep, updateData, onboardingData } = useContext(OnboardingContext);
+  const { updateStep, onboardingData, navigateFromBackend } = useContext(OnboardingContext);
   const { colors } = useTheme();
   const [choice, setChoice] = useState(onboardingData?.numberStrategy || "new_number");
   const [submitting, setSubmitting] = useState(false);
@@ -36,34 +36,35 @@ export default function NumberStrategyScreen({ navigation }) {
     setSubmitting(true);
     setError("");
     try {
-      const payload = { strategy: choice };
+      let forwardFromNumber;
+
       if (choice === "forward_existing") {
-        const forwardFromNumber = normalizePhoneToE164(onboardingData?.phoneNumber);
+        forwardFromNumber = normalizePhoneToE164(onboardingData?.phoneNumber);
         if (!forwardFromNumber) {
           setError("We couldn't find the number from Step 2. Go back and confirm your business phone number.");
           setSubmitting(false);
           return;
         }
-        payload.forwardFromNumber = forwardFromNumber;
       }
 
-      await api.post("/phone/number-strategy", payload);
-      await updateData({ numberStrategy: choice });
-      const result = await updateStep(STEPS.NUMBER_STRATEGY);
-      if (result?.complete) return;
-      if (choice === "forward_existing") {
-        if (canNavigateTo("ForwardingSetup")) {
-          navigation.navigate("ForwardingSetup");
-        }
-      } else if (choice === "port_existing") {
-        if (canNavigateTo("PortingForm")) {
-          navigation.navigate("PortingForm");
-        }
-      } else {
-        if (canNavigateTo("TrialStart")) {
-          navigation.navigate("TrialStart");
-        }
-      }
+      const strategyPayload = {
+        strategy: choice,
+        ...(choice === "forward_existing" && {
+          forwardFromNumber,
+        }),
+      };
+
+      await api.post("/phone/number-strategy", strategyPayload);
+
+      await updateStep(
+        STEPS.NUMBER_STRATEGY,
+        {
+          numberStrategy: choice,
+          ...(choice === "forward_existing" && { forwardFromNumber }),
+        },
+        { analyticsProps: { numberStrategy: choice } }
+      );
+      await navigateFromBackend(navigation);
     } catch (e) {
       setError(e?.response?.data?.message || "Failed to save number strategy");
     } finally {

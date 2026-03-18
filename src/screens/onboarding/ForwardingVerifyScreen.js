@@ -39,7 +39,7 @@ function formatE164(value) {
 export default function ForwardingVerifyScreen({ navigation }) {
   const { colors, resolvedTheme } = useTheme();
   const { barber } = useContext(AuthContext);
-  const { setLocalStep, onboardingData } = useContext(OnboardingContext);
+  const { setLocalStep, onboardingData, navigateFromBackend } = useContext(OnboardingContext);
   const [submitting, setSubmitting] = useState(false);
   const [polling, setPolling] = useState(false);
   const [error, setError] = useState("");
@@ -63,7 +63,7 @@ export default function ForwardingVerifyScreen({ navigation }) {
       const status = getForwardingStatus(payload);
       if (["verified", "complete", "completed"].includes(status)) {
         stopPolling();
-        navigation.replace("ForwardingSuccess");
+        await navigateFromBackend(navigation);
       } else if (status === "failed") {
         stopPolling();
         setPolling(false);

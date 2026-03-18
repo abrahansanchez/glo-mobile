@@ -7,14 +7,13 @@ import AppButton from "../../components/ui/AppButton";
 import AppCard from "../../components/ui/AppCard";
 import AppText from "../../components/ui/AppText";
 import OnboardingHero from "../../components/onboarding/OnboardingHero";
-import { routeForOnboardingStep } from "../../onboarding/routeForStep";
 import { STEPS } from "../../onboarding/stepKeys";
 import { spacing } from "../../ui/tokens";
 import { useTheme } from "../../theme/ThemeContext";
 
 export default function ForwardingSuccessScreen({ navigation }) {
   const { colors, resolvedTheme } = useTheme();
-  const { setLocalStep, markComplete } = useContext(OnboardingContext);
+  const { setLocalStep, navigateFromBackend } = useContext(OnboardingContext);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -31,24 +30,7 @@ export default function ForwardingSuccessScreen({ navigation }) {
         step: STEPS.FORWARDING_VERIFICATION,
         status: "complete",
       });
-
-      const response = await api.get("/onboarding/status");
-      const payload = response.data || {};
-      const nextStep = String(payload?.nextStep || payload?.currentStep || STEPS.TRIAL_START).toLowerCase();
-      const nextRoute = routeForOnboardingStep(nextStep);
-
-      if (payload?.isComplete || nextStep === "dashboard") {
-        await markComplete();
-        return;
-      }
-
-      await setLocalStep(nextStep);
-      if (navigation?.getState?.()?.routeNames?.includes(nextRoute)) {
-        navigation.navigate(nextRoute);
-        return;
-      }
-
-      navigation.navigate("TrialStart");
+      await navigateFromBackend(navigation);
     } catch (e) {
       setError(e?.response?.data?.message || "Failed to continue onboarding");
     } finally {

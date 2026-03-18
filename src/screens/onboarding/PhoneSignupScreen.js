@@ -20,7 +20,7 @@ import { spacing } from "../../ui/tokens";
 import { useTheme } from "../../theme/ThemeContext";
 
 export default function PhoneSignupScreen({ navigation }) {
-  const { updateStep, setLocalStep, updateData, onboardingData } = useContext(OnboardingContext);
+  const { updateStep, setLocalStep, updateData, onboardingData, navigateFromBackend } = useContext(OnboardingContext);
   const { colors } = useTheme();
   const [phone, setPhone] = useState(onboardingData?.phoneNumber || "");
   const [otp, setOtp] = useState("");
@@ -71,11 +71,8 @@ export default function PhoneSignupScreen({ navigation }) {
     await updateData({
       phoneNumber: normalizedPhoneNumber,
     });
-    const result = await updateStep(STEPS.ACCOUNT);
-    if (result?.complete) return;
-    if (canNavigateTo("BusinessSnapshot")) {
-      navigation.navigate("BusinessSnapshot");
-    }
+    await updateStep(STEPS.ACCOUNT);
+    await navigateFromBackend(navigation);
   }
 
   return (
