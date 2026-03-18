@@ -185,7 +185,7 @@ export default function ForwardingSetupScreen({ navigation }) {
     <ScrollView style={{ backgroundColor: colors.bg }} contentContainerStyle={styles.container}>
       <OnboardingHeader />
       <OnboardingHero
-        stepLabel="Step 5 of 9"
+        stepLabel="Step 6 of 10"
         title="Activate call forwarding"
         subtitle="Keep your current number and send business calls into Glō in a few taps."
       />

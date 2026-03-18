@@ -123,7 +123,7 @@ export default function ForwardingVerifyScreen({ navigation }) {
     <ScrollView style={{ backgroundColor: colors.bg }} contentContainerStyle={styles.container}>
       <OnboardingHeader />
       <OnboardingHero
-        stepLabel="Step 6 of 9"
+        stepLabel="Step 7 of 10"
         title="Verify forwarding"
         subtitle="We’ll run a quick test to confirm your calls are reaching Glō."
       />

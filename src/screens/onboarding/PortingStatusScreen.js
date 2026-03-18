@@ -147,7 +147,7 @@ export default function PortingStatusScreen({ navigation, route }) {
     >
       <OnboardingHeader />
       <OnboardingHero
-        stepLabel="Step 7 of 9"
+        stepLabel="Step 8 of 10"
         title="Porting Status"
         subtitle="Track your transfer and resolve any issues quickly."
       />

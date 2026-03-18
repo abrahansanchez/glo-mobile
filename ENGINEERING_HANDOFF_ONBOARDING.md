@@ -164,12 +164,24 @@ Legend:
 ### API Contracts (Mobile Wiring)
 1. `🟢` `GET /onboarding/status`
 2. `🟢` `POST /onboarding/step`
-3. `🟢` `POST /phone/number-strategy`
+3. `🟢` `POST /phone/number-strategy` (mobile supports `new_number`, `port_existing`, and `forward_existing`)
 4. `🟢` `POST /phone/porting/start`
 5. `⚪` `POST /phone/porting/documents` (mobile currently uses `/phone/porting/:id/docs`)
 6. `🟢` `GET /phone/porting/status`
 7. `🟢` `POST /billing/trial/start`
 8. `🟢` `GET /launch/checklist`
+
+### Forwarding (Mobile-Only Additions)
+1. `🟢` `forward_existing` number strategy path is implemented in onboarding
+2. `🟢` Step 2 verified phone number is persisted into onboarding state for reuse
+3. `🟢` `GET /phone/forwarding/status` is wired for forwarding onboarding resume/setup
+4. `🟢` `POST /phone/forwarding/test` sends `forwardFromNumber` in E.164 format
+5. `🟢` Forwarding Setup / Verify / Success screens are implemented
+6. `🟢` Forwarding onboarding resume logic is implemented from backend status
+7. `🟢` Settings-level forwarding management screen is implemented
+8. `🟢` Carrier-safe enable/disable dial codes are implemented for T-Mobile, AT&T, Verizon, and fallback `other`
+9. `🟢` Forwarding enable/disable confirmation loops are implemented after returning from dialer
+10. `⚪` End-to-end forwarding behavior is verified on physical devices/carriers
 
 ### Analytics Events (Freeze Names/Props)
 - `⚪` Not fully verifiable as complete from this repo alone
@@ -205,6 +217,8 @@ Mobile:
 1. `🟢` Implement Number Porting screens + status tracker
 2. `🟢` Implement Go Live checklist with blockers + actions
 3. `🟢` Add support/recovery entry points for rejected porting cases
+4. `🟢` Implement Keep My Number forwarding onboarding flow
+5. `🟢` Implement forwarding management screen in Settings
 
 QA:
 1. `⚪` Validate porting happy path and rejection/retry flow
@@ -223,12 +237,15 @@ Acceptance Criteria (Sprint 2):
 5. `⚪` App reinstall + resume onboarding
 6. `⚪` Offline during step submit + retry on reconnect
 7. `⚪` Multi-device same account state sync
+8. `⚪` Forward-existing path + carrier activation + verification success
+9. `⚪` Forward-existing path + verification failure + retry
+10. `⚪` Forwarding Settings enable/disable confirmed on live device
 
 ### Release Guardrails
-1. `⚪` Feature-flag new onboarding
+1. `🟢` Feature-flag new onboarding
 2. `⚪` Internal then beta rollout
 3. `⚪` Daily funnel dashboard review for first 14 days
-4. `⚪` Rollback switch to stable onboarding
+4. `🟢` Rollback switch to stable onboarding
 
 ### Launch KPIs
 1. `⚪` Onboarding completion rate measured

@@ -155,7 +155,7 @@ export default function PortingDocumentsScreen({ navigation, route }) {
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
       <OnboardingHeader />
       <OnboardingHero
-        stepLabel="Step 6 of 9"
+        stepLabel="Step 7 of 10"
         title="Upload Porting Documents"
         subtitle="Upload a signed LOA and a recent bill."
       />

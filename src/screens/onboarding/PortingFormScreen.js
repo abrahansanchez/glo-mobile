@@ -353,7 +353,7 @@ export default function PortingFormScreen({ navigation, route }) {
         >
           <OnboardingHeader />
           <OnboardingHero
-            stepLabel="Step 5 of 9"
+            stepLabel="Step 6 of 10"
             title="Port Your Number"
             subtitle="Usually 3-10 business days depending on your carrier."
           />

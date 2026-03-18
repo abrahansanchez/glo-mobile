@@ -2,6 +2,7 @@ import React, { useContext } from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { OnboardingContext } from "../onboarding/OnboardingContext";
 
+import LanguageSelectionScreen from "../screens/onboarding/LanguageSelectionScreen";
 import WelcomeScreen from "../screens/onboarding/WelcomeScreen";
 import PhoneSignupScreen from "../screens/onboarding/PhoneSignupScreen";
 import BusinessSetupScreen from "../screens/onboarding/BusinessSetupScreen";
@@ -17,7 +18,12 @@ export default function StableOnboardingNavigator() {
   // Stable flow intentionally skips elite-only steps while keeping route names safe.
   function getInitialRouteName() {
     const mappedRoute = routeForOnboardingStep(onboardingStep);
-    if (mappedRoute === "Account" || mappedRoute === "BusinessSnapshot" || mappedRoute === "Welcome") {
+    if (
+      mappedRoute === "LanguageSelection" ||
+      mappedRoute === "Account" ||
+      mappedRoute === "BusinessSnapshot" ||
+      mappedRoute === "Welcome"
+    ) {
       return mappedRoute;
     }
     return "TrialStart";
@@ -28,6 +34,7 @@ export default function StableOnboardingNavigator() {
       screenOptions={{ headerShown: false }}
       initialRouteName={getInitialRouteName()}
     >
+      <Stack.Screen name="LanguageSelection" component={LanguageSelectionScreen} />
       <Stack.Screen name="Welcome" component={WelcomeScreen} />
       <Stack.Screen name="Account" component={PhoneSignupScreen} />
       <Stack.Screen name="BusinessSnapshot" component={BusinessSetupScreen} />

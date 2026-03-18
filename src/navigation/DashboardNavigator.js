@@ -15,6 +15,7 @@ import CallNavigator from "./CallNavigator";
 import SettingsScreen from "../screens/SettingsScreen";
 import InboxScreen from "../screens/InboxScreen";
 import AccountScreen from "../screens/settings/AccountScreen";
+import ForwardingSettingsScreen from "../screens/settings/ForwardingSettingsScreen";
 import PortingStatusScreen from "../screens/onboarding/PortingStatusScreen";
 import PortingDocumentsScreen from "../screens/onboarding/PortingDocumentsScreen";
 import { AuthContext } from "../auth/authContext";
@@ -110,6 +111,7 @@ export default function DashboardNavigator() {
       <Stack.Screen name="Analytics" component={insightsComponent} />
 
       <Stack.Screen name="Account" component={AccountScreen} />
+      <Stack.Screen name="ForwardingSettings" component={ForwardingSettingsScreen} />
       <Stack.Screen name="PortingStatus" component={PortingStatusScreen} />
       <Stack.Screen name="PortingDocuments" component={PortingDocumentsScreen} />
       <Stack.Screen name="TranscriptDetail" component={TranscriptDetailScreen} />

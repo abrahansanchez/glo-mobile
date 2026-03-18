@@ -12,11 +12,13 @@ import AppCard from "../../components/ui/AppCard";
 import OnboardingHero from "../../components/onboarding/OnboardingHero";
 import { spacing } from "../../ui/tokens";
 import { useTheme } from "../../theme/ThemeContext";
+import { getStrings, normalizeLanguage } from "../../utils/i18n";
 
 export default function WelcomeScreen({ navigation }) {
-  const { setLocalStep } = useContext(OnboardingContext);
+  const { setLocalStep, onboardingData } = useContext(OnboardingContext);
   const { logout } = useContext(AuthContext);
   const { colors } = useTheme();
+  const t = getStrings(normalizeLanguage(onboardingData?.preferredLanguage));
 
   function canNavigateTo(routeName) {
     const routeNames = navigation?.getState?.()?.routeNames || [];
@@ -61,20 +63,20 @@ export default function WelcomeScreen({ navigation }) {
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
       <OnboardingHero
-        stepLabel="Step 1 of 9"
-        title="Welcome to Glō"
-        subtitle="Your AI receptionist handles calls, books appointments, and keeps your business responsive."
+        stepLabel="Step 2 of 10"
+        title={t.welcomeTitle}
+        subtitle={t.welcomeSubtitle}
       />
 
       <AppCard style={styles.bullets}>
-        <AppText style={styles.bullet}>No missed calls while you work.</AppText>
-        <AppText style={styles.bullet}>Clients can book, cancel, and reschedule automatically.</AppText>
-        <AppText style={styles.bullet}>Always-on coverage, including after hours.</AppText>
+        <AppText style={styles.bullet}>{t.welcomeBulletOne}</AppText>
+        <AppText style={styles.bullet}>{t.welcomeBulletTwo}</AppText>
+        <AppText style={styles.bullet}>{t.welcomeBulletThree}</AppText>
       </AppCard>
 
       <AppButton
         variant="primary"
-        label="Get Started"
+        label={t.getStarted}
         style={styles.primaryBtn}
         onPress={() => {
           if (canNavigateTo("Account")) {

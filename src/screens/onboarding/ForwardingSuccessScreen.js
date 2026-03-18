@@ -60,7 +60,7 @@ export default function ForwardingSuccessScreen({ navigation }) {
     <ScrollView style={{ backgroundColor: colors.bg }} contentContainerStyle={styles.container}>
       <OnboardingHeader />
       <OnboardingHero
-        stepLabel="Step 7 of 9"
+        stepLabel="Step 8 of 10"
         title="Forwarding Verified"
         subtitle="Your clients can keep calling the same number while Glō handles the calls."
       />

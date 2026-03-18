@@ -91,7 +91,7 @@ export default function PhoneSignupScreen({ navigation }) {
         >
           <OnboardingHeader />
           <OnboardingHero
-            stepLabel="Step 2 of 9"
+            stepLabel="Step 3 of 10"
             title="Create Your Workspace"
             subtitle="Confirm your number to secure your account."
           />

@@ -2,6 +2,7 @@ import React, { useContext } from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { OnboardingContext } from "../onboarding/OnboardingContext";
 
+import LanguageSelectionScreen from "../screens/onboarding/LanguageSelectionScreen";
 import WelcomeScreen from "../screens/onboarding/WelcomeScreen";
 import PhoneSignupScreen from "../screens/onboarding/PhoneSignupScreen";
 import BusinessSetupScreen from "../screens/onboarding/BusinessSetupScreen";
@@ -32,6 +33,7 @@ export default function EliteOnboardingNavigator() {
       screenOptions={{ headerShown: false }}
       initialRouteName={getInitialRouteName()}
     >
+      <Stack.Screen name="LanguageSelection" component={LanguageSelectionScreen} />
       <Stack.Screen name="Welcome" component={WelcomeScreen} />
       <Stack.Screen name="Account" component={PhoneSignupScreen} />
       <Stack.Screen name="BusinessSnapshot" component={BusinessSetupScreen} />

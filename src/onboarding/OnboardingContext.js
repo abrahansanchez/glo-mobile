@@ -15,10 +15,17 @@ import { track } from "../analytics/track";
 
 export const OnboardingContext = createContext(null);
 
+function normalizeLanguage(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (normalized.startsWith("es")) return "es";
+  return normalized === "en" ? "en" : "";
+}
+
 function normalizeStep(step) {
   if (!step || typeof step !== "string") return STEPS.WELCOME;
   const value = step.toLowerCase();
   const legacyMap = {
+    language: STEPS.LANGUAGE,
     welcome: STEPS.WELCOME,
     account: STEPS.ACCOUNT,
     phone: STEPS.ACCOUNT,
@@ -120,6 +127,31 @@ function parseOnboardingStatus(payload) {
   return { step, complete, stepMap };
 }
 
+function resolvePreferredLanguage(raw, barber, cachedData) {
+  return normalizeLanguage(
+    getStringValue(
+      raw?.preferredLanguage,
+      raw?.languagePreference,
+      raw?.language,
+      barber?.preferredLanguage,
+      barber?.languagePreference,
+      barber?.language,
+      cachedData?.preferredLanguage
+    )
+  );
+}
+
+function resolveInitialStep(step, data, complete) {
+  if (complete) return step;
+  if (!normalizeLanguage(data?.preferredLanguage)) {
+    return STEPS.LANGUAGE;
+  }
+  if (step === STEPS.LANGUAGE) {
+    return STEPS.WELCOME;
+  }
+  return step;
+}
+
 export function OnboardingProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [onboardingComplete, setComplete] = useState(false);
@@ -163,17 +195,23 @@ export function OnboardingProvider({ children }) {
         }
 
         try {
+          const cachedData = await getOnboardingData(barberId);
           const response = await api.get("/onboarding/status");
           const parsed = parseOnboardingStatus(response.data);
-          const cachedData = await getOnboardingData(barberId);
+          const preferredLanguage = resolvePreferredLanguage(response.data, barber, cachedData);
+          const hydratedData = preferredLanguage
+            ? { ...(cachedData || {}), preferredLanguage }
+            : (cachedData || {});
+          const nextStep = resolveInitialStep(parsed.step, hydratedData, parsed.complete);
           setComplete(parsed.complete);
-          setStep(parsed.step);
+          setStep(nextStep);
           setOnboardingStepMap(parsed.stepMap);
-          setData(cachedData || {});
+          setData(hydratedData);
           await persistComplete(barberId, parsed.complete);
-          await persistStep(barberId, parsed.step);
+          await persistStep(barberId, nextStep);
+          await persistData(barberId, hydratedData);
           console.log("[ONBOARDING] loaded from backend status", {
-            step: parsed.step,
+            step: nextStep,
             complete: parsed.complete,
           });
         } catch (backendError) {
@@ -181,10 +219,15 @@ export function OnboardingProvider({ children }) {
           const complete = await isComplete(barberId);
           const step = normalizeStep(await getStoredStep(barberId));
           const data = await getOnboardingData(barberId);
+          const preferredLanguage = resolvePreferredLanguage(null, barber, data);
+          const hydratedData = preferredLanguage
+            ? { ...(data || {}), preferredLanguage }
+            : (data || {});
+          const nextStep = resolveInitialStep(step, hydratedData, complete);
           setComplete(complete);
-          setStep(step);
+          setStep(nextStep);
           setOnboardingStepMap({});
-          setData(data);
+          setData(hydratedData);
         }
       } finally {
         setLoading(false);
@@ -192,7 +235,7 @@ export function OnboardingProvider({ children }) {
     })();
   }, [barberId]);
 
-  const postOnboardingStep = useCallback(async (step) => {
+  const postOnboardingStep = useCallback(async (step, analyticsProps = {}) => {
     if (!barberId) return;
     if (!STEP_VALUES.has(step)) return;
     try {
@@ -214,7 +257,7 @@ export function OnboardingProvider({ children }) {
       if (parsed.stepMap && typeof parsed.stepMap === "object") {
         setOnboardingStepMap(parsed.stepMap);
       }
-      track("onboarding_step_completed", { step });
+      track("onboarding_step_completed", { step, ...analyticsProps });
       return parsed;
     } catch (error) {
       console.log(`[ONBOARDING_STEP] posted step=${step} ok=false`);
@@ -259,6 +302,7 @@ export function OnboardingProvider({ children }) {
 
   const updateStep = useCallback(async (step, data = {}, options = {}) => {
     const shouldPost = options?.post !== false;
+    const analyticsProps = options?.analyticsProps || {};
     if (!barberId) {
       if (__DEV__) console.log("[Onboarding] skipping updateStep — barberId not yet available");
       return;
@@ -283,9 +327,9 @@ export function OnboardingProvider({ children }) {
       await updateData(data);
     }
     if (shouldPost) {
-      return await postOnboardingStep(step);
+      return await postOnboardingStep(step, analyticsProps);
     }
-    track("onboarding_step_completed", { step });
+    track("onboarding_step_completed", { step, ...analyticsProps });
     return null;
   }, [barberId, postOnboardingStep, updateData]);
 
@@ -299,7 +343,7 @@ export function OnboardingProvider({ children }) {
       return;
     }
     setComplete(false);
-    setStep(STEPS.WELCOME);
+    setStep(STEPS.LANGUAGE);
     setData({});
     try {
       if (__DEV__)

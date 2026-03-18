@@ -118,7 +118,7 @@ export default function BusinessSetupScreen({ navigation }) {
           >
             <OnboardingHeader showLogout={false} showRestart={true} />
             <OnboardingHero
-              stepLabel="Step 3 of 9"
+              stepLabel="Step 4 of 10"
               title="Business Snapshot"
               subtitle="Set your business profile and hours to personalize call handling."
             />

@@ -58,7 +58,7 @@ export default function TrialStartScreen({ navigation }) {
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
       <OnboardingHeader />
       <OnboardingHero
-        stepLabel="Step 8 of 9"
+        stepLabel="Step 9 of 10"
         title="Start Your Free Trial"
         subtitle="Full access for 14 days. Cancel anytime."
       />

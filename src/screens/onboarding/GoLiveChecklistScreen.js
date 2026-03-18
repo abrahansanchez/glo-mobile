@@ -335,7 +335,7 @@ export default function GoLiveChecklistScreen({ navigation }) {
     >
       <OnboardingHeader />
       <OnboardingHero
-        stepLabel="Step 9 of 9"
+        stepLabel="Step 10 of 10"
         title="You’re Almost Live"
         subtitle={ready ? "All systems ready." : "Complete these items to go live."}
       />

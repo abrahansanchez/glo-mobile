@@ -4,6 +4,8 @@ export function routeForOnboardingStep(rawStep) {
   const step = String(rawStep || "").toLowerCase();
 
   switch (step) {
+    case STEPS.LANGUAGE:
+      return "LanguageSelection";
     case STEPS.ACCOUNT:
       return "Account";
     case STEPS.BUSINESS_SNAPSHOT:

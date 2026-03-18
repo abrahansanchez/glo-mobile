@@ -1,4 +1,5 @@
 export const STEPS = {
+  LANGUAGE: "language",
   WELCOME: "welcome",
   ACCOUNT: "account",
   BUSINESS_SNAPSHOT: "business_snapshot",

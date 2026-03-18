@@ -75,7 +75,7 @@ export default function NumberStrategyScreen({ navigation }) {
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
       <OnboardingHeader />
       <OnboardingHero
-        stepLabel="Step 4 of 9"
+        stepLabel="Step 5 of 10"
         title="Choose Your Number Strategy"
         subtitle="Keep your number, port it over, or start fresh with a new Glō number."
       />

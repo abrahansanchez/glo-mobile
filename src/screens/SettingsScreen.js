@@ -168,6 +168,13 @@ export default function SettingsScreen({ navigation }) {
     Alert.alert("Navigation", "Porting screen is unavailable in this build.");
   }
 
+  function openForwardingSettings() {
+    if (navigateRoute("ForwardingSettings")) {
+      return;
+    }
+    Alert.alert("Navigation", "Call forwarding settings are unavailable in this build.");
+  }
+
   function formatDate(d) {
     if (!d) return "—";
     const dt = new Date(d);
@@ -246,6 +253,13 @@ export default function SettingsScreen({ navigation }) {
           variant="secondary"
           style={styles.actionBtn}
           onPress={openPortingStatus}
+        />
+
+        <AppButton
+          label="Call Forwarding"
+          variant="secondary"
+          style={styles.actionBtn}
+          onPress={openForwardingSettings}
         />
 
         <AppButton
