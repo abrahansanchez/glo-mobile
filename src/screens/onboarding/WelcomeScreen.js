@@ -15,7 +15,7 @@ import { useTheme } from "../../theme/ThemeContext";
 import { getStrings, normalizeLanguage } from "../../utils/i18n";
 
 export default function WelcomeScreen({ navigation }) {
-  const { setLocalStep, onboardingData, navigateFromBackend } = useContext(OnboardingContext);
+  const { setLocalStep, onboardingData, updateStep, navigateFromBackend } = useContext(OnboardingContext);
   const { logout } = useContext(AuthContext);
   const { colors } = useTheme();
   const t = getStrings(normalizeLanguage(onboardingData?.preferredLanguage));
@@ -79,6 +79,7 @@ export default function WelcomeScreen({ navigation }) {
         label={t.getStarted}
         style={styles.primaryBtn}
         onPress={async () => {
+          await updateStep(STEPS.WELCOME);
           await navigateFromBackend(navigation);
         }}
       />

@@ -12,7 +12,7 @@ import { AuthContext } from "../auth/authContext";
 import api from "../config/api";
 import { STEP_VALUES, STEPS } from "./stepKeys";
 import { track } from "../analytics/track";
-import { routeForOnboardingStep } from "./routeForStep";
+import { ONBOARDING_SCREEN_MAP } from "../navigation/onboardingScreenMap";
 
 export const OnboardingContext = createContext(null);
 
@@ -357,29 +357,23 @@ export function OnboardingProvider({ children }) {
   }, []);
 
   const navigateFromBackend = useCallback(async (navigation) => {
-    const status = await refreshFromBackend();
-    const nextStep =
-      status?.raw?.nextStep ||
-      status?.raw?.currentStep ||
-      (status?.complete ? "complete" : status?.step) ||
-      STEPS.WELCOME;
-    const nextRoute = routeForOnboardingStep(nextStep);
-    const currentRoute = navigation?.getCurrentRoute?.()?.name || null;
-    const routeNames = navigation?.getState?.()?.routeNames || [];
-    const safeRoute = routeNames.includes(nextRoute)
-      ? nextRoute
-      : routeNames.includes("Welcome")
-      ? "Welcome"
-      : routeNames.includes("DashboardTabs")
-      ? "DashboardTabs"
-      : currentRoute;
+    const response = await api.get("/onboarding/status");
+    const payload = response?.data || {};
+    const status = await hydrateFromBackendStatus(payload);
+    const backendStep = String(payload?.currentStep || "").toLowerCase();
+    const screenName = ONBOARDING_SCREEN_MAP[backendStep];
 
-    if (safeRoute && currentRoute !== safeRoute && navigation?.replace) {
-      navigation.replace(safeRoute);
+    if (!screenName) {
+      console.warn("[ONBOARDING] unknown backend step", backendStep || "(empty)");
+      return status;
+    }
+
+    if (navigation?.replace) {
+      navigation.replace(screenName);
     }
 
     return status;
-  }, [refreshFromBackend]);
+  }, [hydrateFromBackendStatus]);
 
   const reset = useCallback(async () => {
     if (!barberId) {
@@ -405,6 +399,7 @@ export function OnboardingProvider({ children }) {
       onboardingData,
       postOnboardingStep,
       refreshFromBackend,
+      refreshOnboardingStatus: refreshFromBackend,
       navigateFromBackend,
       markComplete,
       updateStep,
@@ -420,6 +415,7 @@ export function OnboardingProvider({ children }) {
       onboardingData,
       postOnboardingStep,
       refreshFromBackend,
+      refreshOnboardingStatus: refreshFromBackend,
       navigateFromBackend,
       markComplete,
       updateStep,

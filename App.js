@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { View } from "react-native";
+import Constants from "expo-constants";
+import { StripeProvider } from "@stripe/stripe-react-native";
 import { AuthProvider } from "./src/auth/authContext";
 import AppNavigator from "./src/navigation/AppNavigator";
 import { VoiceProvider } from "./src/voice/VoiceContext";
@@ -34,22 +36,27 @@ export default function App() {
   }, []);
 
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <CallManagerProvider>
-          <VoiceProvider>
-            <OnboardingProvider>
-              <ErrorBoundary>
-                <View style={{ flex: 1, backgroundColor: "#000000" }}>
-                  <AppNavigator />
-                  <IncomingCallOverlayContainer />
-                  {!splashDone ? <AnimatedSplashOverlay onFinish={() => setSplashDone(true)} /> : null}
-                </View>
-              </ErrorBoundary>
-            </OnboardingProvider>
-          </VoiceProvider>
-        </CallManagerProvider>
-      </AuthProvider>
-    </ThemeProvider>
+    <StripeProvider
+      publishableKey={Constants.expoConfig.extra.stripePublishableKey}
+      merchantIdentifier="merchant.com.glo"
+    >
+      <ThemeProvider>
+        <AuthProvider>
+          <CallManagerProvider>
+            <VoiceProvider>
+              <OnboardingProvider>
+                <ErrorBoundary>
+                  <View style={{ flex: 1, backgroundColor: "#000000" }}>
+                    <AppNavigator />
+                    <IncomingCallOverlayContainer />
+                    {!splashDone ? <AnimatedSplashOverlay onFinish={() => setSplashDone(true)} /> : null}
+                  </View>
+                </ErrorBoundary>
+              </OnboardingProvider>
+            </VoiceProvider>
+          </CallManagerProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </StripeProvider>
   );
 }

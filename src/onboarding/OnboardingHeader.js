@@ -4,6 +4,7 @@ import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AuthContext } from "../auth/authContext";
 import { OnboardingContext } from "./OnboardingContext";
+import { ONBOARDING_SCREEN_MAP } from "../navigation/onboardingScreenMap";
 import AppText from "../components/ui/AppText";
 import { useTheme } from "../theme/ThemeContext";
 
@@ -24,6 +25,7 @@ export default function OnboardingHeader({
 
   const { logout } = useContext(AuthContext);
   const { reset: resetOnboarding } = useContext(OnboardingContext);
+  const welcomeScreen = ONBOARDING_SCREEN_MAP.welcome;
   function canNavigateTo(routeName) {
     const routeNames = navigation?.getState?.()?.routeNames || [];
     return routeNames.includes(routeName);
@@ -53,15 +55,15 @@ export default function OnboardingHeader({
           style: "destructive",
           onPress: async () => {
             await resetOnboarding();
-            if (canNavigateTo("Welcome")) {
+            if (canNavigateTo(welcomeScreen)) {
               navigation.reset({
                 index: 0,
-                routes: [{ name: "Welcome" }],
+                routes: [{ name: welcomeScreen }],
               });
             } else if (canGoBack) {
               navigation.goBack();
             } else {
-              navigation.navigate("Welcome");
+              navigation.navigate(welcomeScreen);
             }
           },
         },

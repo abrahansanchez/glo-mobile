@@ -1,5 +1,6 @@
 import { useContext, useEffect } from "react";
 import { NavigationContainer } from "@react-navigation/native";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import { AuthContext } from "../auth/authContext";
 import { OnboardingContext } from "../onboarding/OnboardingContext";
@@ -8,7 +9,27 @@ import AuthNavigator from "./AuthNavigator";
 import OnboardingNavigator from "./OnboardingNavigator";
 import DashboardNavigator from "./DashboardNavigator";
 import SubscriptionGateScreen from "../screens/SubscriptionGateScreen";
+import IncomingCallScreen from "../screens/call/IncomingCallScreen";
 import LoadingState from "../components/LoadingState";
+
+const Stack = createNativeStackNavigator();
+
+function AuthenticatedNavigator({ onboardingComplete }) {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      {!onboardingComplete ? (
+        <Stack.Screen name="Onboarding" component={OnboardingNavigator} />
+      ) : (
+        <Stack.Screen name="Dashboard" component={DashboardNavigator} />
+      )}
+      <Stack.Screen
+        name="IncomingCall"
+        component={IncomingCallScreen}
+        options={{ presentation: "modal", headerShown: false }}
+      />
+    </Stack.Navigator>
+  );
+}
 
 export default function AppNavigator() {
   const {
@@ -27,17 +48,14 @@ export default function AppNavigator() {
     refreshSession?.("route_unknown_status");
   }, [authenticated, subscriptionStatus, refreshSession]);
 
-  // Show loading while any async state is being restored
   if (authLoading || onboardingLoading) {
     return <LoadingState message="Loading..." />;
   }
 
-  // If authenticated but barber not yet restored, show loading
   if (authenticated && !barber) {
     return <LoadingState message="Restoring your profile..." />;
   }
 
-  // DEV: Log routing truth
   if (__DEV__) {
     console.log("[ROUTE_DECISION]", {
       authenticated,
@@ -54,10 +72,8 @@ export default function AppNavigator() {
         <AuthNavigator />
       ) : subscriptionStatus === "required" ? (
         <SubscriptionGateScreen reason={subscriptionReason} />
-      ) : !onboardingComplete ? (
-        <OnboardingNavigator />
       ) : (
-        <DashboardNavigator />
+        <AuthenticatedNavigator onboardingComplete={onboardingComplete} />
       )}
     </NavigationContainer>
   );

@@ -1,112 +1,95 @@
-import React, { useContext, useState } from "react";
-import { View, StyleSheet } from "react-native";
+import React, { useState } from "react";
+import { View, StyleSheet, Alert, ActivityIndicator } from "react-native";
+import { useStripe, CardField } from "@stripe/stripe-react-native";
+import { useContext } from "react";
 import { OnboardingContext } from "../../onboarding/OnboardingContext";
-import { AuthContext } from "../../auth/authContext";
-import api from "../../config/api";
-import OnboardingHeader from "../../onboarding/OnboardingHeader";
 import { STEPS } from "../../onboarding/stepKeys";
-import AppCard from "../../components/ui/AppCard";
+import api from "../../config/api";
 import AppText from "../../components/ui/AppText";
-import AppBadge from "../../components/ui/AppBadge";
 import AppButton from "../../components/ui/AppButton";
-import OnboardingHero from "../../components/onboarding/OnboardingHero";
-import { spacing } from "../../ui/tokens";
-import { track } from "../../analytics/track";
+import OnboardingHeader from "../../onboarding/OnboardingHeader";
 import { useTheme } from "../../theme/ThemeContext";
+import { spacing } from "../../ui/tokens";
 
 export default function TrialStartScreen({ navigation }) {
+  const { confirmSetupIntent } = useStripe();
   const { updateStep, navigateFromBackend } = useContext(OnboardingContext);
-  const { refreshSession } = useContext(AuthContext);
   const { colors } = useTheme();
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [error, setError] = useState("");
+  const [cardComplete, setCardComplete] = useState(false);
 
-  function canNavigateTo(routeName) {
-    const routeNames = navigation?.getState?.()?.routeNames || [];
-    return routeNames.includes(routeName);
-  }
+  const handleStartTrial = async () => {
+    if (!cardComplete) {
+      Alert.alert("Card required", "Please enter your card details to continue.");
+      return;
+    }
 
-  async function startTrial() {
     setLoading(true);
-    setError("");
-    track("trial_start_clicked", { step: STEPS.TRIAL_START });
     try {
-      const idempotencyKey = `trial-start-${Date.now()}`;
-      await api.post(
-        "/billing/trial/start",
-        { planId: "default" },
-        { headers: { "Idempotency-Key": idempotencyKey } }
-      );
-      await updateStep(STEPS.TRIAL_START);
-      await refreshSession?.("trial_started");
-      track("trial_started", { step: STEPS.TRIAL_START });
-      setSuccess(true);
-      await navigateFromBackend(navigation);
-    } catch (e) {
-      track("trial_start_failed", {
-        step: STEPS.TRIAL_START,
-        error: e?.response?.data?.message || e?.message || "unknown",
+      const { data } = await api.post("/billing/setup-intent");
+      const { clientSecret } = data;
+      if (!clientSecret) throw new Error("Failed to initialize payment setup.");
+
+      const { error } = await confirmSetupIntent(clientSecret, {
+        paymentMethodType: "Card",
       });
-      setError(e?.response?.data?.message || "Failed to start trial");
-      setSuccess(false);
+      if (error) throw new Error(error.message);
+
+      await api.post("/billing/trial/start");
+
+      await updateStep(STEPS.TRIAL_START);
+      await navigateFromBackend(navigation);
+    } catch (err) {
+      Alert.alert("Error", err.message || "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
-      <OnboardingHeader />
-      <OnboardingHero
-        stepLabel="Step 9 of 10"
-        title="Start Your Free Trial"
-        subtitle="Full access for 14 days. Cancel anytime."
-      />
-      <AppBadge label="14 DAY TRIAL" tone="success" style={styles.badge} />
-
-      <AppCard style={[styles.disclosure, { borderColor: colors.border }]}>
-        <AppText style={styles.disclosureTitle}>Trial disclosure</AppText>
-        <AppText variant="body" style={[styles.disclosureText, { color: colors.textSecondary }]}>You won’t be charged until your trial ends.</AppText>
-        <AppText variant="body" style={[styles.disclosureText, { color: colors.textSecondary }]}>Renewal amount/date are shown before checkout.</AppText>
-      </AppCard>
-
-      {!!success ? <AppText style={[styles.success, { color: colors.success }]}>Trial started successfully.</AppText> : null}
-      {!!error ? <AppText style={[styles.error, { color: colors.danger }]}>{error}</AppText> : null}
-
-      <AppButton
-        label={loading ? "Starting..." : "Start Free Trial"}
-        onPress={startTrial}
-        disabled={loading}
-        variant="primary"
-        style={styles.button}
+      <OnboardingHeader
+        stepLabel="Step 7 of 10"
+        title="Start your free trial"
+        subtitle="Enter your card to activate. You won't be charged during your trial period."
       />
 
-      <AppButton
-        label="Continue"
-        variant="secondary"
-        style={styles.secondaryBtn}
-        onPress={() => navigateFromBackend(navigation)}
+      <CardField
+        postalCodeEnabled={true}
+        onCardChange={(cardDetails) => setCardComplete(cardDetails.complete)}
+        style={styles.cardField}
+        cardStyle={{
+          backgroundColor: colors.surface,
+          textColor: colors.textPrimary,
+          borderRadius: 8,
+          borderWidth: 0.5,
+          borderColor: colors.border,
+        }}
       />
 
-      {!!error ? (
-        <AppButton label="Try Again" variant="secondary" style={styles.retryBtn} onPress={startTrial} />
-      ) : null}
+      <AppText style={[styles.disclaimer, { color: colors.textSecondary }]}>
+        Your card is saved securely via Stripe. You will not be charged until your trial ends.
+      </AppText>
+
+      {loading ? (
+        <ActivityIndicator style={styles.loader} color={colors.accent} />
+      ) : (
+        <AppButton
+          variant="primary"
+          label="Start free trial"
+          style={styles.btn}
+          onPress={handleStartTrial}
+          disabled={!cardComplete}
+        />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 24, justifyContent: "center" },
-  badge: { marginBottom: spacing.md },
-  disclosure: { borderWidth: 1, marginBottom: spacing.md },
-  disclosureTitle: { fontWeight: "800", marginBottom: spacing.xs },
-  disclosureText: { marginBottom: 3 },
-  button: {
-    marginTop: 4,
-  },
-  secondaryBtn: { marginTop: spacing.sm },
-  retryBtn: { marginTop: spacing.sm },
-  success: { fontWeight: "700", marginBottom: spacing.sm },
-  error: { fontWeight: "700", marginBottom: spacing.sm },
+  cardField: { width: "100%", height: 56, marginVertical: spacing.lg },
+  disclaimer: { fontSize: 13, marginBottom: spacing.lg, textAlign: "center" },
+  loader: { marginTop: spacing.md },
+  btn: { marginTop: spacing.sm },
 });
