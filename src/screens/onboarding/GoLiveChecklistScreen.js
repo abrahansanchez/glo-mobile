@@ -10,89 +10,37 @@ import AppText from "../../components/ui/AppText";
 import OnboardingHero from "../../components/onboarding/OnboardingHero";
 import { spacing } from "../../ui/tokens";
 import { useTheme } from "../../theme/ThemeContext";
-
-function getStringValue(...values) {
-  for (const value of values) {
-    if (typeof value === "string" && value.trim()) return value.trim();
-  }
-  return "";
-}
-
-function getBooleanValue(...values) {
-  for (const value of values) {
-    if (typeof value === "boolean") return value;
-  }
-  return false;
-}
+import { getStrings, normalizeLanguage } from "../../utils/i18n";
 
 function normalizeChecklist(statusPayload) {
   const payload = statusPayload || {};
-  const numberStrategy = getStringValue(
-    payload?.numberStrategy,
-    payload?.phoneStrategy,
-    payload?.phone?.strategy,
-    payload?.phoneSetup?.strategy
-  ).toLowerCase();
+  const numberStrategy = String(payload?.numberStrategy || "").toLowerCase();
+  const subscriptionStatus = String(payload?.subscriptionStatus || "").toLowerCase();
+  const stepMap = payload?.stepMap || {};
 
-  const trialActive = getBooleanValue(
-    payload?.trialActive,
-    payload?.trial?.active,
-    payload?.billing?.trialActive,
-    payload?.stepMap?.trial_start?.completed
-  );
+  const trialActive =
+    subscriptionStatus === "trialing" || subscriptionStatus === "active";
 
-  const numberAssigned = getBooleanValue(
-    payload?.numberAssigned,
-    payload?.phone?.assigned,
-    payload?.phoneSetup?.numberAssigned,
-    payload?.stepMap?.number_strategy?.completed
-  );
+  const numberAssigned =
+    numberStrategy === "new_number"
+      ? Boolean(payload?.twilioNumber || payload?.assignedTwilioNumber || stepMap?.trial_start)
+      : true;
 
-  const forwardingVerified = numberStrategy !== "forward_existing" || getBooleanValue(
-    payload?.forwardingVerified,
-    payload?.forwarding?.verified,
-    payload?.phoneSetup?.forwardingVerified,
-    payload?.stepMap?.forwarding_verification?.completed
-  );
-
-  const portingSubmitted = numberStrategy !== "port_existing" || getBooleanValue(
-    payload?.portingSubmitted,
-    payload?.porting?.submitted,
-    payload?.phoneSetup?.portingSubmitted,
-    payload?.stepMap?.porting_flow?.completed
-  );
+  const forwardingVerified =
+    numberStrategy !== "forward_existing" ||
+    String(payload?.forwardingStatus || "").toLowerCase() === "verified";
 
   return [
-    {
-      key: "trial_active",
-      label: "Trial active",
-      passed: trialActive,
-      required: true,
-    },
-    {
-      key: "number_assigned",
-      label: "Number assigned",
-      passed: numberAssigned,
-      required: true,
-    },
-    {
-      key: "forwarding_verified",
-      label: "Forwarding verified",
-      passed: forwardingVerified,
-      required: numberStrategy === "forward_existing",
-    },
-    {
-      key: "porting_submitted",
-      label: "Porting submitted",
-      passed: portingSubmitted,
-      required: numberStrategy === "port_existing",
-    },
+    { key: "trial_active", label: "Trial active", passed: trialActive, required: true },
+    { key: "number_assigned", label: "Number assigned", passed: numberAssigned, required: true },
+    { key: "forwarding_verified", label: "Forwarding verified", passed: forwardingVerified, required: numberStrategy === "forward_existing" },
   ];
 }
 
-export default function GoLiveChecklistScreen() {
+export default function GoLiveChecklistScreen({ navigation }) {
   const { colors } = useTheme();
-  const { setLocalStep, updateStep, refreshOnboardingStatus } = useContext(OnboardingContext);
+  const { setLocalStep, updateStep, navigateFromBackend, onboardingData } = useContext(OnboardingContext);
+  const t = getStrings(normalizeLanguage(onboardingData?.preferredLanguage));
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [statusPayload, setStatusPayload] = useState(null);
@@ -113,7 +61,7 @@ export default function GoLiveChecklistScreen() {
       const response = await api.get("/onboarding/status");
       setStatusPayload(response?.data || {});
     } catch (requestError) {
-      setError(requestError?.response?.data?.message || "Failed to load onboarding checklist");
+      setError(requestError?.response?.data?.message || t.failedToSave);
       setStatusPayload(null);
     } finally {
       setLoading(false);
@@ -130,9 +78,9 @@ export default function GoLiveChecklistScreen() {
     setError("");
     try {
       await updateStep(STEPS.GO_LIVE_CHECKLIST);
-      await refreshOnboardingStatus();
+      await navigateFromBackend(navigation);
     } catch (requestError) {
-      setError(requestError?.response?.data?.message || "Failed to finish onboarding");
+      setError(requestError?.response?.data?.message || t.failedToSave);
     } finally {
       setSubmitting(false);
     }
@@ -143,22 +91,28 @@ export default function GoLiveChecklistScreen() {
       <OnboardingHeader />
       <OnboardingHero
         stepLabel="Step 10 of 10"
-        title="Go live checklist"
-        subtitle="This final step confirms your account is ready before we open the dashboard."
+        title={t.checklistTitle}
+        subtitle={t.checklistSubtitle}
       />
 
-      {loading ? <AppText style={[styles.helperText, { color: colors.textSecondary }]}>Loading checklist…</AppText> : null}
+      {loading ? <AppText style={[styles.helperText, { color: colors.textSecondary }]}>{t.loadingChecklist}</AppText> : null}
 
       {checklistItems.map((item) => (
         <AppCard key={item.key} style={[styles.row, { borderColor: colors.border }]}>
           <View style={styles.rowText}>
-            <AppText style={styles.rowLabel}>{item.label}</AppText>
+            <AppText style={styles.rowLabel}>
+              {item.key === "trial_active"
+                ? t.checklistTrialLabel
+                : item.key === "number_assigned"
+                ? t.checklistNumberLabel
+                : t.checklistForwardingLabel}
+            </AppText>
             <AppText style={[styles.rowHelper, { color: colors.textSecondary }]}>
-              {item.required ? "Required for launch" : "Not required for your selected path"}
+              {item.required ? t.requiredForLaunch : t.notRequiredForPath}
             </AppText>
           </View>
           <AppText style={[styles.rowStatus, { color: item.passed ? colors.success : colors.warning }]}>
-            {item.passed ? "Ready" : "Pending"}
+            {item.passed ? t.statusReady : t.statusPending}
           </AppText>
         </AppCard>
       ))}
@@ -167,7 +121,7 @@ export default function GoLiveChecklistScreen() {
 
       {allItemsPass ? (
         <AppButton
-          label={submitting ? "Going live..." : "Go Live"}
+          label={submitting ? t.goingLive : t.checklistGoLive}
           onPress={handleGoLive}
           disabled={submitting}
           variant="primary"
@@ -175,7 +129,7 @@ export default function GoLiveChecklistScreen() {
         />
       ) : (
         <AppButton
-          label={loading ? "Refreshing..." : "Refresh checklist"}
+          label={loading ? t.loadingChecklist : t.checklistRefresh}
           onPress={loadStatus}
           disabled={loading}
           variant="secondary"

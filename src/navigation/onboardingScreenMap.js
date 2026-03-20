@@ -4,10 +4,13 @@ export const ONBOARDING_SCREEN_MAP = {
   account: "Account",
   business_snapshot: "BusinessSnapshot",
   number_strategy: "NumberStrategy",
+  ai_intro: "AIIntro",
   forwarding_flow: "ForwardingFlow",
   forwarding_setup: "ForwardingSetup",
   forwarding_verification: "ForwardingVerification",
   porting_flow: "PortingFlow",
   trial_start: "TrialStart",
+  permissions: "Permissions",
   go_live_checklist: "GoLiveChecklist",
+  celebration: "Celebration",
 };

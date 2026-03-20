@@ -1,6 +1,5 @@
 import React, { useContext, useEffect, useState } from "react";
 import {
-  View,
   TextInput,
   StyleSheet,
   KeyboardAvoidingView,
@@ -19,20 +18,17 @@ import AppCard from "../../components/ui/AppCard";
 import OnboardingHero from "../../components/onboarding/OnboardingHero";
 import { spacing } from "../../ui/tokens";
 import { useTheme } from "../../theme/ThemeContext";
+import { getStrings, normalizeLanguage } from "../../utils/i18n";
 
 export default function PhoneSignupScreen({ navigation }) {
   const { updateStep, setLocalStep, updateData, onboardingData, navigateFromBackend } = useContext(OnboardingContext);
   const { barber } = useContext(AuthContext);
   const { colors } = useTheme();
+  const t = getStrings(normalizeLanguage(onboardingData?.preferredLanguage));
   const [phone, setPhone] = useState(onboardingData?.phoneNumber || barber?.phoneNumber || "");
   const [otp, setOtp] = useState("");
   const [stage, setStage] = useState(onboardingData?.phoneNumber || barber?.phoneNumber ? "CONFIRMED" : "PHONE"); // PHONE -> OTP -> CONFIRMED
   const [error, setError] = useState("");
-
-  function canNavigateTo(routeName) {
-    const routeNames = navigation?.getState?.()?.routeNames || [];
-    return routeNames.includes(routeName);
-  }
 
   function normalizePhoneToE164(value) {
     const digits = String(value || "").replace(/[^\d]/g, "");
@@ -60,7 +56,7 @@ export default function PhoneSignupScreen({ navigation }) {
   function handleSendOtp() {
     setError("");
     if (!phone || phone.length < 10) {
-      setError("Enter a valid phone number");
+      setError(t.accountInvalidPhone);
       return;
     }
     // Placeholder: backend wiring later
@@ -70,12 +66,12 @@ export default function PhoneSignupScreen({ navigation }) {
   async function handleVerifyOtp() {
     setError("");
     if (!otp || otp.length < 4) {
-      setError("Enter a valid code");
+      setError(t.accountInvalidCode);
       return;
     }
     const normalizedPhoneNumber = normalizePhoneToE164(phone);
     if (!normalizedPhoneNumber) {
-      setError("Enter a valid phone number");
+      setError(t.accountInvalidPhone);
       return;
     }
     // Placeholder: real verify later -> should authenticate user
@@ -91,7 +87,7 @@ export default function PhoneSignupScreen({ navigation }) {
     setError("");
     const normalizedPhoneNumber = normalizePhoneToE164(phone);
     if (!normalizedPhoneNumber) {
-      setError("Enter a valid phone number");
+      setError(t.accountInvalidPhone);
       return;
     }
 
@@ -116,18 +112,18 @@ export default function PhoneSignupScreen({ navigation }) {
           <OnboardingHeader />
           <OnboardingHero
             stepLabel="Step 3 of 10"
-            title="Create Your Workspace"
-            subtitle="Confirm your number to secure your account."
+            title={t.accountTitle}
+            subtitle={t.accountSubtitle}
           />
 
           {stage === "PHONE" ? (
             <>
               <AppCard style={styles.fieldCard}>
-                <AppText style={styles.label}>Phone Number</AppText>
+                <AppText style={styles.label}>{t.accountPhoneLabel}</AppText>
                 <TextInput
                   value={phone}
                   onChangeText={setPhone}
-                  placeholder="(555) 555-5555"
+                  placeholder={t.accountPhonePlaceholder}
                   placeholderTextColor={colors.textMuted}
                   keyboardType="phone-pad"
                   style={[styles.input, { borderColor: colors.border, color: colors.textPrimary }]}
@@ -135,25 +131,25 @@ export default function PhoneSignupScreen({ navigation }) {
               </AppCard>
               {!!error && <AppText style={[styles.error, { color: colors.danger }]}>{error}</AppText>}
 
-              <AppButton style={styles.button} onPress={handleSendOtp} label="Send Code" />
+              <AppButton style={styles.button} onPress={handleSendOtp} label={t.accountSendCode} />
             </>
           ) : stage === "CONFIRMED" ? (
             <>
               <AppCard style={styles.fieldCard}>
-                <AppText style={styles.label}>Phone Number</AppText>
+                <AppText style={styles.label}>{t.accountPhoneLabel}</AppText>
                 <AppText>{phone}</AppText>
               </AppCard>
               {!!error && <AppText style={[styles.error, { color: colors.danger }]}>{error}</AppText>}
-              <AppButton style={styles.button} onPress={handleContinueWithExistingPhone} label="Continue" />
+              <AppButton style={styles.button} onPress={handleContinueWithExistingPhone} label={t.accountContinue} />
             </>
           ) : (
             <>
               <AppCard style={styles.fieldCard}>
-                <AppText style={styles.label}>Enter Code</AppText>
+                <AppText style={styles.label}>{t.accountEnterCode}</AppText>
                 <TextInput
                   value={otp}
                   onChangeText={setOtp}
-                  placeholder="123456"
+                  placeholder={t.accountCodePlaceholder}
                   placeholderTextColor={colors.textMuted}
                   keyboardType="number-pad"
                   style={[styles.input, { borderColor: colors.border, color: colors.textPrimary }]}
@@ -161,8 +157,8 @@ export default function PhoneSignupScreen({ navigation }) {
               </AppCard>
               {!!error && <AppText style={[styles.error, { color: colors.danger }]}>{error}</AppText>}
 
-              <AppButton style={styles.button} onPress={handleVerifyOtp} label="Verify" />
-              <AppButton style={styles.linkBtn} variant="secondary" onPress={() => setStage("PHONE")} label="Change phone number" />
+              <AppButton style={styles.button} onPress={handleVerifyOtp} label={t.accountVerify} />
+              <AppButton style={styles.linkBtn} variant="secondary" onPress={() => setStage("PHONE")} label={t.accountChangeNumber} />
             </>
           )}
         </ScrollView>

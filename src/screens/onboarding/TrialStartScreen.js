@@ -7,14 +7,17 @@ import { STEPS } from "../../onboarding/stepKeys";
 import api from "../../config/api";
 import AppText from "../../components/ui/AppText";
 import AppButton from "../../components/ui/AppButton";
+import AppCard from "../../components/ui/AppCard";
 import OnboardingHeader from "../../onboarding/OnboardingHeader";
 import { useTheme } from "../../theme/ThemeContext";
 import { spacing } from "../../ui/tokens";
+import { getStrings, normalizeLanguage } from "../../utils/i18n";
 
 export default function TrialStartScreen({ navigation }) {
   const { confirmSetupIntent } = useStripe();
-  const { updateStep, navigateFromBackend } = useContext(OnboardingContext);
+  const { updateStep, navigateFromBackend, onboardingData } = useContext(OnboardingContext);
   const { colors } = useTheme();
+  const t = getStrings(normalizeLanguage(onboardingData?.preferredLanguage));
   const [loading, setLoading] = useState(false);
   const [cardComplete, setCardComplete] = useState(false);
 
@@ -50,25 +53,31 @@ export default function TrialStartScreen({ navigation }) {
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
       <OnboardingHeader
         stepLabel="Step 7 of 10"
-        title="Start your free trial"
-        subtitle="Enter your card to activate. You won't be charged during your trial period."
+        title={t.trialTitle}
+        subtitle={t.trialSubtitle}
       />
 
-      <CardField
-        postalCodeEnabled={true}
-        onCardChange={(cardDetails) => setCardComplete(cardDetails.complete)}
-        style={styles.cardField}
-        cardStyle={{
-          backgroundColor: colors.surface,
-          textColor: colors.textPrimary,
-          borderRadius: 8,
-          borderWidth: 0.5,
-          borderColor: colors.border,
-        }}
-      />
+      <AppCard style={styles.cardWrapper}>
+        <AppText style={{ fontWeight: "700", marginBottom: spacing.sm }}>{t.trialPaymentLabel}</AppText>
+        <CardField
+          postalCodeEnabled={true}
+          onCardChange={(cardDetails) => setCardComplete(cardDetails.complete)}
+          style={styles.cardField}
+          cardStyle={{
+            backgroundColor: colors.surface,
+            textColor: colors.textPrimary,
+            borderRadius: 8,
+            borderWidth: 0.5,
+            borderColor: colors.border,
+          }}
+        />
+        <AppText style={{ fontSize: 12, textAlign: "center", marginTop: spacing.sm, color: colors.textSecondary }}>
+          {t.trialSecured}
+        </AppText>
+      </AppCard>
 
       <AppText style={[styles.disclaimer, { color: colors.textSecondary }]}>
-        Your card is saved securely via Stripe. You will not be charged until your trial ends.
+        {t.trialDisclaimer}
       </AppText>
 
       {loading ? (
@@ -76,7 +85,7 @@ export default function TrialStartScreen({ navigation }) {
       ) : (
         <AppButton
           variant="primary"
-          label="Start free trial"
+          label={t.trialBtn}
           style={styles.btn}
           onPress={handleStartTrial}
           disabled={!cardComplete}
@@ -87,8 +96,9 @@ export default function TrialStartScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, justifyContent: "center" },
-  cardField: { width: "100%", height: 56, marginVertical: spacing.lg },
+  container: { flex: 1, padding: 24, justifyContent: "flex-start", paddingTop: spacing.xl },
+  cardWrapper: { padding: spacing.md },
+  cardField: { width: "100%", height: 50 },
   disclaimer: { fontSize: 13, marginBottom: spacing.lg, textAlign: "center" },
   loader: { marginTop: spacing.md },
   btn: { marginTop: spacing.sm },

@@ -17,13 +17,11 @@ import AppCard from "../../components/ui/AppCard";
 import OnboardingHero from "../../components/onboarding/OnboardingHero";
 import { spacing } from "../../ui/tokens";
 import { useTheme } from "../../theme/ThemeContext";
-import { getStrings, normalizeLanguage } from "../../utils/i18n";
 
-export default function BusinessSetupScreen({ navigation }) {
+export default function BusinessSnapshotScreen({ navigation }) {
   const { updateStep, setLocalStep, updateData, onboardingData, navigateFromBackend } =
     useContext(OnboardingContext);
   const { colors } = useTheme();
-  const t = getStrings(normalizeLanguage(onboardingData?.preferredLanguage));
   const [barberName, setBarberName] = useState(
     onboardingData?.barberName || onboardingData?.shopName || ""
   );
@@ -37,7 +35,7 @@ export default function BusinessSetupScreen({ navigation }) {
     setError("");
     const trimmed = barberName.trim();
     if (!trimmed) {
-      setError(t.barberNameError);
+      setError("Please enter your name to continue.");
       return;
     }
     await updateData({ barberName: trimmed, shopName: trimmed });
@@ -56,17 +54,17 @@ export default function BusinessSetupScreen({ navigation }) {
           <OnboardingHeader />
           <OnboardingHero
             stepLabel="Step 3 of 9"
-            title={t.barberNameTitle}
-            subtitle={t.barberNameSubtitle}
+            title="What's your name?"
+            subtitle="We'll use this to personalize your AI receptionist."
           />
           <AppCard style={styles.fieldCard}>
             <AppText style={[styles.label, { color: colors.textSecondary }]}>
-              {t.barberNameLabel}
+              Your name
             </AppText>
             <TextInput
               value={barberName}
               onChangeText={setBarberName}
-              placeholder={t.barberNamePlaceholder}
+              placeholder="e.g. Marcus"
               placeholderTextColor={colors.textMuted}
               autoCapitalize="words"
               returnKeyType="done"
@@ -85,7 +83,7 @@ export default function BusinessSetupScreen({ navigation }) {
           <AppButton
             style={styles.button}
             onPress={handleContinue}
-            label={t.barberNameContinue}
+            label="Continue"
             variant="primary"
           />
         </View>

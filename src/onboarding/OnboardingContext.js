@@ -374,6 +374,7 @@ export function OnboardingProvider({ children }) {
 
     return status;
   }, [hydrateFromBackendStatus]);
+  const refreshOnboardingStatus = refreshFromBackend;
 
   const reset = useCallback(async () => {
     if (!barberId) {
@@ -399,7 +400,7 @@ export function OnboardingProvider({ children }) {
       onboardingData,
       postOnboardingStep,
       refreshFromBackend,
-      refreshOnboardingStatus: refreshFromBackend,
+      refreshOnboardingStatus,
       navigateFromBackend,
       markComplete,
       updateStep,
@@ -415,7 +416,7 @@ export function OnboardingProvider({ children }) {
       onboardingData,
       postOnboardingStep,
       refreshFromBackend,
-      refreshOnboardingStatus: refreshFromBackend,
+      refreshOnboardingStatus,
       navigateFromBackend,
       markComplete,
       updateStep,

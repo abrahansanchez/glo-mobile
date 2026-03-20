@@ -8,6 +8,7 @@ import AppText from "../../components/ui/AppText";
 import OnboardingHero from "../../components/onboarding/OnboardingHero";
 import { useTheme } from "../../theme/ThemeContext";
 import { spacing } from "../../ui/tokens";
+import { getStrings, normalizeLanguage } from "../../utils/i18n";
 
 const LANGUAGE_OPTIONS = [
   { key: "en", label: "English" },
@@ -16,7 +17,8 @@ const LANGUAGE_OPTIONS = [
 
 export default function LanguageScreen({ navigation }) {
   const { colors } = useTheme();
-  const { setLocalStep, updateData, navigateFromBackend } = useContext(OnboardingContext);
+  const { setLocalStep, updateData, navigateFromBackend, onboardingData } = useContext(OnboardingContext);
+  const t = getStrings(normalizeLanguage(onboardingData?.preferredLanguage));
   const [submitting, setSubmitting] = useState("");
   const [error, setError] = useState("");
 
@@ -35,9 +37,10 @@ export default function LanguageScreen({ navigation }) {
         data: { preferredLanguage },
       });
       await updateData({ preferredLanguage });
+      await new Promise(resolve => setTimeout(resolve, 150));
       await navigateFromBackend(navigation);
     } catch (requestError) {
-      setError(requestError?.response?.data?.message || "Failed to save language");
+      setError(requestError?.response?.data?.message || t.failedToSave);
     } finally {
       setSubmitting("");
     }
@@ -47,8 +50,8 @@ export default function LanguageScreen({ navigation }) {
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
       <OnboardingHero
         stepLabel="Step 2 of 10"
-        title="Choose your language"
-        subtitle="Pick the language you want to use in onboarding."
+        title={t.languageTitle}
+        subtitle={t.languageSubtitle}
       />
 
       {LANGUAGE_OPTIONS.map((option) => (
@@ -70,7 +73,7 @@ export default function LanguageScreen({ navigation }) {
       ))}
 
       {!!submitting ? (
-        <AppText style={[styles.helperText, { color: colors.textSecondary }]}>Saving your language…</AppText>
+        <AppText style={[styles.helperText, { color: colors.textSecondary }]}>{t.languageSaving}</AppText>
       ) : null}
       {!!error ? <AppText style={[styles.errorText, { color: colors.danger }]}>{error}</AppText> : null}
     </View>

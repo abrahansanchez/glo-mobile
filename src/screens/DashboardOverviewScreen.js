@@ -16,6 +16,55 @@ import EmptyState from "../components/ui/EmptyState";
 import { spacing } from "../ui/tokens";
 import { useTheme } from "../theme/ThemeContext";
 
+function SetupChecklist({ colors }) {
+  const [status, setStatus] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.get("/onboarding/status").then((r) => {
+      setStatus(r.data);
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, []);
+
+  if (loading || !status) return null;
+
+  const barberName = status.barberName || status.preferredLanguage;
+  const hasName = Boolean(status.barberName);
+  const hasNumber = Boolean(status.numberStrategy && status.subscriptionStatus !== "incomplete");
+  const hasTrial = status.subscriptionStatus === "trialing" || status.subscriptionStatus === "active";
+
+  if (hasName && hasNumber && hasTrial) return null;
+
+  const items = [
+    { label: "Name added", done: hasName },
+    { label: "Number active", done: hasNumber },
+    { label: "Trial started", done: hasTrial },
+    { label: "Business hours", done: false, action: true },
+    { label: "Services & pricing", done: false, action: true },
+  ];
+
+  const doneCount = items.filter((item) => item.done).length;
+
+  return (
+    <View style={{ backgroundColor: "rgba(255,255,255,0.03)", borderWidth: 0.5, borderColor: "rgba(255,255,255,0.07)", borderRadius: 12, padding: 12, marginBottom: 16 }}>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+        <AppText style={{ fontSize: 10, fontWeight: "600", color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: 0.5 }}>Finish setup</AppText>
+        <AppText style={{ fontSize: 10, color: "rgba(255,255,255,0.25)" }}>{doneCount} of 5</AppText>
+      </View>
+      {items.map((item, i) => (
+        <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 3 }}>
+          <View style={{ width: 14, height: 14, borderRadius: 7, borderWidth: 0.5, borderColor: item.done ? "rgba(210,235,255,0.4)" : "rgba(255,255,255,0.12)", alignItems: "center", justifyContent: "center" }}>
+            {item.done && <AppText style={{ fontSize: 8, color: "rgba(210,235,255,0.8)" }}>✓</AppText>}
+          </View>
+          <AppText style={{ fontSize: 11, color: item.done ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.6)", textDecorationLine: item.done ? "line-through" : "none" }}>{item.label}</AppText>
+          {!item.done && item.action && <AppText style={{ fontSize: 10, color: "rgba(255,255,255,0.18)", marginLeft: "auto" }}>›</AppText>}
+        </View>
+      ))}
+    </View>
+  );
+}
+
 export default function DashboardOverviewScreen() {
   const navigation = useNavigation();
   const { colors: themeColors } = useTheme();
@@ -141,6 +190,7 @@ export default function DashboardOverviewScreen() {
   return (
     <ScreenContainer>
       <View style={styles.container}>
+      <SetupChecklist colors={themeColors} />
       <AppText variant="title" style={styles.title}>Overview</AppText>
       <AppBadge label="Home" style={styles.badge} />
 

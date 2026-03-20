@@ -10,6 +10,7 @@ import OnboardingHero from "../../components/onboarding/OnboardingHero";
 import { STEPS } from "../../onboarding/stepKeys";
 import { spacing } from "../../ui/tokens";
 import { useTheme } from "../../theme/ThemeContext";
+import { getStrings, normalizeLanguage } from "../../utils/i18n";
 
 const CARRIER_OPTIONS = ["Verizon", "AT&T", "T-Mobile", "Other"];
 
@@ -62,6 +63,7 @@ function getNextRouteFromStatus(status) {
 export default function ForwardingSetupScreen({ navigation }) {
   const { colors, resolvedTheme } = useTheme();
   const { onboardingData, updateData, setLocalStep, updateStep, navigateFromBackend } = useContext(OnboardingContext);
+  const t = getStrings(normalizeLanguage(onboardingData?.preferredLanguage));
   const [carrier, setCarrier] = useState(onboardingData?.forwardingCarrier || "Verizon");
   const [loading, setLoading] = useState(true);
   const [activating, setActivating] = useState(false);
@@ -166,8 +168,8 @@ export default function ForwardingSetupScreen({ navigation }) {
       <OnboardingHeader />
       <OnboardingHero
         stepLabel="Step 6 of 10"
-        title="Activate call forwarding"
-        subtitle="Keep your current number and send business calls into Glō in a few taps."
+        title={t.forwardingTitle}
+        subtitle={t.forwardingSubtitle}
       />
 
       <AppCard style={styles.numberCard}>

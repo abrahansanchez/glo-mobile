@@ -15,6 +15,9 @@ import GoLiveChecklistScreen from "../screens/onboarding/GoLiveChecklistScreen";
 import PortingStatusScreen from "../screens/onboarding/PortingStatusScreen";
 import PortingDocumentsScreen from "../screens/onboarding/PortingDocumentsScreen";
 import ForwardingSuccessScreen from "../screens/onboarding/ForwardingSuccessScreen";
+import AIIntroScreen from "../screens/onboarding/AIIntroScreen";
+import CelebrationScreen from "../screens/onboarding/CelebrationScreen";
+import PermissionsScreen from "../screens/onboarding/PermissionsScreen";
 import { ONBOARDING_SCREEN_MAP } from "./onboardingScreenMap";
 
 const Stack = createNativeStackNavigator();
@@ -22,21 +25,31 @@ export { ONBOARDING_SCREEN_MAP } from "./onboardingScreenMap";
 
 export default function OnboardingNavigator() {
   return (
-    <Stack.Navigator initialRouteName="Welcome" screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="Welcome" component={WelcomeScreen} />
-      <Stack.Screen name="Language" component={LanguageScreen} />
-      <Stack.Screen name="Account" component={PhoneSignupScreen} />
+    <Stack.Navigator
+      initialRouteName="Welcome"
+      screenOptions={{
+        headerShown: false,
+        gestureEnabled: true,
+        gestureDirection: "horizontal",
+        animation: "slide_from_right",
+      }}
+    >
+      <Stack.Screen name="Welcome" component={WelcomeScreen} options={{ gestureEnabled: false }} />
+      <Stack.Screen name="Language" component={LanguageScreen} options={{ gestureEnabled: false }} />
+      <Stack.Screen name="Account" component={PhoneSignupScreen} options={{ gestureEnabled: false }} />
       <Stack.Screen name="BusinessSnapshot" component={BusinessSetupScreen} />
       <Stack.Screen name="NumberStrategy" component={NumberStrategyScreen} />
+      <Stack.Screen name="AIIntro" component={AIIntroScreen} />
       <Stack.Screen name="ForwardingFlow" component={ForwardingFlowScreen} />
       <Stack.Screen name="ForwardingSetup" component={ForwardingSetupScreen} />
       <Stack.Screen name="ForwardingVerification" component={ForwardingVerificationScreen} />
-      <Stack.Screen name="ForwardingVerify" component={ForwardingVerificationScreen} />
       <Stack.Screen name="ForwardingSuccess" component={ForwardingSuccessScreen} />
       <Stack.Screen name="PortingFlow" component={PortingFlowScreen} />
       <Stack.Screen name="PortingForm" component={PortingFlowScreen} />
       <Stack.Screen name="TrialStart" component={TrialStartScreen} />
-      <Stack.Screen name="GoLiveChecklist" component={GoLiveChecklistScreen} />
+      <Stack.Screen name="Permissions" component={PermissionsScreen} />
+      <Stack.Screen name="GoLiveChecklist" component={GoLiveChecklistScreen} options={{ gestureEnabled: false }} />
+      <Stack.Screen name="Celebration" component={CelebrationScreen} options={{ gestureEnabled: false }} />
       <Stack.Screen name="PortingStatus" component={PortingStatusScreen} />
       <Stack.Screen name="PortingDocuments" component={PortingDocumentsScreen} />
     </Stack.Navigator>
