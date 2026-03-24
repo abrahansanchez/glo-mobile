@@ -177,6 +177,9 @@ export function OnboardingProvider({ children }) {
       ...(cachedData || {}),
       ...(preferredLanguage ? { preferredLanguage } : {}),
       ...(phoneNumber ? { phoneNumber } : {}),
+      ...(typeof payload?.setupCompletedViaCall === "boolean"
+        ? { setupCompletedViaCall: payload.setupCompletedViaCall }
+        : {}),
     };
     const nextStep = resolveInitialStep(parsed.step, hydratedData, parsed.complete);
 
@@ -279,9 +282,9 @@ export function OnboardingProvider({ children }) {
       const response = await api.post("/onboarding/step", {
         step,
         completed: true,
+        data: onboardingData || {},
       });
       console.log(`[ONBOARDING_STEP] posted step=${step} ok=true`);
-
       const parsed = await hydrateFromBackendStatus(response.data);
       track("onboarding_step_completed", { step, ...analyticsProps });
       return parsed;
@@ -290,7 +293,7 @@ export function OnboardingProvider({ children }) {
       console.log("[ONBOARDING] step post failed", { step, error: error?.response?.data || error?.message || error });
       return null;
     }
-  }, [barberId, hydrateFromBackendStatus]);
+  }, [barberId, hydrateFromBackendStatus, onboardingData]);
 
   const markComplete = useCallback(async () => {
     const status = await refreshFromBackend();

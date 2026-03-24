@@ -9,6 +9,7 @@ import {
   Keyboard,
 } from "react-native";
 import { OnboardingContext } from "../../onboarding/OnboardingContext";
+import api from "../../config/api";
 import OnboardingHeader from "../../onboarding/OnboardingHeader";
 import { STEPS } from "../../onboarding/stepKeys";
 import AppButton from "../../components/ui/AppButton";
@@ -37,12 +38,26 @@ export default function BusinessSetupScreen({ navigation }) {
     setError("");
     const trimmed = barberName.trim();
     if (!trimmed) {
-      setError(t.barberNameError);
+      setError(t.barberNameError || "Please enter your name to continue.");
       return;
     }
-    await updateData({ barberName: trimmed, shopName: trimmed });
-    await updateStep(STEPS.BUSINESS_SNAPSHOT);
-    await navigateFromBackend(navigation);
+
+    try {
+      // Post directly to backend with barberName in the data field
+      // Do not rely on updateData state timing — pass data explicitly
+      await api.post("/onboarding/step", {
+        step: STEPS.BUSINESS_SNAPSHOT,
+        completed: true,
+        data: { barberName: trimmed, shopName: trimmed },
+      });
+
+      // Update local context after successful post
+      await updateData({ barberName: trimmed, shopName: trimmed });
+      await navigateFromBackend(navigation);
+    } catch (e) {
+      console.log("[BUSINESS_SNAPSHOT] post failed:", e?.message);
+      setError("Something went wrong. Please try again.");
+    }
   }
 
   return (

@@ -175,6 +175,20 @@ export default function SettingsScreen({ navigation }) {
     Alert.alert("Navigation", "Call forwarding settings are unavailable in this build.");
   }
 
+  function openBusinessHours() {
+    if (navigateRoute("BusinessHours")) {
+      return;
+    }
+    Alert.alert("Navigation", "Business hours are unavailable in this build.");
+  }
+
+  function openServices() {
+    if (navigateRoute("Services")) {
+      return;
+    }
+    Alert.alert("Navigation", "Services are unavailable in this build.");
+  }
+
   function formatDate(d) {
     if (!d) return "—";
     const dt = new Date(d);
@@ -260,6 +274,20 @@ export default function SettingsScreen({ navigation }) {
           variant="secondary"
           style={styles.actionBtn}
           onPress={openForwardingSettings}
+        />
+
+        <AppButton
+          label="Business hours"
+          variant="secondary"
+          style={styles.actionBtn}
+          onPress={openBusinessHours}
+        />
+
+        <AppButton
+          label="Services & pricing"
+          variant="secondary"
+          style={styles.actionBtn}
+          onPress={openServices}
         />
 
         <AppButton

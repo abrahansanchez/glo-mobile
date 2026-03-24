@@ -1,6 +1,5 @@
 import { useContext, useRef, useState } from "react";
 import {
-  View,
   Text,
   TextInput,
   Pressable,
@@ -10,9 +9,11 @@ import {
   ScrollView,
 } from "react-native";
 import { AuthContext } from "../auth/authContext";
+import { useTheme } from "../theme/ThemeContext";
 
 export default function LoginScreen() {
   const { login } = useContext(AuthContext);
+  const { colors } = useTheme();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -47,18 +48,18 @@ export default function LoginScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1 }}
+      style={{ flex: 1, backgroundColor: colors.bg }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <ScrollView
-        contentContainerStyle={styles.container}
+        contentContainerStyle={[styles.container, { backgroundColor: colors.bg }]}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.title}>Log in</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>Log in</Text>
 
-        <Text style={styles.label}>Email</Text>
+        <Text style={[styles.label, { color: colors.textPrimary }]}>Email</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, { borderColor: colors.border, color: colors.textPrimary, backgroundColor: colors.surface }]}
           autoCapitalize="none"
           autoCorrect={false}
           keyboardType="email-address"
@@ -66,36 +67,37 @@ export default function LoginScreen() {
           value={email}
           onChangeText={setEmail}
           placeholder="you@email.com"
-          placeholderTextColor="#888"
+          placeholderTextColor={colors.textMuted}
           onSubmitEditing={() => passwordRef.current?.focus()}
         />
 
-        <Text style={styles.label}>Password</Text>
+        <Text style={[styles.label, { color: colors.textPrimary }]}>Password</Text>
         <TextInput
           ref={passwordRef}
-          style={styles.input}
+          style={[styles.input, { borderColor: colors.border, color: colors.textPrimary, backgroundColor: colors.surface }]}
           secureTextEntry
           autoCapitalize="none"
           returnKeyType="go"
           value={password}
           onChangeText={setPassword}
           placeholder="••••••••"
-          placeholderTextColor="#888"
+          placeholderTextColor={colors.textMuted}
           onSubmitEditing={handleLogin}
         />
 
-        {!!error && <Text style={styles.error}>{error}</Text>}
+        {!!error && <Text style={[styles.error, { color: colors.danger }]}>{error}</Text>}
 
         <Pressable
           onPress={handleLogin}
           disabled={submitting}
           style={({ pressed }) => [
             styles.button,
+            { backgroundColor: colors.accent, borderColor: colors.accentBorder },
             submitting && styles.buttonDisabled,
             pressed && !submitting && { opacity: 0.85 },
           ]}
         >
-          <Text style={styles.buttonText}>
+          <Text style={[styles.buttonText, { color: colors.bg }]}>
             {submitting ? "Logging in..." : "Login"}
           </Text>
         </Pressable>
@@ -109,37 +111,27 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     padding: 24,
     justifyContent: "center",
-    backgroundColor: "#fff",
   },
   title: {
     fontSize: 28,
     fontWeight: "900",
     marginBottom: 18,
-    color: "#111",
   },
   label: {
     fontWeight: "800",
     marginBottom: 8,
-    color: "#111",
   },
   input: {
     borderWidth: 1,
-    borderColor: "#ccc",
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
-    color: "#111",
     marginBottom: 14,
-    backgroundColor: "#fff",
   },
-  error: {
-    color: "#b00020",
-    fontWeight: "700",
-    marginBottom: 12,
-  },
+  error: { fontWeight: "700", marginBottom: 12 },
   button: {
-    backgroundColor: "#000",
+    borderWidth: 0.5,
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: "center",
@@ -148,9 +140,5 @@ const styles = StyleSheet.create({
   buttonDisabled: {
     opacity: 0.6,
   },
-  buttonText: {
-    color: "#fff",
-    fontWeight: "900",
-    fontSize: 16,
-  },
+  buttonText: { fontWeight: "900", fontSize: 16 },
 });

@@ -16,7 +16,7 @@ import EmptyState from "../components/ui/EmptyState";
 import { spacing } from "../ui/tokens";
 import { useTheme } from "../theme/ThemeContext";
 
-function SetupChecklist({ colors }) {
+function SetupChecklist({ colors, navigation }) {
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -40,8 +40,8 @@ function SetupChecklist({ colors }) {
     { label: "Name added", done: hasName },
     { label: "Number active", done: hasNumber },
     { label: "Trial started", done: hasTrial },
-    { label: "Business hours", done: false, action: true },
-    { label: "Services & pricing", done: false, action: true },
+    { label: "Business hours", done: false, action: true, route: "BusinessHours" },
+    { label: "Services & pricing", done: false, action: true, route: "Services" },
   ];
 
   const doneCount = items.filter((item) => item.done).length;
@@ -52,15 +52,27 @@ function SetupChecklist({ colors }) {
         <AppText style={{ fontSize: 10, fontWeight: "600", color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: 0.5 }}>Finish setup</AppText>
         <AppText style={{ fontSize: 10, color: "rgba(255,255,255,0.25)" }}>{doneCount} of 5</AppText>
       </View>
-      {items.map((item, i) => (
-        <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 3 }}>
-          <View style={{ width: 14, height: 14, borderRadius: 7, borderWidth: 0.5, borderColor: item.done ? "rgba(210,235,255,0.4)" : "rgba(255,255,255,0.12)", alignItems: "center", justifyContent: "center" }}>
-            {item.done && <AppText style={{ fontSize: 8, color: "rgba(210,235,255,0.8)" }}>✓</AppText>}
+      {items.map((item, i) => {
+        const row = (
+          <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 3 }}>
+            <View style={{ width: 14, height: 14, borderRadius: 7, borderWidth: 0.5, borderColor: item.done ? "rgba(210,235,255,0.4)" : "rgba(255,255,255,0.12)", alignItems: "center", justifyContent: "center" }}>
+              {item.done && <AppText style={{ fontSize: 8, color: "rgba(210,235,255,0.8)" }}>✓</AppText>}
+            </View>
+            <AppText style={{ fontSize: 11, color: item.done ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.6)", textDecorationLine: item.done ? "line-through" : "none" }}>{item.label}</AppText>
+            {!item.done && item.action && <AppText style={{ fontSize: 10, color: "rgba(255,255,255,0.18)", marginLeft: "auto" }}>›</AppText>}
           </View>
-          <AppText style={{ fontSize: 11, color: item.done ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.6)", textDecorationLine: item.done ? "line-through" : "none" }}>{item.label}</AppText>
-          {!item.done && item.action && <AppText style={{ fontSize: 10, color: "rgba(255,255,255,0.18)", marginLeft: "auto" }}>›</AppText>}
-        </View>
-      ))}
+        );
+
+        if (!item.action || item.done || !item.route) {
+          return row;
+        }
+
+        return (
+          <Pressable key={i} onPress={() => navigation.navigate(item.route)}>
+            {row}
+          </Pressable>
+        );
+      })}
     </View>
   );
 }
@@ -190,7 +202,7 @@ export default function DashboardOverviewScreen() {
   return (
     <ScreenContainer>
       <View style={styles.container}>
-      <SetupChecklist colors={themeColors} />
+      <SetupChecklist colors={themeColors} navigation={navigation} />
       <AppText variant="title" style={styles.title}>Overview</AppText>
       <AppBadge label="Home" style={styles.badge} />
 

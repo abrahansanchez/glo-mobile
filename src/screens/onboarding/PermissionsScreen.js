@@ -49,11 +49,20 @@ export default function PermissionsScreen({ navigation }) {
     } catch (e) {}
     try {
       const Contacts = await import("expo-contacts");
-      await Contacts.requestPermissionsAsync();
-    } catch (e) {}
-    await updateStep(STEPS.PERMISSIONS);
-    await navigateFromBackend(navigation);
-    setRequesting(false);
+      if (Contacts?.requestPermissionsAsync) {
+        await Contacts.requestPermissionsAsync();
+      }
+    } catch (e) {
+      console.log("[PERMISSIONS] expo-contacts not available yet, skipping");
+    }
+    try {
+      await updateStep(STEPS.PERMISSIONS);
+      await navigateFromBackend(navigation);
+    } catch (e) {
+      console.log("[PERMISSIONS] navigation error:", e?.message);
+    } finally {
+      setRequesting(false);
+    }
   }
 
   return (

@@ -1,19 +1,12 @@
 import { useContext, useRef, useState } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  Pressable,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-} from "react-native";
+import { Text, TextInput, Pressable, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
 import { AuthContext } from "../auth/authContext";
 import api from "../config/api";
+import { useTheme } from "../theme/ThemeContext";
 
 export default function RegisterScreen({ navigation }) {
   const { login } = useContext(AuthContext);
+  const { colors } = useTheme();
 
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -74,31 +67,31 @@ export default function RegisterScreen({ navigation }) {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1 }}
+      style={{ flex: 1, backgroundColor: colors.bg }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <ScrollView
-        contentContainerStyle={styles.container}
+        contentContainerStyle={[styles.container, { backgroundColor: colors.bg }]}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.title}>Create Account</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>Create Account</Text>
 
-        <Text style={styles.label}>Full name</Text>
+        <Text style={[styles.label, { color: colors.textPrimary }]}>Full name</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, { borderColor: colors.border, color: colors.textPrimary, backgroundColor: colors.surface }]}
           autoCapitalize="words"
           autoCorrect={false}
           returnKeyType="next"
           value={name}
           onChangeText={setName}
           placeholder="Your name"
-          placeholderTextColor="#888"
+          placeholderTextColor={colors.textMuted}
           onSubmitEditing={() => passwordRef.current?.focus()}
         />
 
-        <Text style={styles.label}>Phone</Text>
+        <Text style={[styles.label, { color: colors.textPrimary }]}>Phone</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, { borderColor: colors.border, color: colors.textPrimary, backgroundColor: colors.surface }]}
           autoCapitalize="none"
           autoCorrect={false}
           keyboardType="phone-pad"
@@ -106,12 +99,12 @@ export default function RegisterScreen({ navigation }) {
           value={phone}
           onChangeText={setPhone}
           placeholder="(555) 555-5555"
-          placeholderTextColor="#888"
+          placeholderTextColor={colors.textMuted}
         />
 
-        <Text style={styles.label}>Email</Text>
+        <Text style={[styles.label, { color: colors.textPrimary }]}>Email</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, { borderColor: colors.border, color: colors.textPrimary, backgroundColor: colors.surface }]}
           autoCapitalize="none"
           autoCorrect={false}
           keyboardType="email-address"
@@ -119,58 +112,59 @@ export default function RegisterScreen({ navigation }) {
           value={email}
           onChangeText={setEmail}
           placeholder="you@email.com"
-          placeholderTextColor="#888"
+          placeholderTextColor={colors.textMuted}
           onSubmitEditing={() => passwordRef.current?.focus()}
         />
 
-        <Text style={styles.label}>Password</Text>
+        <Text style={[styles.label, { color: colors.textPrimary }]}>Password</Text>
         <TextInput
           ref={passwordRef}
-          style={styles.input}
+          style={[styles.input, { borderColor: colors.border, color: colors.textPrimary, backgroundColor: colors.surface }]}
           secureTextEntry
           autoCapitalize="none"
           returnKeyType="next"
           value={password}
           onChangeText={setPassword}
           placeholder="••••••••"
-          placeholderTextColor="#888"
+          placeholderTextColor={colors.textMuted}
           onSubmitEditing={() => confirmPasswordRef.current?.focus()}
         />
 
-        <Text style={styles.label}>Confirm Password</Text>
+        <Text style={[styles.label, { color: colors.textPrimary }]}>Confirm Password</Text>
         <TextInput
           ref={confirmPasswordRef}
-          style={styles.input}
+          style={[styles.input, { borderColor: colors.border, color: colors.textPrimary, backgroundColor: colors.surface }]}
           secureTextEntry
           autoCapitalize="none"
           returnKeyType="go"
           value={confirmPassword}
           onChangeText={setConfirmPassword}
           placeholder="••••••••"
-          placeholderTextColor="#888"
+          placeholderTextColor={colors.textMuted}
           onSubmitEditing={handleRegister}
         />
 
-        {!!error && <Text style={styles.error}>{error}</Text>}
+        {!!error && <Text style={[styles.error, { color: colors.danger }]}>{error}</Text>}
 
         <Pressable
           onPress={handleRegister}
           disabled={submitting}
           style={({ pressed }) => [
             styles.button,
+            { backgroundColor: colors.accent, borderColor: colors.accentBorder },
             submitting && styles.buttonDisabled,
             pressed && !submitting && { opacity: 0.85 },
           ]}
         >
-          <Text style={styles.buttonText}>
+          <Text style={[styles.buttonText, { color: colors.bg }]}>
             {submitting ? "Creating Account..." : "Create Account"}
           </Text>
         </Pressable>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Already have an account? </Text>
+          <Text style={[styles.footerText, { color: colors.textSecondary }]}>Already have an account? </Text>
           <Pressable onPress={() => navigation.navigate("Login")}>
-            <Text style={styles.footerLink}>Log In</Text>
+            <Text style={[styles.footerLink, { color: colors.accent }]}>Log In</Text>
           </Pressable>
         </View>
       </ScrollView>
@@ -183,37 +177,27 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     padding: 24,
     justifyContent: "center",
-    backgroundColor: "#fff",
   },
   title: {
     fontSize: 28,
     fontWeight: "900",
     marginBottom: 18,
-    color: "#111",
   },
   label: {
     fontWeight: "800",
     marginBottom: 8,
-    color: "#111",
   },
   input: {
     borderWidth: 1,
-    borderColor: "#ccc",
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
-    color: "#111",
     marginBottom: 14,
-    backgroundColor: "#fff",
   },
-  error: {
-    color: "#b00020",
-    fontWeight: "700",
-    marginBottom: 12,
-  },
+  error: { fontWeight: "700", marginBottom: 12 },
   button: {
-    backgroundColor: "#000",
+    borderWidth: 0.5,
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: "center",
@@ -222,25 +206,16 @@ const styles = StyleSheet.create({
   buttonDisabled: {
     opacity: 0.6,
   },
-  buttonText: {
-    color: "#fff",
-    fontWeight: "900",
-    fontSize: 16,
-  },
+  buttonText: { fontWeight: "900", fontSize: 16 },
   footer: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     marginTop: 20,
   },
-  footerText: {
-    fontSize: 14,
-    color: "#666",
-    fontWeight: "500",
-  },
+  footerText: { fontSize: 14, fontWeight: "500" },
   footerLink: {
     fontSize: 14,
-    color: "#000",
     fontWeight: "900",
     textDecorationLine: "underline",
   },

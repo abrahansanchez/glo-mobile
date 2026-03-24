@@ -1,7 +1,6 @@
 import React, { useContext } from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { Feather } from "@expo/vector-icons";
 
 import DashboardOverviewScreen from "../screens/DashboardOverviewScreen";
 import CallsScreen from "../screens/CallsScreen";
@@ -15,11 +14,14 @@ import CallNavigator from "./CallNavigator";
 import SettingsScreen from "../screens/SettingsScreen";
 import InboxScreen from "../screens/InboxScreen";
 import AccountScreen from "../screens/settings/AccountScreen";
+import BusinessHoursScreen from "../screens/settings/BusinessHoursScreen";
 import ForwardingSettingsScreen from "../screens/settings/ForwardingSettingsScreen";
+import ServicesScreen from "../screens/settings/ServicesScreen";
 import PortingStatusScreen from "../screens/onboarding/PortingStatusScreen";
 import PortingDocumentsScreen from "../screens/onboarding/PortingDocumentsScreen";
 import { AuthContext } from "../auth/authContext";
 import { isAdminBarber } from "../auth/adminAccess";
+import { ActivityIcon, HomeIcon, InboxIcon, ScheduleIcon, SettingsIcon } from "../components/ui/TabIcon";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -34,58 +36,55 @@ function DashboardTabs() {
       screenOptions={{
         headerShown: false,
         tabBarHideOnKeyboard: true,
-        tabBarActiveTintColor: "#111827",
-        tabBarInactiveTintColor: "#9ca3af",
+        tabBarActiveTintColor: "rgba(0,210,220,0.9)",
+        tabBarInactiveTintColor: "rgba(255,255,255,0.25)",
         tabBarStyle: {
-          height: 72,
-          paddingTop: 8,
-          paddingBottom: 10,
+          backgroundColor: "#040b12",
+          borderTopColor: "rgba(0,180,200,0.1)",
+          borderTopWidth: 0.5,
+          height: 60,
+          paddingBottom: 8,
         },
         tabBarLabelStyle: {
-          fontSize: 11,
-          marginTop: 2,
+          fontSize: 10,
+          fontWeight: "500",
         },
-        tabBarItemStyle: {
-          paddingVertical: 4,
-        },
-        tabBarIconStyle: {
-          alignSelf: "center",
-        },
+        tabBarShowLabel: true,
       }}
     >
       <Tab.Screen
         name="Home"
         component={DashboardOverviewScreen}
         options={{
-          tabBarIcon: ({ color, size }) => <Feather name="home" color={color} size={Math.max(size, 22)} />,
+          tabBarIcon: ({ color }) => <HomeIcon color={color} size={22} />,
         }}
       />
       <Tab.Screen
         name="Schedule"
         component={AppointmentsScreen}
         options={{
-          tabBarIcon: ({ color, size }) => <Feather name="calendar" color={color} size={Math.max(size, 22)} />,
+          tabBarIcon: ({ color }) => <ScheduleIcon color={color} size={22} />,
         }}
       />
       <Tab.Screen
         name="Inbox"
         component={InboxScreen}
         options={{
-          tabBarIcon: ({ color, size }) => <Feather name="inbox" color={color} size={Math.max(size, 22)} />,
+          tabBarIcon: ({ color }) => <InboxIcon color={color} size={22} />,
         }}
       />
       <Tab.Screen
         name="Insights"
         component={insightsComponent}
         options={{
-          tabBarIcon: ({ color, size }) => <Feather name="bar-chart-2" color={color} size={Math.max(size, 22)} />,
+          tabBarIcon: ({ color }) => <ActivityIcon color={color} size={22} />,
         }}
       />
       <Tab.Screen
         name="Settings"
         component={SettingsScreen}
         options={{
-          tabBarIcon: ({ color, size }) => <Feather name="settings" color={color} size={Math.max(size, 22)} />,
+          tabBarIcon: ({ color }) => <SettingsIcon color={color} size={22} />,
         }}
       />
     </Tab.Navigator>
@@ -111,6 +110,8 @@ export default function DashboardNavigator() {
       <Stack.Screen name="Analytics" component={insightsComponent} />
 
       <Stack.Screen name="Account" component={AccountScreen} />
+      <Stack.Screen name="BusinessHours" component={BusinessHoursScreen} />
+      <Stack.Screen name="Services" component={ServicesScreen} />
       <Stack.Screen name="ForwardingSettings" component={ForwardingSettingsScreen} />
       <Stack.Screen name="PortingStatus" component={PortingStatusScreen} />
       <Stack.Screen name="PortingDocuments" component={PortingDocumentsScreen} />
