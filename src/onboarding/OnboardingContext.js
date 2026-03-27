@@ -34,6 +34,7 @@ function normalizeStep(step) {
     business_snapshot: STEPS.BUSINESS_SNAPSHOT,
     phone_choice: STEPS.NUMBER_STRATEGY,
     number_strategy: STEPS.NUMBER_STRATEGY,
+    forwarding_flow: STEPS.FORWARDING_SETUP,
     forwarding_setup: STEPS.FORWARDING_SETUP,
     forwarding_verification: STEPS.FORWARDING_VERIFICATION,
     trial_start: STEPS.TRIAL_START,
@@ -87,6 +88,10 @@ function resolveForwardingResumeStep(raw, fallbackStep, complete) {
     explicitStep === STEPS.FORWARDING_VERIFICATION
   ) {
     return explicitStep;
+  }
+
+  if (fallbackStep === STEPS.FORWARDING_FLOW) {
+    return STEPS.FORWARDING_SETUP;
   }
 
   const forwardingStatus = normalizeForwardingStatus(raw);
@@ -363,11 +368,26 @@ export function OnboardingProvider({ children }) {
     const response = await api.get("/onboarding/status");
     const payload = response?.data || {};
     const status = await hydrateFromBackendStatus(payload);
-    const backendStep = String(payload?.currentStep || "").toLowerCase();
-    const screenName = ONBOARDING_SCREEN_MAP[backendStep];
+    const backendStep = String(payload?.currentStep || payload?.nextStep || "").toLowerCase();
+    const resolvedStep = String(status?.step || "").toLowerCase();
+    const screenName = ONBOARDING_SCREEN_MAP[resolvedStep] || ONBOARDING_SCREEN_MAP[backendStep];
+    const routes = navigation?.getState?.()?.routes || [];
+    const currentRouteName = routes.length ? routes[routes.length - 1]?.name : "";
+
+    console.log("[ONBOARDING_NAV] route decision", {
+      backendStep: backendStep || "(empty)",
+      resolvedStep: resolvedStep || "(empty)",
+      numberStrategy: payload?.numberStrategy || payload?.phoneStrategy || payload?.phone?.strategy || null,
+      currentRoute: currentRouteName || "(none)",
+      chosenScreen: screenName || "(none)",
+    });
 
     if (!screenName) {
-      console.warn("[ONBOARDING] unknown backend step", backendStep || "(empty)");
+      console.warn("[ONBOARDING] unknown backend step", resolvedStep || backendStep || "(empty)");
+      return status;
+    }
+
+    if (currentRouteName === screenName) {
       return status;
     }
 

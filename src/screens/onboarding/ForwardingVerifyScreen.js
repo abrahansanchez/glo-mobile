@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useRef, useState } from "react";
-import { ScrollView, StyleSheet } from "react-native";
+import { AppState, ScrollView, StyleSheet } from "react-native";
 import { AuthContext } from "../../auth/authContext";
 import { OnboardingContext } from "../../onboarding/OnboardingContext";
 import api from "../../config/api";
@@ -13,16 +13,27 @@ import { spacing } from "../../ui/tokens";
 import { useTheme } from "../../theme/ThemeContext";
 
 function getForwardingStatus(payload) {
-  return String(
+  const raw =
     payload?.forwardingStatus ||
-      payload?.status ||
-      payload?.forwarding?.status ||
-      ""
-  ).toLowerCase();
+    payload?.status ||
+    payload?.forwarding?.status ||
+    payload?.data?.forwardingStatus ||
+    payload?.data?.status ||
+    payload?.data?.forwarding?.status;
+
+  const normalized = String(raw || "").toLowerCase();
+
+  console.log("[FORWARDING_STATUS_RESOLVED]", {
+    raw,
+    normalized,
+    payload: JSON.stringify(payload),
+  });
+
+  return normalized;
 }
 
 function isVerificationInProgress(status) {
-  return ["pending_verification", "verification_started", "testing", "verifying"].includes(
+  return ["routing_ready", "activation_started", "verification_pending", "testing", "verifying"].includes(
     String(status || "").toLowerCase()
   );
 }
@@ -39,41 +50,79 @@ function formatE164(value) {
 export default function ForwardingVerifyScreen({ navigation }) {
   const { colors, resolvedTheme } = useTheme();
   const { barber } = useContext(AuthContext);
-  const { setLocalStep, onboardingData, navigateFromBackend } = useContext(OnboardingContext);
+  const { setLocalStep, onboardingData, navigateFromBackend, updateStep } = useContext(OnboardingContext);
   const [submitting, setSubmitting] = useState(false);
   const [polling, setPolling] = useState(false);
   const [error, setError] = useState("");
   const [statusPayload, setStatusPayload] = useState(null);
   const pollRef = useRef(null);
+  const hasStartedRef = useRef(false);
 
   useEffect(() => {
     setLocalStep(STEPS.FORWARDING_VERIFICATION);
+    console.log("[FORWARDING_VERIFY] screen mounted");
     loadStatus();
 
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [setLocalStep]);
+  }, []);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (state) => {
+      console.log("[FORWARDING_VERIFY] app state:", state);
+
+      if (state === "active") {
+        if (hasStartedRef.current) return;
+        hasStartedRef.current = true;
+        console.log("[FORWARDING_VERIFY] app returned → starting verification");
+        runVerification();
+      }
+    });
+
+    return () => subscription.remove();
+  }, []);
 
   async function loadStatus() {
+    console.log("[FORWARDING_VERIFY] loadStatus called");
     try {
       const response = await api.get("/phone/forwarding/status");
       const payload = response.data || {};
-      setStatusPayload(payload);
+      console.log("[FORWARDING_STATUS] payload:", JSON.stringify(payload));
       const status = getForwardingStatus(payload);
-      if (["verified", "complete", "completed"].includes(status)) {
+      const verified = payload?.verified === true || ["verified", "complete", "completed"].includes(status);
+
+      setStatusPayload(payload);
+
+      if (verified) {
         stopPolling();
+        console.log("[FORWARDING_VERIFY] verified — posting step and advancing");
+        try {
+          await updateStep(STEPS.FORWARDING_VERIFICATION);
+        } catch (e) {
+          console.log("[FORWARDING_VERIFY] step post failed:", e?.message);
+        }
         await navigateFromBackend(navigation);
-      } else if (status === "failed") {
+        return payload;
+      }
+
+      if (status === "activation_failed") {
         stopPolling();
         setPolling(false);
-      } else if (isVerificationInProgress(status) && !pollRef.current) {
+        return payload;
+      }
+
+      if (isVerificationInProgress(status) && !pollRef.current) {
         startPolling();
       }
+
+      return payload;
     } catch (e) {
+      console.log("[FORWARDING_VERIFY] loadStatus error:", e?.message);
       setError(e?.response?.data?.message || "Failed to check forwarding status");
       stopPolling();
       setPolling(false);
+      return null;
     }
   }
 
@@ -85,14 +134,18 @@ export default function ForwardingVerifyScreen({ navigation }) {
   }
 
   function startPolling() {
-    stopPolling();
+    if (pollRef.current) return;
+
+    console.log("[FORWARDING_VERIFY] starting polling");
     setPolling(true);
     pollRef.current = setInterval(() => {
       loadStatus();
-    }, 3000);
+    }, 2000);
   }
 
   async function runVerification() {
+    console.log("[FORWARDING_VERIFY] runVerification called");
+    if (submitting) return;
     setSubmitting(true);
     setError("");
     try {
@@ -102,21 +155,28 @@ export default function ForwardingVerifyScreen({ navigation }) {
         setSubmitting(false);
         return;
       }
-
-      await api.post("/phone/forwarding/test", {
+      const response = await api.post("/phone/forwarding/test", {
         forwardFromNumber,
       });
+      console.log("[FORWARDING_VERIFY] test response:", JSON.stringify(response?.data));
       await loadStatus();
-      startPolling();
     } catch (e) {
-      setError(e?.response?.data?.message || "Failed to start verification");
+      const code = e?.response?.data?.code;
+      if (e?.response?.status === 409 || code === "VERIFICATION_ALREADY_RUNNING") {
+        console.log("[FORWARDING_VERIFY] already running, switching to polling");
+        await loadStatus();
+        startPolling();
+      } else {
+        console.log("[FORWARDING_VERIFY] error:", e?.response?.data || e?.message);
+        setError(e?.response?.data?.message || "Failed to start verification");
+      }
     } finally {
       setSubmitting(false);
     }
   }
 
   const status = getForwardingStatus(statusPayload);
-  const failed = status === "failed";
+  const failed = status === "activation_failed";
   const waiting = polling || submitting || isVerificationInProgress(status);
 
   return (
@@ -180,6 +240,19 @@ export default function ForwardingVerifyScreen({ navigation }) {
           style={styles.secondaryButton}
         />
       ) : null}
+
+      <AppButton
+        label="Skip for now — set up later"
+        variant="secondary"
+        onPress={async () => {
+          stopPolling();
+          try {
+            await updateStep(STEPS.FORWARDING_VERIFICATION);
+          } catch (e) {}
+          await navigateFromBackend(navigation);
+        }}
+        style={[styles.secondaryButton, { marginTop: spacing.lg }]}
+      />
     </ScrollView>
   );
 }

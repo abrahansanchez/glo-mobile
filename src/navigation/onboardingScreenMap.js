@@ -5,7 +5,7 @@ export const ONBOARDING_SCREEN_MAP = {
   business_snapshot: "BusinessSnapshot",
   number_strategy: "NumberStrategy",
   ai_intro: "AIIntro",
-  forwarding_flow: "ForwardingFlow",
+  forwarding_flow: "ForwardingSetup",
   forwarding_setup: "ForwardingSetup",
   forwarding_verification: "ForwardingVerification",
   porting_flow: "PortingFlow",

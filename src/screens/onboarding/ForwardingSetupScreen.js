@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useMemo, useState } from "react";
+import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Linking, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { OnboardingContext } from "../../onboarding/OnboardingContext";
 import api from "../../config/api";
@@ -51,7 +51,7 @@ function getNextRouteFromStatus(status) {
   const normalized = String(status || "").toLowerCase();
   if (["verified", "complete", "completed"].includes(normalized)) return "ForwardingSuccess";
   if (
-    ["pending_verification", "verification_started", "testing", "verifying", "failed", "active", "activated"].includes(
+    ["routing_ready", "activation_started", "verification_pending", "testing", "verifying", "activation_failed"].includes(
       normalized
     )
   ) {
@@ -70,6 +70,7 @@ export default function ForwardingSetupScreen({ navigation }) {
   const [skipping, setSkipping] = useState(false);
   const [statusPayload, setStatusPayload] = useState(null);
   const [error, setError] = useState("");
+  const hasNavigatedRef = useRef(false);
 
   const forwardFromNumber = statusPayload?.forwardFromNumber || statusPayload?.businessNumber || "";
   const forwardToNumber = statusPayload?.forwardToNumber || statusPayload?.destinationNumber || "";
@@ -93,7 +94,7 @@ export default function ForwardingSetupScreen({ navigation }) {
     loadStatus();
   }, []);
 
-  async function loadStatus() {
+  async function loadStatus(retryCount = 0) {
     setLoading(true);
     setError("");
     try {
@@ -101,8 +102,19 @@ export default function ForwardingSetupScreen({ navigation }) {
       const payload = response.data || {};
       setStatusPayload(payload);
 
+      const toNumber = payload?.forwardToNumber || payload?.destinationNumber || "";
+      const digits = normalizeDigits(toNumber);
+
+      // If no routing number yet, retry up to 3 times with 2 second delay
+      if (!digits && retryCount < 3) {
+        console.log(`[FORWARDING_SETUP] no routing number yet, retry ${retryCount + 1}/3`);
+        setTimeout(() => loadStatus(retryCount + 1), 2000);
+        return;
+      }
+
       const nextRoute = getNextRouteFromStatus(getForwardingStatus(payload));
-      if (nextRoute) {
+      if (nextRoute && !hasNavigatedRef.current) {
+        hasNavigatedRef.current = true;
         await navigateFromBackend(navigation);
       }
     } catch (e) {
@@ -119,7 +131,7 @@ export default function ForwardingSetupScreen({ navigation }) {
 
   async function handleActivate() {
     if (!activationNumber) {
-      setError("Forwarding line unavailable. Please try again.");
+      setError("Forwarding line is still being set up. Please wait a moment and try again.");
       return;
     }
 
@@ -136,13 +148,18 @@ export default function ForwardingSetupScreen({ navigation }) {
     setActivating(true);
     setError("");
     try {
-      const stepData = {
+      console.log("[FORWARDING_SETUP] saving forwardFromNumber:", onboardingData.phoneNumber);
+      await updateData({
+        forwardFromNumber: onboardingData.phoneNumber,
         forwardingCarrier: carrier,
         forwardingActivationDialString: activationCodePreview,
-      };
-      await updateStep(STEPS.FORWARDING_VERIFICATION, stepData);
+      });
       await Linking.openURL(`tel:${encodeURIComponent(activationCodePreview)}`);
-      await navigateFromBackend(navigation);
+      // Navigate to verification screen directly after opening dialer
+      if (!hasNavigatedRef.current) {
+        hasNavigatedRef.current = true;
+        navigation.navigate("ForwardingVerification");
+      }
     } catch (e) {
       setError(e?.message || "Could not open the dialer");
     } finally {
@@ -154,7 +171,7 @@ export default function ForwardingSetupScreen({ navigation }) {
     setSkipping(true);
     setError("");
     try {
-      await updateStep(STEPS.TRIAL_START);
+      await updateStep(STEPS.FORWARDING_SETUP);
       await navigateFromBackend(navigation);
     } catch (e) {
       setError(e?.response?.data?.message || "Failed to continue onboarding");
@@ -227,6 +244,11 @@ export default function ForwardingSetupScreen({ navigation }) {
         </AppCard>
       ) : null}
 
+      {loading && !statusPayload && (
+        <AppText style={[styles.error, { color: colors.textSecondary }]}>
+          Setting up your forwarding line...
+        </AppText>
+      )}
       {!!error ? <AppText style={[styles.error, { color: colors.danger }]}>{error}</AppText> : null}
 
       <AppButton

@@ -37,37 +37,13 @@ export default function AIIntroScreen({ navigation }) {
     setError("");
     try {
       await api.post("/onboarding/demo-call");
-      // Poll every 10 seconds for up to 4 minutes
-      let attempts = 0;
-      const maxAttempts = 24;
-      const poll = async () => {
-        attempts++;
-        try {
-          const statusRes = await api.get("/onboarding/status");
-          const setupDone = statusRes?.data?.setupCompletedViaCall;
-          if (setupDone) {
-            await updateStep(STEPS.AI_INTRO);
-            await navigateFromBackend(navigation);
-            return;
-          }
-        } catch (e) {}
-        if (attempts < maxAttempts) {
-          setTimeout(poll, 10000);
-        } else {
-          // Timed out — let barber advance manually
-          setCalling(false);
-        }
-      };
-      setTimeout(poll, 15000);
+      await new Promise(resolve => setTimeout(resolve, 20000));
+      await updateStep(STEPS.AI_INTRO);
+      await navigateFromBackend(navigation);
     } catch (e) {
       setError(t.aiIntroError);
       setCalling(false);
     }
-  }
-
-  async function handleSkip() {
-    await updateStep(STEPS.AI_INTRO);
-    await navigateFromBackend(navigation);
   }
 
   return (
@@ -92,30 +68,22 @@ export default function AIIntroScreen({ navigation }) {
       {!!error && <AppText style={[styles.error, { color: colors.danger }]}>{error}</AppText>}
       <AppButton
         variant="primary"
-        label={calling ? "Setup call in progress — stay on the line" : t.aiIntroCallBtn}
+        label={calling ? "Your phone is ringing..." : (t.aiIntroCallBtn || "Call me now")}
         style={styles.primaryBtn}
         onPress={handleDemoCall}
         disabled={calling}
       />
-      {calling ? (
-        <Pressable
-          onPress={async () => {
-            await updateStep(STEPS.AI_INTRO);
-            await navigateFromBackend(navigation);
-          }}
-          style={styles.skipBtn}
-        >
-          <AppText style={[styles.skipText, { color: colors.textSecondary }]}>
-            Call ended — continue
-          </AppText>
-        </Pressable>
-      ) : (
-        <Pressable onPress={handleSkip} style={styles.skipBtn}>
-          <AppText style={[styles.skipText, { color: colors.textSecondary }]}>
-            {t.aiIntroSkip}
-          </AppText>
-        </Pressable>
-      )}
+      <Pressable
+        onPress={async () => {
+          await updateStep(STEPS.AI_INTRO);
+          await navigateFromBackend(navigation);
+        }}
+        style={styles.skipBtn}
+      >
+        <AppText style={[styles.skipText, { color: colors.textSecondary }]}>
+          Continue
+        </AppText>
+      </Pressable>
     </View>
   );
 }

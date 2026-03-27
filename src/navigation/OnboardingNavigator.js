@@ -28,15 +28,19 @@ export default function OnboardingNavigator() {
     <Stack.Navigator
       initialRouteName="Welcome"
       screenOptions={{
-        headerShown: false,
+        headerShown: true,
+        headerTransparent: true,
+        headerTitle: "",
+        headerBackTitle: "",
+        headerTintColor: "#ffffff",
         gestureEnabled: true,
         gestureDirection: "horizontal",
         animation: "slide_from_right",
       }}
     >
-      <Stack.Screen name="Welcome" component={WelcomeScreen} options={{ gestureEnabled: false }} />
-      <Stack.Screen name="Language" component={LanguageScreen} options={{ gestureEnabled: false }} />
-      <Stack.Screen name="Account" component={PhoneSignupScreen} options={{ gestureEnabled: false }} />
+      <Stack.Screen name="Welcome" component={WelcomeScreen} options={{ gestureEnabled: false, headerShown: false }} />
+      <Stack.Screen name="Language" component={LanguageScreen} options={{ gestureEnabled: false, headerShown: false }} />
+      <Stack.Screen name="Account" component={PhoneSignupScreen} options={{ gestureEnabled: false, headerShown: false }} />
       <Stack.Screen name="BusinessSnapshot" component={BusinessSetupScreen} />
       <Stack.Screen name="NumberStrategy" component={NumberStrategyScreen} />
       <Stack.Screen name="AIIntro" component={AIIntroScreen} />
@@ -48,8 +52,8 @@ export default function OnboardingNavigator() {
       <Stack.Screen name="PortingForm" component={PortingFlowScreen} />
       <Stack.Screen name="TrialStart" component={TrialStartScreen} />
       <Stack.Screen name="Permissions" component={PermissionsScreen} />
-      <Stack.Screen name="GoLiveChecklist" component={GoLiveChecklistScreen} options={{ gestureEnabled: false }} />
-      <Stack.Screen name="Celebration" component={CelebrationScreen} options={{ gestureEnabled: false }} />
+      <Stack.Screen name="GoLiveChecklist" component={GoLiveChecklistScreen} options={{ gestureEnabled: false, headerShown: false }} />
+      <Stack.Screen name="Celebration" component={CelebrationScreen} options={{ gestureEnabled: false, headerShown: false }} />
       <Stack.Screen name="PortingStatus" component={PortingStatusScreen} />
       <Stack.Screen name="PortingDocuments" component={PortingDocumentsScreen} />
     </Stack.Navigator>

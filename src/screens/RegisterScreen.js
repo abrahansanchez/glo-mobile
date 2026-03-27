@@ -1,5 +1,5 @@
 import { useContext, useRef, useState } from "react";
-import { Text, TextInput, Pressable, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
+import { View, Text, TextInput, Pressable, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
 import { AuthContext } from "../auth/authContext";
 import api from "../config/api";
 import { useTheme } from "../theme/ThemeContext";
