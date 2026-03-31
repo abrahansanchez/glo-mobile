@@ -114,6 +114,7 @@ function attachTwilioVoipListenersOnce() {
   listenersAttached = true;
 
   TwilioVoice.addEventListener("deviceReady", () => {
+    console.log("[VOIP] deviceReady fired");
     console.log("[VOIP] ✅ deviceReady (VoIP push registered)");
     markDeviceReadyAndFlush("deviceReady_event");
   });
@@ -125,20 +126,11 @@ function attachTwilioVoipListenersOnce() {
   });
 
   try {
-    TwilioVoice.addEventListener("registered", () => {
-      console.log("[VOIP] ✅ registered for invites");
-      markDeviceReadyAndFlush("registered_event");
+    TwilioVoice.addEventListener("callInvite", (invite) => {
+      console.log("[VOIP] incoming call invite received", invite);
     });
   } catch (error) {
-    console.log("[VOIP] registered listener unavailable", error?.message || error);
-  }
-
-  try {
-    TwilioVoice.addEventListener("registrationFailed", (payload) => {
-      console.log("[VOIP] ❌ registrationFailed", payload);
-    });
-  } catch (error) {
-    console.log("[VOIP] registrationFailed listener unavailable", error?.message || error);
+    console.log("[VOIP] callInvite listener unavailable", error?.message || error);
   }
 
   TwilioVoice.addEventListener("deviceDidReceiveIncoming", (payload) => {
@@ -200,6 +192,8 @@ export async function initVoipPushAndRegisterOnce() {
       const result = await TwilioVoice.initWithToken(accessToken);
       console.log("[VOIP] initWithToken resolved", result || {});
       if (result?.initialized) {
+        deviceReadySeen = true;
+        console.log("[VOIP] device ready via init_result");
         markDeviceReadyAndFlush("init_result");
       }
     } catch (error) {
