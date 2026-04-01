@@ -1,6 +1,7 @@
 import TwilioVoice from "react-native-twilio-programmable-voice";
 import { AppState, Platform } from "react-native";
 import { fetchVoiceToken } from "./voiceTokenService";
+import { getBarber } from "../auth/barberStorage";
 
 let didInit = false;
 let listenersAttached = false;
@@ -125,18 +126,11 @@ function attachTwilioVoipListenersOnce() {
     logVoipDiag();
   });
 
-  try {
-    TwilioVoice.addEventListener("callInvite", (invite) => {
-      console.log("[VOIP] incoming call invite received", invite);
-    });
-  } catch (error) {
-    console.log("[VOIP] callInvite listener unavailable", error?.message || error);
-  }
-
   TwilioVoice.addEventListener("deviceDidReceiveIncoming", (payload) => {
     const callSid = resolveCallSid(payload);
     const isForeground = isForegroundAppState(currentAppState);
     const contextLabel = isForeground ? "foreground" : "background_or_locked";
+    console.log("[VOIP] incoming call received", payload);
     console.log("[VOIP] 📞 incoming call invite", payload);
     console.log("[VOIP] incoming invite context", contextLabel);
     console.log("[VOIP] invite call_sid mapping", {
@@ -154,6 +148,14 @@ function attachTwilioVoipListenersOnce() {
     }
 
     emitIncomingInvite(payload);
+  });
+
+  TwilioVoice.addEventListener("connectionDidConnect", (payload) => {
+    console.log("[VOIP] call connected", payload);
+  });
+
+  TwilioVoice.addEventListener("connectionDidDisconnect", (payload) => {
+    console.log("[VOIP] call disconnected", payload);
   });
 
   TwilioVoice.addEventListener("callInviteCancelled", (payload) => {
@@ -174,8 +176,15 @@ export async function initVoipPushAndRegisterOnce() {
 
   try {
     console.log("[VOIP] fetching voice jwt for Twilio init");
-    const { token: accessToken } = await fetchVoiceToken();
+    const { token: accessToken, identity: tokenIdentity } = await fetchVoiceToken();
+    const barber = await getBarber();
+    const barberId = barber?._id || barber?.id || null;
     console.log("[VOIP] fetched voice jwt");
+    console.log("[VOIP_IDENTITY_CHECK]", {
+      barberId,
+      tokenIdentity,
+      matches: barberId && tokenIdentity ? barberId === tokenIdentity : null,
+    });
 
     if (Platform.OS === "ios") {
       console.log("[VOIP] configuring CallKit defaults");
@@ -191,6 +200,9 @@ export async function initVoipPushAndRegisterOnce() {
     try {
       const result = await TwilioVoice.initWithToken(accessToken);
       console.log("[VOIP] initWithToken resolved", result || {});
+      console.log("[VOIP_DIAG_NATIVE]", TwilioVoice);
+      const device = await TwilioVoice.getDeviceToken?.();
+      console.log("[VOIP_TOKEN_CHECK]", device);
       if (result?.initialized) {
         deviceReadySeen = true;
         console.log("[VOIP] device ready via init_result");
