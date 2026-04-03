@@ -201,8 +201,6 @@ export async function initVoipPushAndRegisterOnce() {
       const result = await TwilioVoice.initWithToken(accessToken);
       console.log("[VOIP] initWithToken resolved", result || {});
       console.log("[VOIP_DIAG_NATIVE]", TwilioVoice);
-      const device = await TwilioVoice.getDeviceToken?.();
-      console.log("[VOIP_TOKEN_CHECK]", device);
       if (result?.initialized) {
         deviceReadySeen = true;
         console.log("[VOIP] device ready via init_result");
