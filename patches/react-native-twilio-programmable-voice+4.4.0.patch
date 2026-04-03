@@ -10,7 +10,37 @@ index df4c381..39edba7 100644
  @import TwilioVoice;
  
  NSString * const kCachedDeviceToken = @"CachedDeviceToken";
-@@ -352,8 +353,11 @@ - (void)callInviteReceived:(TVOCallInvite *)callInvite {
+@@ -206,9 +207,11 @@ RCT_REMAP_METHOD(getCallInvite,
+ 
+ - (void)initPushRegistry {
++  NSLog(@"[VOICE_NATIVE] initPushRegistry");
+   self.voipRegistry = [[PKPushRegistry alloc] initWithQueue:dispatch_get_main_queue()];
+   self.voipRegistry.delegate = self;
+   self.voipRegistry.desiredPushTypes = [NSSet setWithObject:PKPushTypeVoIP];
++  NSLog(@"[VOICE_NATIVE] PushKit desiredPushTypes set to VoIP");
+  }
+ 
+  - (NSString *)fetchAccessToken {
+@@ -234,12 +237,15 @@ - (void)pushRegistry:(PKPushRegistry *)registry didUpdatePushCredentials:(PKPush
+      NSString *deviceTokenString = [NSString stringWithFormat:@"<%08x %08x %08x %08x %08x %08x %08x %08x>",
+                                                          ntohl(tokenBytes[0]), ntohl(tokenBytes[1]), ntohl(tokenBytes[2]),
+                                                          ntohl(tokenBytes[3]), ntohl(tokenBytes[4]), ntohl(tokenBytes[5]),
+                                                          ntohl(tokenBytes[6]), ntohl(tokenBytes[7])];
+      NSString *accessToken = [self fetchAccessToken];
++    NSLog(@"[VOICE_NATIVE] VoIP token received %@", deviceTokenString);
++    NSLog(@"[VOICE_NATIVE] access token present? %@", accessToken.length > 0 ? @"YES" : @"NO");
+      NSString *cachedDeviceToken = [[NSUserDefaults standardUserDefaults] objectForKey:kCachedDeviceToken];
+      if (![cachedDeviceToken isEqualToString:deviceTokenString]) {
+          cachedDeviceToken = deviceTokenString;
+ 
+          /*
+           * Perform registration if a new device token is detected.
+           */
++        NSLog(@"[VOICE_NATIVE] attempting Twilio VoIP registration");
+          [TwilioVoice registerWithAccessToken:accessToken
+                                   deviceToken:cachedDeviceToken
+                                    completion:^(NSError *error) {
+@@ -352,8 +358,11 @@ - (void)callInviteReceived:(TVOCallInvite *)callInvite {
      if (callInvite.customParameters[kCallerNameCustomParameter]) {
          from = callInvite.customParameters[kCallerNameCustomParameter];
      }
