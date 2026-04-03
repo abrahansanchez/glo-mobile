@@ -1,5 +1,5 @@
 diff --git a/node_modules/react-native-twilio-programmable-voice/ios/RNTwilioVoice/RNTwilioVoice.m b/node_modules/react-native-twilio-programmable-voice/ios/RNTwilioVoice/RNTwilioVoice.m
-index df4c381..39edba7 100644
+index df4c381..5a7cea2 100644
 --- a/node_modules/react-native-twilio-programmable-voice/ios/RNTwilioVoice/RNTwilioVoice.m
 +++ b/node_modules/react-native-twilio-programmable-voice/ios/RNTwilioVoice/RNTwilioVoice.m
 @@ -4,6 +4,7 @@
@@ -10,7 +10,8 @@ index df4c381..39edba7 100644
  @import TwilioVoice;
  
  NSString * const kCachedDeviceToken = @"CachedDeviceToken";
-@@ -206,9 +207,11 @@ RCT_REMAP_METHOD(getCallInvite,
+@@ -206,9 +207,11 @@ - (void)dealloc {
+ }
  
  - (void)initPushRegistry {
 +  NSLog(@"[VOICE_NATIVE] initPushRegistry");
@@ -18,28 +19,26 @@ index df4c381..39edba7 100644
    self.voipRegistry.delegate = self;
    self.voipRegistry.desiredPushTypes = [NSSet setWithObject:PKPushTypeVoIP];
 +  NSLog(@"[VOICE_NATIVE] PushKit desiredPushTypes set to VoIP");
-  }
+ }
  
-  - (NSString *)fetchAccessToken {
-@@ -234,12 +237,15 @@ - (void)pushRegistry:(PKPushRegistry *)registry didUpdatePushCredentials:(PKPush
-      NSString *deviceTokenString = [NSString stringWithFormat:@"<%08x %08x %08x %08x %08x %08x %08x %08x>",
-                                                          ntohl(tokenBytes[0]), ntohl(tokenBytes[1]), ntohl(tokenBytes[2]),
-                                                          ntohl(tokenBytes[3]), ntohl(tokenBytes[4]), ntohl(tokenBytes[5]),
-                                                          ntohl(tokenBytes[6]), ntohl(tokenBytes[7])];
-      NSString *accessToken = [self fetchAccessToken];
+ - (NSString *)fetchAccessToken {
+@@ -233,6 +236,8 @@ - (void)pushRegistry:(PKPushRegistry *)registry didUpdatePushCredentials:(PKPush
+                                                         ntohl(tokenBytes[3]), ntohl(tokenBytes[4]), ntohl(tokenBytes[5]),
+                                                         ntohl(tokenBytes[6]), ntohl(tokenBytes[7])];
+     NSString *accessToken = [self fetchAccessToken];
 +    NSLog(@"[VOICE_NATIVE] VoIP token received %@", deviceTokenString);
 +    NSLog(@"[VOICE_NATIVE] access token present? %@", accessToken.length > 0 ? @"YES" : @"NO");
-      NSString *cachedDeviceToken = [[NSUserDefaults standardUserDefaults] objectForKey:kCachedDeviceToken];
-      if (![cachedDeviceToken isEqualToString:deviceTokenString]) {
-          cachedDeviceToken = deviceTokenString;
- 
-          /*
-           * Perform registration if a new device token is detected.
-           */
+     NSString *cachedDeviceToken = [[NSUserDefaults standardUserDefaults] objectForKey:kCachedDeviceToken];
+     if (![cachedDeviceToken isEqualToString:deviceTokenString]) {
+         cachedDeviceToken = deviceTokenString;
+@@ -240,6 +245,7 @@ - (void)pushRegistry:(PKPushRegistry *)registry didUpdatePushCredentials:(PKPush
+         /*
+          * Perform registration if a new device token is detected.
+          */
 +        NSLog(@"[VOICE_NATIVE] attempting Twilio VoIP registration");
-          [TwilioVoice registerWithAccessToken:accessToken
-                                   deviceToken:cachedDeviceToken
-                                    completion:^(NSError *error) {
+         [TwilioVoice registerWithAccessToken:accessToken
+                                  deviceToken:cachedDeviceToken
+                                   completion:^(NSError *error) {
 @@ -352,8 +358,11 @@ - (void)callInviteReceived:(TVOCallInvite *)callInvite {
      if (callInvite.customParameters[kCallerNameCustomParameter]) {
          from = callInvite.customParameters[kCallerNameCustomParameter];
