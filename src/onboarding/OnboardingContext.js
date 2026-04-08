@@ -324,6 +324,19 @@ export function OnboardingProvider({ children }) {
     try {
       if (__DEV__) console.log(`Onboarding:updateData ${barberId}`);
     } catch (e) {}
+    try {
+      console.log("[API_REQUEST_BODY]", updated);
+      await api.post("/onboarding/step", {
+        step: onboardingStepRef.current || STEPS.WELCOME,
+        data: {
+          ...updated,
+          forwardFromNumber: updated.forwardFromNumber,
+          forwardingCarrier: updated.forwardingCarrier,
+        },
+      });
+    } catch (error) {
+      console.log("[ONBOARDING] updateData sync failed", error?.response?.data || error?.message || error);
+    }
     await persistData(barberId, updated);
   }, [barberId]);
 
@@ -370,7 +383,9 @@ export function OnboardingProvider({ children }) {
     const status = await hydrateFromBackendStatus(payload);
     const backendStep = String(payload?.currentStep || payload?.nextStep || "").toLowerCase();
     const resolvedStep = String(status?.step || "").toLowerCase();
-    const screenName = ONBOARDING_SCREEN_MAP[resolvedStep] || ONBOARDING_SCREEN_MAP[backendStep];
+    const backendScreen = ONBOARDING_SCREEN_MAP[backendStep];
+    const resolvedScreen = ONBOARDING_SCREEN_MAP[resolvedStep];
+    const screenName = backendScreen || resolvedScreen;
     const routes = navigation?.getState?.()?.routes || [];
     const currentRouteName = routes.length ? routes[routes.length - 1]?.name : "";
 
@@ -383,7 +398,7 @@ export function OnboardingProvider({ children }) {
     });
 
     if (!screenName) {
-      console.warn("[ONBOARDING] unknown backend step", resolvedStep || backendStep || "(empty)");
+      console.warn("[ONBOARDING] unknown backend step", backendStep || resolvedStep || "(empty)");
       return status;
     }
 
