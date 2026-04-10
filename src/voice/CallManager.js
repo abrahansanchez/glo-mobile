@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, AppState } from "react-native";
+import TwilioVoice from "react-native-twilio-programmable-voice";
 import api from "../config/api";
 import { AuthContext } from "../auth/authContext";
 import {
@@ -18,6 +19,7 @@ export function CallManagerProvider({ children }) {
   const [actionInProgress, setActionInProgress] = useState(false);
   const appStateRef = useRef(AppState.currentState || "active");
   const inFlightActionRef = useRef(null);
+  const pendingInviteRef = useRef(null);
 
   const getCallSid = useCallback((invite) => invite?.call_sid || invite?.callSid || invite?.CallSid || null, []);
   const inviteKey = useCallback((invite) => getCallSid(invite) || invite?.from || invite?.call_from || "unknown", [getCallSid]);
@@ -66,6 +68,7 @@ export function CallManagerProvider({ children }) {
       const isForeground = appStateRef.current === "active";
       console.log(`[CALL_UI_ROUTE] ${isForeground ? "foreground_overlay" : "background_native"}`);
       logVoipDiag(payload, true);
+      pendingInviteRef.current = payload;
 
       if (!isForeground) {
         return;
@@ -87,21 +90,28 @@ export function CallManagerProvider({ children }) {
   }, [logVoipDiag]);
 
   const answerIncomingCall = useCallback(async () => {
-    if (!incomingInvite || actionInProgress) {
+    if (!incomingInvite && !pendingInviteRef.current) {
       return;
     }
-    const actionKey = `answer:${inviteKey(incomingInvite)}`;
+    if (actionInProgress) {
+      return;
+    }
+
+    const invite = incomingInvite || pendingInviteRef.current;
+    const actionKey = `answer:${inviteKey(invite)}`;
     if (inFlightActionRef.current === actionKey) {
       console.log("[CALL_UI] answer ignored: action already in flight", { actionKey });
       return;
     }
 
-    console.log("[CALL_UI] Answer pressed");
+    console.log("[CALL_UI] Answer pressed — accepting immediately");
     inFlightActionRef.current = actionKey;
     setActionInProgress(true);
     try {
-      await acceptIncomingInvite();
-      logVoipDiag(incomingInvite, false);
+      TwilioVoice.accept();
+      console.log("[CALL_UI] TwilioVoice.accept() called");
+      pendingInviteRef.current = null;
+      logVoipDiag(invite, false);
       setIncomingInvite(null);
     } catch (error) {
       console.log("[CALL_UI] answer failed", error?.response?.data || error?.message || error);

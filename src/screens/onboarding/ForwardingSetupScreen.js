@@ -65,6 +65,7 @@ export default function ForwardingSetupScreen({ navigation }) {
   const { onboardingData, updateData, setLocalStep, updateStep, navigateFromBackend } = useContext(OnboardingContext);
   const t = getStrings(normalizeLanguage(onboardingData?.preferredLanguage));
   const [carrier, setCarrier] = useState(onboardingData?.forwardingCarrier || "Verizon");
+  const [forwardNumber, setForwardNumber] = useState("");
   const [loading, setLoading] = useState(true);
   const [activating, setActivating] = useState(false);
   const [skipping, setSkipping] = useState(false);
@@ -91,8 +92,16 @@ export default function ForwardingSetupScreen({ navigation }) {
   }, [onboardingData?.forwardingCarrier]);
 
   useEffect(() => {
+    if (onboardingData?.phoneNumber) {
+      setForwardNumber(onboardingData.phoneNumber);
+    }
+  }, [onboardingData]);
+
+  useEffect(() => {
     loadStatus();
   }, []);
+
+  console.log("[FORWARDING_SETUP] current forwardNumber:", forwardNumber);
 
   async function loadStatus(retryCount = 0) {
     setLoading(true);
@@ -148,11 +157,18 @@ export default function ForwardingSetupScreen({ navigation }) {
     setActivating(true);
     setError("");
     try {
-      console.log("[FORWARDING_SETUP] saving forwardFromNumber:", onboardingData.phoneNumber);
+      if (!forwardNumber || forwardNumber.trim() === "") {
+        console.warn("[FORWARDING_SETUP] ❌ Missing forwardNumber — blocking save");
+        return;
+      }
+
+      console.log("[FORWARDING_SETUP] saving forwardFromNumber:", forwardNumber);
+      console.log("[FORWARDING_SAVE] sending:", {
+        forwardFromNumber: forwardNumber,
+      });
       await updateData({
-        forwardFromNumber: onboardingData.phoneNumber,
+        forwardFromNumber: forwardNumber,
         forwardingCarrier: carrier,
-        forwardingActivationDialString: activationCodePreview,
       });
       await Linking.openURL(`tel:${encodeURIComponent(activationCodePreview)}`);
       // Navigate to verification screen directly after opening dialer
@@ -254,7 +270,7 @@ export default function ForwardingSetupScreen({ navigation }) {
       <AppButton
         label={activating ? "Opening dialer..." : "Activate forwarding"}
         onPress={handleActivate}
-        disabled={activating || loading}
+        disabled={activating || loading || !forwardNumber}
         style={styles.primaryButton}
       />
       <AppButton

@@ -50,7 +50,7 @@ function formatE164(value) {
 export default function ForwardingVerifyScreen({ navigation }) {
   const { colors, resolvedTheme } = useTheme();
   const { barber } = useContext(AuthContext);
-  const { setLocalStep, onboardingData, navigateFromBackend, updateStep } = useContext(OnboardingContext);
+  const { setLocalStep, onboardingData, updateStep } = useContext(OnboardingContext);
   const [submitting, setSubmitting] = useState(false);
   const [polling, setPolling] = useState(false);
   const [error, setError] = useState("");
@@ -98,12 +98,12 @@ export default function ForwardingVerifyScreen({ navigation }) {
         stopPolling();
         console.log("[FORWARDING_VERIFY] verified — posting step and advancing");
         try {
-          await updateStep(STEPS.FORWARDING_VERIFICATION);
+          await updateStep("ai_intro");
         } catch (e) {
-          console.log("[FORWARDING_VERIFY] step post failed:", e?.message);
+          console.log("[FORWARDING_VERIFY] step update failed:", e?.message);
         }
-        await navigateFromBackend(navigation);
-        return payload;
+        navigation.replace("AIIntro");
+        return;
       }
 
       if (status === "activation_failed") {
@@ -149,12 +149,13 @@ export default function ForwardingVerifyScreen({ navigation }) {
     setSubmitting(true);
     setError("");
     try {
-      const forwardFromNumber = formatE164(barber?.phoneNumber || onboardingData?.phoneNumber);
+      const forwardFromNumber = onboardingData.forwardFromNumber;
       if (!forwardFromNumber) {
         setError("We couldn't find your business number. Go back and confirm your phone number first.");
         setSubmitting(false);
         return;
       }
+      console.log("[VERIFY_TRIGGER] sending test request", onboardingData.forwardFromNumber);
       const response = await api.post("/phone/forwarding/test", {
         forwardFromNumber,
       });
@@ -246,10 +247,14 @@ export default function ForwardingVerifyScreen({ navigation }) {
         variant="secondary"
         onPress={async () => {
           stopPolling();
+
           try {
-            await updateStep(STEPS.FORWARDING_VERIFICATION);
-          } catch (e) {}
-          await navigateFromBackend(navigation);
+            await updateStep("ai_intro");
+          } catch (e) {
+            console.log("[FORWARDING_VERIFY] step update failed:", e?.message);
+          }
+
+          navigation.replace("AIIntro");
         }}
         style={[styles.secondaryButton, { marginTop: spacing.lg }]}
       />

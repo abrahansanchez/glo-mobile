@@ -115,6 +115,9 @@ function attachTwilioVoipListenersOnce() {
   listenersAttached = true;
 
   TwilioVoice.addEventListener("deviceReady", () => {
+    console.log("[VOICE] deviceReady fired");
+    console.log("[VOICE] REGISTER SUCCESS");
+    console.log("[VOICE] device REGISTERED with Twilio");
     console.log("[VOIP] deviceReady fired");
     console.log("[VOIP] ✅ deviceReady (VoIP push registered)");
     markDeviceReadyAndFlush("deviceReady_event");
@@ -122,6 +125,9 @@ function attachTwilioVoipListenersOnce() {
 
   TwilioVoice.addEventListener("deviceNotReady", (payload) => {
     deviceReadySeen = false;
+    console.log("[VOICE] deviceNotReady", payload);
+    console.log("[VOICE] REGISTER FAILED", payload);
+    console.log("[VOICE] device NOT REGISTERED", payload);
     console.log("[VOIP] ❌ deviceNotReady", payload);
     logVoipDiag();
   });
@@ -175,6 +181,7 @@ export async function initVoipPushAndRegisterOnce() {
   didInit = true;
 
   try {
+    console.log("[VOICE] fetching token");
     console.log("[VOIP] fetching voice jwt for Twilio init");
     const { token: accessToken, identity: tokenIdentity } = await fetchVoiceToken();
     const barber = await getBarber();
@@ -196,9 +203,13 @@ export async function initVoipPushAndRegisterOnce() {
     }
 
     console.log("[VOIP] initializing Twilio Voice with access token");
+    console.log("[VOICE] registering device");
+    console.log("[VOICE_INIT] starting initWithToken");
     console.log("[VOIP] initWithToken starting");
     try {
       const result = await TwilioVoice.initWithToken(accessToken);
+      console.log("[VOICE_INIT] initWithToken completed");
+      console.log("[VOICE] SDK initialized");
       console.log("[VOIP] initWithToken resolved", result || {});
       console.log("[VOIP_DIAG_NATIVE]", TwilioVoice);
       if (result?.initialized) {

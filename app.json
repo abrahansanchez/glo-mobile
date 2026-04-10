@@ -18,6 +18,7 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSMicrophoneUsageDescription": "Glō needs microphone access to make and receive calls.",
+        "NSContactsUsageDescription": "Glō uses contacts to help manage client communication and bookings.",
         "UIBackgroundModes": [
           "audio",
           "voip",
