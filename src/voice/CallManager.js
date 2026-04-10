@@ -108,8 +108,9 @@ export function CallManagerProvider({ children }) {
     inFlightActionRef.current = actionKey;
     setActionInProgress(true);
     try {
-      TwilioVoice.accept();
-      console.log("[CALL_UI] TwilioVoice.accept() called");
+      const activeInvite = pendingInviteRef.current || incomingInvite;
+      await activeInvite.accept();
+      console.log("[CALL_UI] invite.accept() called");
       pendingInviteRef.current = null;
       logVoipDiag(invite, false);
       setIncomingInvite(null);
