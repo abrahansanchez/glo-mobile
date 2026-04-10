@@ -199,6 +199,7 @@ export async function initVoipPushAndRegisterOnce() {
         appName: "Glō",
         includesCallsInRecents: false,
       });
+      console.log("[CALLKIT_HANDLERS]", Object.keys(TwilioVoice));
       console.log("[VOIP] CallKit configured");
     }
 
