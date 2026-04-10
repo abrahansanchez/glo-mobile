@@ -3,6 +3,7 @@ import { Alert, AppState } from "react-native";
 import TwilioVoice from "react-native-twilio-programmable-voice";
 import api from "../config/api";
 import { AuthContext } from "../auth/authContext";
+import { fulfillAnswer, reportIncomingCall } from "./nativeCallKit";
 import {
   acceptIncomingInvite,
   isVoipDeviceReady,
@@ -69,6 +70,10 @@ export function CallManagerProvider({ children }) {
       console.log(`[CALL_UI_ROUTE] ${isForeground ? "foreground_overlay" : "background_native"}`);
       logVoipDiag(payload, true);
       pendingInviteRef.current = payload;
+      reportIncomingCall(
+        payload?.call_sid,
+        payload?.call_from || "Unknown Caller"
+      );
 
       if (!isForeground) {
         return;
@@ -108,8 +113,13 @@ export function CallManagerProvider({ children }) {
     inFlightActionRef.current = actionKey;
     setActionInProgress(true);
     try {
-      await acceptIncomingInvite();
-      console.log("[CALL_UI] acceptIncomingInvite() called");
+      const callSid = pendingInviteRef.current?.call_sid || incomingInvite?.call_sid;
+      if (!callSid) {
+        throw new Error("No callSid available to fulfill");
+      }
+      console.log("[CALL_UI] fulfilling CallKit answer", callSid);
+      await fulfillAnswer(callSid);
+      console.log("[CALL_UI] CallKit answer fulfilled + Twilio accepted");
       pendingInviteRef.current = null;
       logVoipDiag(invite, false);
       setIncomingInvite(null);
