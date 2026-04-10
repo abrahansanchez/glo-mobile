@@ -108,7 +108,12 @@ export function CallManagerProvider({ children }) {
     inFlightActionRef.current = actionKey;
     setActionInProgress(true);
     try {
-      const activeInvite = pendingInviteRef.current || incomingInvite;
+      const activeInvite = await TwilioVoice.getCallInvite();
+      console.log("[CALL_UI] getCallInvite result", activeInvite);
+      console.log("[CALL_UI] accept type", typeof activeInvite?.accept);
+      if (!activeInvite || typeof activeInvite.accept !== "function") {
+        throw new Error("No valid call invite — accept not available");
+      }
       await activeInvite.accept();
       console.log("[CALL_UI] invite.accept() called");
       pendingInviteRef.current = null;
