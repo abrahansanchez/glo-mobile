@@ -12,7 +12,6 @@ import { CallManagerProvider, useCallManager } from "./src/voice/CallManager";
 import IncomingCallOverlay from "./src/voice/IncomingCallOverlay";
 import AnimatedSplashOverlay from "./src/components/AnimatedSplashOverlay";
 import { ThemeProvider } from "./src/theme/ThemeContext";
-import { initVoipPushAndRegisterOnce } from "./src/voice/voipPushService";
 
 function IncomingCallOverlayContainer() {
   const { incomingInvite, actionInProgress, answerIncomingCall, letAiHandleIncomingCall } = useCallManager();
@@ -34,12 +33,6 @@ export default function App() {
   useEffect(() => {
     const teardown = setupForegroundPushLogging();
     return teardown;
-  }, []);
-
-  useEffect(() => {
-    console.log("[VOICE_FIX] forcing init on app start");
-    console.log("[VOICE_FIX] init triggered from App root");
-    initVoipPushAndRegisterOnce();
   }, []);
 
   return (
