@@ -42,13 +42,7 @@
     },
     "plugins": [
       "expo-secure-store",
-      "expo-notifications",
-      [
-        "react-native-twilio-programmable-voice",
-        {
-          "mode": "development"
-        }
-      ]
+      "expo-notifications"
     ],
     "web": {
       "favicon": "./assets/branding/glo_favicon.png"
