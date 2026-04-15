@@ -1,10 +1,12 @@
 import Expo
+import PushKit
 import React
 import ReactAppDependencyProvider
 
 @UIApplicationMain
 public class AppDelegate: ExpoAppDelegate {
   var window: UIWindow?
+  var voipRegistry: PKPushRegistry?
 
   var reactNativeDelegate: ExpoReactNativeFactoryDelegate?
   var reactNativeFactory: RCTReactNativeFactory?
@@ -28,9 +30,13 @@ public class AppDelegate: ExpoAppDelegate {
       in: window,
       launchOptions: launchOptions
     )
+
+    let voipRegistry = PKPushRegistry(queue: DispatchQueue.main)
+    voipRegistry.delegate = self
+    voipRegistry.desiredPushTypes = [.voIP]
+    self.voipRegistry = voipRegistry
 #endif
 
-    print("[APP] AppDelegate loaded clean (no PushKit override)")
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
@@ -52,6 +58,42 @@ public class AppDelegate: ExpoAppDelegate {
   ) -> Bool {
     let result = RCTLinkingManager.application(application, continue: userActivity, restorationHandler: restorationHandler)
     return super.application(application, continue: userActivity, restorationHandler: restorationHandler) || result
+  }
+}
+
+extension AppDelegate: PKPushRegistryDelegate {
+
+  public func pushRegistry(
+    _ registry: PKPushRegistry,
+    didUpdate pushCredentials: PKPushCredentials,
+    for type: PKPushType
+  ) {
+    let deviceToken = pushCredentials.token.map { String(format: "%02x", $0) }.joined()
+    print("[VOIP_NATIVE_TOKEN]", deviceToken)
+
+    // ✅ FIXED METHOD NAME
+    RNVoipPushNotificationManager.didUpdate(pushCredentials, forType: type.rawValue)
+  }
+
+  public func pushRegistry(
+    _ registry: PKPushRegistry,
+    didInvalidatePushTokenFor type: PKPushType
+  ) {
+    print("[VOIP_NATIVE_TOKEN_INVALIDATED]", type.rawValue)
+  }
+
+  public func pushRegistry(
+    _ registry: PKPushRegistry,
+    didReceiveIncomingPushWith payload: PKPushPayload,
+    for type: PKPushType,
+    completion: @escaping () -> Void
+  ) {
+    let uuid = payload.dictionaryPayload["uuid"] as? String ?? UUID().uuidString
+
+    RNVoipPushNotificationManager.addCompletionHandler(uuid, completionHandler: completion)
+
+    // ✅ FIXED SWIFT SYNTAX: Changed 'withPayload' to 'with' to match the bridged selector
+    RNVoipPushNotificationManager.didReceiveIncomingPush(with: payload, forType: type.rawValue)
   }
 }
 
