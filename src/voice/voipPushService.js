@@ -213,9 +213,6 @@ export async function initVoipPushAndRegisterOnce() {
       console.log("[VOICE] SDK initialized");
       console.log("[VOIP] initWithToken resolved", result || {});
       console.log("[VOIP_DIAG_NATIVE]", TwilioVoice);
-      console.log("[VOICE] calling TwilioVoice.register()");
-      await TwilioVoice.register();
-      console.log("[VOICE] register completed");
       if (result?.initialized) {
         deviceReadySeen = true;
         console.log("[VOIP] device ready via init_result");
