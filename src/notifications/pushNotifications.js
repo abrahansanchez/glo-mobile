@@ -3,16 +3,27 @@ import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import * as SecureStore from 'expo-secure-store';
 import api from '../config/api';
+import { getBarber } from '../auth/barberStorage';
 
 const EXPO_PUSH_TOKEN_KEY = 'expoPushToken';
 const EXPO_PUSH_PROJECT_ID_KEY = 'expoPushProjectId';
+const EXPO_PUSH_OWNER_KEY = 'expoPushOwner';
 let notificationHandlerConfigured = false;
-let registerInFlightKey = null;
-let registerInFlightPromise = null;
+const registrationPromises = new Map();
 const EXPO_TOKEN_PATTERN = /^(ExponentPushToken|ExpoPushToken)\[[^\]]+\]$/;
 
 function isValidExpoPushToken(token) {
   return typeof token === 'string' && EXPO_TOKEN_PATTERN.test(token);
+}
+
+function correlationId(value) {
+  if (value == null || value === '') return null;
+  let hash = 2166136261;
+  for (const character of String(value)) {
+    hash ^= character.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `ref_${(hash >>> 0).toString(16).padStart(8, '0')}`;
 }
 
 /**
@@ -56,59 +67,96 @@ export async function registerForPushNotifications() {
       Constants.easConfig?.projectId ??
       Constants.expoConfig?.extra?.eas?.projectId;
 
-    console.log('[PUSH] projectId:', projectId);
+    console.log('[PUSH] project configuration present?', !!projectId);
 
     // Get Expo push token
     const tokenResponse = await Notifications.getExpoPushTokenAsync({ projectId });
 
     const token = tokenResponse.data;
 
-    console.log('[PUSH] token acquired:', token);
+    console.log('[PUSH] Expo token acquired?', !!token);
     const apns = await Notifications.getDevicePushTokenAsync();
     console.log('[PUSH] apns token present?', !!apns?.data);
 
     return { token, projectId };
   } catch (error) {
-    console.error('[PUSH] Registration error:', error);
+    console.error('[PUSH] Registration failed', {
+      status: error?.response?.status || null,
+      code: error?.code || null,
+    });
     return null;
   }
 }
 
-async function registerTokenWithBackend(token, projectId) {
+function resolveBarberId(barber) {
+  const value = barber?._id || barber?.id || null;
+  return value == null ? null : String(value);
+}
+
+async function getCurrentOwner() {
+  return resolveBarberId(await getBarber());
+}
+
+function normalizeOwner(owner) {
+  return owner == null || String(owner).trim() === '' ? null : String(owner);
+}
+
+async function ownerStillMatches(expectedOwner) {
+  return (await getCurrentOwner()) === expectedOwner;
+}
+
+async function registerTokenWithBackend(token, projectId, expectedOwner) {
   if (!isValidExpoPushToken(token)) {
     console.log('[PUSH_REGISTER] skipped invalid expo token format');
     return null;
   }
 
+  const owner = normalizeOwner(expectedOwner);
+  if (!owner || !(await ownerStillMatches(owner))) {
+    console.log('[PUSH_REGISTER] skipped without matching authenticated owner', {
+      hasExpectedOwner: !!owner,
+    });
+    return null;
+  }
+
   const lastRegisteredToken = await SecureStore.getItemAsync(EXPO_PUSH_TOKEN_KEY);
   const lastRegisteredProjectId = await SecureStore.getItemAsync(EXPO_PUSH_PROJECT_ID_KEY);
-  if (lastRegisteredToken === token && lastRegisteredProjectId === (projectId || '')) {
+  const lastRegisteredOwner = await SecureStore.getItemAsync(EXPO_PUSH_OWNER_KEY);
+  if (
+    lastRegisteredToken === token &&
+    lastRegisteredProjectId === (projectId || '') &&
+    lastRegisteredOwner === owner
+  ) {
     console.log('[PUSH] token already registered, skipping');
     return token;
   }
 
-  const registrationKey = `${token}|${projectId || ''}`;
-  if (registerInFlightPromise && registerInFlightKey === registrationKey) {
-    console.log('[PUSH_REGISTER] dedupe in-flight registration', { registrationKey });
-    return registerInFlightPromise;
+  const registrationKey = `${owner}|${token}|${projectId || ''}`;
+  const existingPromise = registrationPromises.get(registrationKey);
+  if (existingPromise) {
+    console.log('[PUSH_REGISTER] dedupe in-flight registration');
+    return existingPromise;
   }
 
   const maxRetries = 2;
   const attemptCount = maxRetries + 1;
 
-  registerInFlightKey = registrationKey;
-  registerInFlightPromise = (async () => {
+  const registrationPromise = (async () => {
     for (let attempt = 1; attempt <= attemptCount; attempt += 1) {
       try {
+        if (!(await ownerStillMatches(owner))) {
+          console.log('[PUSH_REGISTER] cancelled after owner changed', { stage: 'before_request' });
+          return null;
+        }
         console.log(`[PUSH_REGISTER] attempt ${attempt}`);
-        const response = await api.post('/push/register', { token });
-        console.log('[PUSH] register response:', response?.data);
+        await api.post('/push/register', { token });
         console.log('[PUSH_REGISTER] success');
         break;
       } catch (error) {
         console.log('[PUSH_REGISTER] failed', {
           attempt,
-          error: error?.response?.data || error?.message || error,
+          status: error?.response?.status || null,
+          code: error?.code || null,
         });
 
         if (attempt >= attemptCount) {
@@ -119,30 +167,45 @@ async function registerTokenWithBackend(token, projectId) {
       }
     }
 
+    if (!(await ownerStillMatches(owner))) {
+      console.log('[PUSH_REGISTER] cache skipped after owner changed');
+      return null;
+    }
     await SecureStore.setItemAsync(EXPO_PUSH_TOKEN_KEY, token);
+    if (!(await ownerStillMatches(owner))) {
+      console.log('[PUSH_REGISTER] project cache skipped after owner changed');
+      return null;
+    }
     await SecureStore.setItemAsync(EXPO_PUSH_PROJECT_ID_KEY, projectId || '');
+    if (!(await ownerStillMatches(owner))) {
+      console.log('[PUSH_REGISTER] owner cache skipped after owner changed');
+      return null;
+    }
+    await SecureStore.setItemAsync(EXPO_PUSH_OWNER_KEY, owner);
     console.log('[PUSH] token registered with backend');
     return token;
   })();
+  registrationPromises.set(registrationKey, registrationPromise);
 
   try {
-    return await registerInFlightPromise;
+    return await registrationPromise;
   } finally {
-    registerInFlightPromise = null;
-    registerInFlightKey = null;
+    if (registrationPromises.get(registrationKey) === registrationPromise) {
+      registrationPromises.delete(registrationKey);
+    }
   }
 }
 
-export async function registerExpoPushTokenIfNeeded() {
+export async function registerExpoPushTokenIfNeeded(expectedOwner) {
   const tokenResult = await registerForPushNotifications();
   if (!tokenResult?.token) {
     return null;
   }
   const { token, projectId } = tokenResult;
-  return registerTokenWithBackend(token, projectId);
+  return registerTokenWithBackend(token, projectId, expectedOwner);
 }
 
-export async function registerProvidedExpoPushTokenIfNeeded(token) {
+export async function registerProvidedExpoPushTokenIfNeeded(token, expectedOwner) {
   if (!token) {
     return null;
   }
@@ -155,7 +218,7 @@ export async function registerProvidedExpoPushTokenIfNeeded(token) {
     Constants.easConfig?.projectId ??
     Constants.expoConfig?.extra?.eas?.projectId;
 
-  return registerTokenWithBackend(token, projectId);
+  return registerTokenWithBackend(token, projectId, expectedOwner);
 }
 
 export function setupPushTokenRefreshRegistration(onPushTokenRefresh) {
@@ -181,7 +244,10 @@ export function setupPushTokenRefreshRegistration(onPushTokenRefresh) {
     try {
       subscription?.remove?.();
     } catch (error) {
-      console.log('[PUSH] token listener cleanup error', error?.message || error);
+      console.log('[PUSH] token listener cleanup error', {
+        status: error?.response?.status || null,
+        code: error?.code || null,
+      });
     }
   };
 }
@@ -202,22 +268,27 @@ export function setupForegroundPushLogging() {
   const sub1 = Notifications.addNotificationReceivedListener((n) => {
     const data = n?.request?.content?.data || {};
     const mappedCallSid = data?.call_sid || data?.callSid || data?.CallSid || null;
-    console.log(
-      '[PUSH] received (foreground):',
-      n?.request?.content?.title,
-      n?.request?.content?.body,
-      data
-    );
+    console.log('[PUSH] received in foreground', {
+      hasTitle: !!n?.request?.content?.title,
+      hasBody: !!n?.request?.content?.body,
+      hasData: Object.keys(data).length > 0,
+      callRef: correlationId(mappedCallSid),
+    });
     console.log('[PUSH] call_sid mapping', {
-      call_sid: data?.call_sid || null,
-      callSid: data?.callSid || null,
-      CallSid: data?.CallSid || null,
-      mappedCallSid,
+      hasSnakeCase: !!data?.call_sid,
+      hasCamelCase: !!data?.callSid,
+      hasPascalCase: !!data?.CallSid,
+      callRef: correlationId(mappedCallSid),
     });
   });
 
   const sub2 = Notifications.addNotificationResponseReceivedListener((r) => {
-    console.log('[PUSH] tapped:', r?.notification?.request?.content?.data);
+    const data = r?.notification?.request?.content?.data || {};
+    const mappedCallSid = data?.call_sid || data?.callSid || data?.CallSid || null;
+    console.log('[PUSH] notification tapped', {
+      hasData: Object.keys(data).length > 0,
+      callRef: correlationId(mappedCallSid),
+    });
   });
 
   return () => {

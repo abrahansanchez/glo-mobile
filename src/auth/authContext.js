@@ -4,7 +4,10 @@ import { getToken, saveToken, clearToken } from "./tokenStorage";
 import api from "../config/api";
 import { setOnUnauthorized, setOnSubscriptionRequired } from "./authEvents";
 import { saveBarber, getBarber, clearBarber } from "./barberStorage";
-import { initVoipPushAndRegisterOnce } from "../voice/voipPushService";
+import {
+  initVoipPushAndRegisterOnce,
+  invalidateVoipRegistrationSession,
+} from "../voice/voipPushService";
 import {
   registerExpoPushTokenIfNeeded,
   registerProvidedExpoPushTokenIfNeeded,
@@ -13,6 +16,15 @@ import {
 import { setAnalyticsContext } from "../analytics/track";
 
 export const AuthContext = createContext();
+
+function errorDiagnostic(error) {
+  return {
+    hasError: !!error,
+    status: error?.response?.status || null,
+    code: error?.code || null,
+    name: error?.name || null,
+  };
+}
 
 export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
@@ -67,10 +79,7 @@ export function AuthProvider({ children }) {
           raw: payload,
         };
       } catch (error) {
-        console.log(
-          "[AUTH_REFRESH] failed",
-          error?.response?.data || error?.message || error
-        );
+        console.log("[AUTH_REFRESH] failed", errorDiagnostic(error));
         return null;
       }
     })();
@@ -82,20 +91,25 @@ export function AuthProvider({ children }) {
     }
   }, [authenticated, barber]);
 
-  const registerPushTokenWithContext = useCallback(async (reason, providedToken = null) => {
+  const registerPushTokenWithContext = useCallback(async (
+    reason,
+    providedToken = null,
+    expectedOwner = null
+  ) => {
     try {
       console.log(`[PUSH_REGISTER] trigger ${reason}`);
+      if (!expectedOwner) {
+        console.log(`[PUSH_REGISTER] skipped ${reason}`, { hasExpectedOwner: false });
+        return;
+      }
       if (providedToken) {
-        await registerProvidedExpoPushTokenIfNeeded(providedToken);
+        await registerProvidedExpoPushTokenIfNeeded(providedToken, expectedOwner);
         return;
       }
 
-      await registerExpoPushTokenIfNeeded();
+      await registerExpoPushTokenIfNeeded(expectedOwner);
     } catch (error) {
-      console.log(
-        `[PUSH_REGISTER] trigger failed ${reason}`,
-        error?.response?.data || error?.message || error
-      );
+      console.log(`[PUSH_REGISTER] trigger failed ${reason}`, errorDiagnostic(error));
     }
   }, []);
 
@@ -107,6 +121,7 @@ export function AuthProvider({ children }) {
 
       if (!token) {
         console.log("[AUTH_RESTORE] no token -> authenticated=false, subscriptionStatus reset");
+        await clearBarber();
         try {
           delete api.defaults.headers.common.Authorization;
         } catch (e) {}
@@ -122,14 +137,20 @@ export function AuthProvider({ children }) {
 
         // restore barber from secure storage (do NOT call subscription-gated endpoints here)
         const b = await getBarber();
-        console.log("[AUTH_RESTORE] barber exists?", !!b, b?.id || b?._id);
+        console.log("[AUTH_RESTORE] barber exists?", !!b);
         setBarber(b || null);
 
         // treat token as valid for now; App will surface subscription issues later
         setAuthenticated(true);
         console.log("[VOIP] init triggered after auth restore");
-        initVoipPushAndRegisterOnce();
-        registerPushTokenWithContext("auth_restore_success");
+        initVoipPushAndRegisterOnce("auth_restore", b?._id || b?.id || null).catch((error) => {
+          console.log("[VOIP] auth restore init failed", errorDiagnostic(error));
+        });
+        registerPushTokenWithContext(
+          "auth_restore_success",
+          null,
+          b?._id || b?.id || null
+        );
         await refreshSession("auth_restore");
       } catch (e) {
         await clearToken();
@@ -154,6 +175,7 @@ export function AuthProvider({ children }) {
     });
 
     const token = response.data.token;
+    invalidateVoipRegistrationSession("login_account_activation");
     await saveToken(token);
 
     // set authorization header for api
@@ -163,22 +185,47 @@ export function AuthProvider({ children }) {
 
     // persist barber object if returned
     const barberObj = response.data?.barber || null;
-    if (barberObj) {
+    const authoritativeOwner = barberObj?._id || barberObj?.id || null;
+    let persistedOwner = null;
+    if (barberObj && authoritativeOwner) {
       await saveBarber(barberObj);
-      setBarber(barberObj);
+      const persistedBarber = await getBarber();
+      persistedOwner = persistedBarber?._id || persistedBarber?.id || null;
+      if (String(persistedOwner || "") === String(authoritativeOwner)) {
+        setBarber(barberObj);
+      } else {
+        persistedOwner = null;
+        await clearBarber();
+        setBarber(null);
+        console.log("[AUTH] login profile persistence unavailable", {
+          hasAuthoritativeOwner: true,
+        });
+      }
+    } else {
+      await clearBarber();
+      setBarber(null);
+      console.log("[AUTH] login response missing authoritative profile", {
+        hasBarber: !!barberObj,
+        hasAuthoritativeOwner: false,
+      });
     }
 
     setAuthenticated(true);
     setSubscriptionStatus("unknown");
     setStripeCustomerId(barberObj?.stripeCustomerId || null);
     console.log("[VOIP] init triggered after login");
-    initVoipPushAndRegisterOnce();
-    registerPushTokenWithContext("login_success");
+    initVoipPushAndRegisterOnce("login", barberObj?._id || barberObj?.id || null).catch((error) => {
+      console.log("[VOIP] login init failed", errorDiagnostic(error));
+    });
+    if (persistedOwner) {
+      registerPushTokenWithContext("login_success", null, persistedOwner);
+    }
     await refreshSession("login_success");
   };
 
   const logout = async () => {
     console.log("[SUB_STATUS] reset to unknown (logout)");
+    invalidateVoipRegistrationSession("logout");
     await clearToken();
     await clearBarber();
     try {
@@ -194,6 +241,7 @@ export function AuthProvider({ children }) {
   // When API detects a 401, it emits an unauthorized event — handle it here
   useEffect(() => {
     setOnUnauthorized(async () => {
+      invalidateVoipRegistrationSession("unauthorized");
       await clearToken();
       await clearBarber();
       try {
@@ -207,8 +255,10 @@ export function AuthProvider({ children }) {
     });
 
     setOnSubscriptionRequired((code) => {
-      const barberId = barber?.id || barber?._id;
-      console.log("[SUB_STATUS] set required", { reason: code, barberId });
+      console.log("[SUB_STATUS] set required", {
+        reason: code,
+        hasBarber: !!(barber?.id || barber?._id),
+      });
       setSubscriptionStatus("required");
       setSubscriptionReason(code || "SUBSCRIPTION_REQUIRED");
     });
@@ -221,19 +271,27 @@ export function AuthProvider({ children }) {
 
     const appStateSub = AppState.addEventListener("change", (nextState) => {
       if (nextState === "active") {
-        registerPushTokenWithContext("app_became_active");
+        registerPushTokenWithContext(
+          "app_became_active",
+          null,
+          barber?._id || barber?.id || null
+        );
       }
     });
 
     const teardownPushTokenRefresh = setupPushTokenRefreshRegistration((refreshedToken) => {
-      registerPushTokenWithContext("token_refresh_event", refreshedToken);
+      registerPushTokenWithContext(
+        "token_refresh_event",
+        refreshedToken,
+        barber?._id || barber?.id || null
+      );
     });
 
     return () => {
       appStateSub.remove();
       teardownPushTokenRefresh();
     };
-  }, [authenticated, registerPushTokenWithContext]);
+  }, [authenticated, barber, registerPushTokenWithContext]);
 
   useEffect(() => {
     setAnalyticsContext({
