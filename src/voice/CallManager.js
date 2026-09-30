@@ -3,12 +3,9 @@ import { Alert, AppState } from "react-native";
 import TwilioVoice from "react-native-twilio-programmable-voice";
 import api from "../config/api";
 import { AuthContext } from "../auth/authContext";
-import { fulfillAnswer, reportIncomingCall } from "./nativeCallKit";
 import {
-  acceptIncomingInvite,
   isVoipDeviceReady,
   onVoipIncomingInvite,
-  onVoipInviteCancelled,
   rejectOrIgnoreIncomingInvite,
 } from "./voipPushService";
 
@@ -67,70 +64,47 @@ export function CallManagerProvider({ children }) {
   useEffect(() => {
     const unsubscribeIncoming = onVoipIncomingInvite((payload) => {
       const isForeground = appStateRef.current === "active";
-      console.log(`[CALL_UI_ROUTE] ${isForeground ? "foreground_overlay" : "background_native"}`);
+      console.log(`[CALL_UI_ROUTE] ${isForeground ? "foreground_native_callkit" : "background_native"}`);
       logVoipDiag(payload, true);
       pendingInviteRef.current = payload;
-      reportIncomingCall(
-        payload?.call_sid,
-        payload?.call_from || "Unknown Caller"
-      );
 
       if (!isForeground) {
         return;
       }
 
-      console.log("[CALL_UI] incoming invite received (foreground)");
-      setIncomingInvite(payload || null);
-    });
-
-    const unsubscribeCancelled = onVoipInviteCancelled((payload) => {
-      logVoipDiag(payload, false);
-      setIncomingInvite(null);
+      // In foreground, native CallKit UI handles everything
+      // Do NOT show JS overlay — Twilio owns the call lifecycle
+      console.log("[CALL_UI] foreground call — native CallKit will handle accept");
+      // Explicitly do NOT call setIncomingInvite here
     });
 
     return () => {
       unsubscribeIncoming();
-      unsubscribeCancelled();
     };
   }, [logVoipDiag]);
 
   const answerIncomingCall = useCallback(async () => {
-    if (!incomingInvite && !pendingInviteRef.current) {
+    console.log("[CALL_UI] Answer pressed — triggering native CallKit answer");
+    if (!pendingInviteRef.current) {
+      console.log("[CALL_UI] ❌ no pending invite");
       return;
     }
-    if (actionInProgress) {
-      return;
-    }
-
-    const invite = incomingInvite || pendingInviteRef.current;
-    const actionKey = `answer:${inviteKey(invite)}`;
-    if (inFlightActionRef.current === actionKey) {
-      console.log("[CALL_UI] answer ignored: action already in flight", { actionKey });
-      return;
-    }
-
-    console.log("[CALL_UI] Answer pressed — accepting immediately");
-    inFlightActionRef.current = actionKey;
-    setActionInProgress(true);
     try {
-      const callSid = pendingInviteRef.current?.call_sid || incomingInvite?.call_sid;
-      if (!callSid) {
-        throw new Error("No callSid available to fulfill");
+      const { NativeModules } = require("react-native");
+      if (NativeModules.NativeCallKitModule) {
+        await NativeModules.NativeCallKitModule.fulfillAnswer(
+          pendingInviteRef.current?.call_sid || ""
+        );
+        console.log("[CALL_UI] fulfillAnswer called");
+      } else {
+        console.log("[CALL_UI] NativeCallKitModule not available — falling back to TwilioVoice.accept()");
+        TwilioVoice.accept();
       }
-      console.log("[CALL_UI] fulfilling CallKit answer", callSid);
-      await fulfillAnswer(callSid);
-      console.log("[CALL_UI] CallKit answer fulfilled + Twilio accepted");
-      pendingInviteRef.current = null;
-      logVoipDiag(invite, false);
-      setIncomingInvite(null);
-    } catch (error) {
-      console.log("[CALL_UI] answer failed", error?.response?.data || error?.message || error);
-      Alert.alert("Unable to answer", "We could not answer the call. Please try again.");
-    } finally {
-      setActionInProgress(false);
-      inFlightActionRef.current = null;
+    } catch (err) {
+      console.log("[CALL_UI] ❌ answer error", err?.message || err);
+      TwilioVoice.accept();
     }
-  }, [actionInProgress, incomingInvite, inviteKey, logVoipDiag]);
+  }, []);
 
   const letAiHandleIncomingCall = useCallback(async () => {
     if (!incomingInvite || actionInProgress) {

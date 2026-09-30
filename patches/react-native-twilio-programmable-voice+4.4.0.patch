@@ -1,55 +1,61 @@
 diff --git a/node_modules/react-native-twilio-programmable-voice/ios/RNTwilioVoice/RNTwilioVoice.m b/node_modules/react-native-twilio-programmable-voice/ios/RNTwilioVoice/RNTwilioVoice.m
-index df4c381..5a7cea2 100644
+index df4c381..58e7206 100644
 --- a/node_modules/react-native-twilio-programmable-voice/ios/RNTwilioVoice/RNTwilioVoice.m
 +++ b/node_modules/react-native-twilio-programmable-voice/ios/RNTwilioVoice/RNTwilioVoice.m
-@@ -4,6 +4,7 @@
- @import AVFoundation;
- @import PushKit;
- @import CallKit;
-+@import UIKit;
- @import TwilioVoice;
+@@ -227,11 +227,13 @@ - (void)pushRegistry:(PKPushRegistry *)registry didUpdatePushCredentials:(PKPush
+   NSLog(@"pushRegistry:didUpdatePushCredentials:forType");
  
- NSString * const kCachedDeviceToken = @"CachedDeviceToken";
-@@ -206,9 +207,11 @@ - (void)dealloc {
- }
- 
- - (void)initPushRegistry {
-+  NSLog(@"[VOICE_NATIVE] initPushRegistry");
-   self.voipRegistry = [[PKPushRegistry alloc] initWithQueue:dispatch_get_main_queue()];
-   self.voipRegistry.delegate = self;
-   self.voipRegistry.desiredPushTypes = [NSSet setWithObject:PKPushTypeVoIP];
-+  NSLog(@"[VOICE_NATIVE] PushKit desiredPushTypes set to VoIP");
- }
- 
- - (NSString *)fetchAccessToken {
-@@ -233,6 +236,8 @@ - (void)pushRegistry:(PKPushRegistry *)registry didUpdatePushCredentials:(PKPush
-                                                         ntohl(tokenBytes[3]), ntohl(tokenBytes[4]), ntohl(tokenBytes[5]),
-                                                         ntohl(tokenBytes[6]), ntohl(tokenBytes[7])];
+   if ([type isEqualToString:PKPushTypeVoIP]) {
+-    const unsigned *tokenBytes = [credentials.token bytes];
+-    NSString *deviceTokenString = [NSString stringWithFormat:@"<%08x %08x %08x %08x %08x %08x %08x %08x>",
+-                                                        ntohl(tokenBytes[0]), ntohl(tokenBytes[1]), ntohl(tokenBytes[2]),
+-                                                        ntohl(tokenBytes[3]), ntohl(tokenBytes[4]), ntohl(tokenBytes[5]),
+-                                                        ntohl(tokenBytes[6]), ntohl(tokenBytes[7])];
++    const unsigned char *tokenBytes = [credentials.token bytes];
++    NSMutableString *deviceTokenString = [NSMutableString stringWithCapacity:credentials.token.length * 2];
++    for (NSUInteger i = 0; i < credentials.token.length; i++) {
++        [deviceTokenString appendFormat:@"%02x", tokenBytes[i]];
++    }
++    // Force refresh registration after token format fix
++    [[NSUserDefaults standardUserDefaults] removeObjectForKey:kCachedDeviceToken];
      NSString *accessToken = [self fetchAccessToken];
-+    NSLog(@"[VOICE_NATIVE] VoIP token received %@", deviceTokenString);
-+    NSLog(@"[VOICE_NATIVE] access token present? %@", accessToken.length > 0 ? @"YES" : @"NO");
      NSString *cachedDeviceToken = [[NSUserDefaults standardUserDefaults] objectForKey:kCachedDeviceToken];
      if (![cachedDeviceToken isEqualToString:deviceTokenString]) {
-         cachedDeviceToken = deviceTokenString;
-@@ -240,6 +245,7 @@ - (void)pushRegistry:(PKPushRegistry *)registry didUpdatePushCredentials:(PKPush
-         /*
-          * Perform registration if a new device token is detected.
-          */
-+        NSLog(@"[VOICE_NATIVE] attempting Twilio VoIP registration");
-         [TwilioVoice registerWithAccessToken:accessToken
-                                  deviceToken:cachedDeviceToken
-                                   completion:^(NSError *error) {
-@@ -352,8 +358,11 @@ - (void)callInviteReceived:(TVOCallInvite *)callInvite {
-     if (callInvite.customParameters[kCallerNameCustomParameter]) {
-         from = callInvite.customParameters[kCallerNameCustomParameter];
+@@ -308,6 +310,7 @@ - (void)pushRegistry:(PKPushRegistry *)registry
+              forType:(PKPushType)type
+ withCompletionHandler:(void (^)(void))completion {
+     NSLog(@"pushRegistry:didReceiveIncomingPushWithPayload:forType:withCompletionHandler");
++    NSLog(@"[VOICE_NATIVE] didReceiveIncomingPushWithPayload fired");
+-
++
+     // Save for later when the notification is properly handled.
+     self.incomingPushCompletionCallback = completion;
+@@ -645,8 +648,6 @@ - (void)provider:(CXProvider *)provider performAnswerCallAction:(CXAnswerCallAct
+       [action fail];
      }
--    // Always report to CallKit
--    [self reportIncomingCallFrom:from withUUID:callInvite.uuid];
-+    if ([UIApplication sharedApplication].applicationState != UIApplicationStateActive) {
-+        [self reportIncomingCallFrom:from withUUID:callInvite.uuid];
+   }];
+-
+-  [action fulfill];
+ }
+-
++
+ - (void)provider:(CXProvider *)provider performEndCallAction:(CXEndCallAction *)action {
+@@ -791,12 +792,12 @@ - (void)performAnswerVoiceCallWithUUID:(NSUUID *)uuid
+-
++
+     TVOCall *call = [callInvite acceptWithOptions:acceptOptions delegate:self];
+-
++
+-    if (!call) {
+-        completionHandler(NO);
+-    } else {
++    if (call) {
+         self.callKitCompletionCallback = completionHandler;
+         self.activeCall = call;
+         self.activeCalls[call.uuid.UUIDString] = call;
 +    } else {
-+        NSLog(@"[CALL_UI] foreground: skipping CallKit report, using in-app overlay only");
-+    }
-     self.activeCallInvites[[callInvite.uuid UUIDString]] = callInvite;
-     if ([[NSProcessInfo processInfo] operatingSystemVersion].majorVersion < 13) {
-         [self incomingPushHandled];
++        completionHandler(NO);
+     }
+-
++
+     [self.activeCallInvites removeObjectForKey:callInvite.uuid.UUIDString];

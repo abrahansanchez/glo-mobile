@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View } from "react-native";
+import { AppState, View } from "react-native";
 import Constants from "expo-constants";
 import { StripeProvider } from "@stripe/stripe-react-native";
 import { AuthProvider } from "./src/auth/authContext";
@@ -18,7 +18,7 @@ function IncomingCallOverlayContainer() {
 
   return (
     <IncomingCallOverlay
-      visible={!!incomingInvite}
+      visible={!!incomingInvite && AppState.currentState !== "active"}
       invite={incomingInvite}
       actionInProgress={actionInProgress}
       onAnswer={answerIncomingCall}
