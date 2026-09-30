@@ -1,6 +1,5 @@
-import React, { useContext, useEffect, useRef, useState } from "react";
-import { AppState, ScrollView, StyleSheet } from "react-native";
-import { AuthContext } from "../../auth/authContext";
+import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
+import { ScrollView, StyleSheet } from "react-native";
 import { OnboardingContext } from "../../onboarding/OnboardingContext";
 import api from "../../config/api";
 import OnboardingHeader from "../../onboarding/OnboardingHeader";
@@ -12,173 +11,272 @@ import { STEPS } from "../../onboarding/stepKeys";
 import { spacing } from "../../ui/tokens";
 import { useTheme } from "../../theme/ThemeContext";
 
-function getForwardingStatus(payload) {
-  const raw =
-    payload?.forwardingStatus ||
-    payload?.status ||
-    payload?.forwarding?.status ||
-    payload?.data?.forwardingStatus ||
-    payload?.data?.status ||
-    payload?.data?.forwarding?.status;
+const SUPPORTED_STATES = new Set([
+  "provisioning",
+  "provisioning_failed_retryable",
+  "provisioning_failed_terminal",
+  "awaiting_forwarding_setup",
+  "verification_in_progress",
+  "verification_failed_retryable",
+  "verified",
+]);
 
-  const normalized = String(raw || "").toLowerCase();
-
-  console.log("[FORWARDING_STATUS_RESOLVED]", {
-    raw,
-    normalized,
-    payload: JSON.stringify(payload),
-  });
-
-  return normalized;
-}
-
-function isVerificationInProgress(status) {
-  return ["routing_ready", "activation_started", "verification_pending", "testing", "verifying"].includes(
-    String(status || "").toLowerCase()
-  );
-}
-
-function formatE164(value) {
+export function formatE164(value) {
   const digits = String(value || "").replace(/[^\d]/g, "");
-  if (!digits) return "";
   if (digits.length === 10) return `+1${digits}`;
   if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
   if (digits.length >= 11 && digits.length <= 15) return `+${digits}`;
   return "";
 }
 
+export function getVerificationCode(payload) {
+  const value = payload?.verificationCode ?? payload?.data?.verificationCode;
+  return typeof value === "string" && /^\d{6}$/.test(value) ? value : "";
+}
+
+export function getServerState(payload) {
+  if (payload?.verified === true) return "verified";
+
+  for (const state of [
+    payload?.phoneSetupState,
+    payload?.forwardingStatus,
+    payload?.provisioningStatus,
+  ]) {
+    const normalized = String(state || "").toLowerCase();
+    if (SUPPORTED_STATES.has(normalized)) return normalized;
+  }
+
+  const provisioningStatus = String(payload?.provisioningStatus || "").toLowerCase();
+  const failureClass = String(payload?.provisioningFailureClass || "").toLowerCase();
+  if (provisioningStatus === "failed" && failureClass === "retryable") {
+    return "provisioning_failed_retryable";
+  }
+  if (provisioningStatus === "failed" && failureClass === "terminal") {
+    return "provisioning_failed_terminal";
+  }
+  return "";
+}
+
+export function sessionFromTestResponse(payload, forwardFromNumber) {
+  const body = payload?.data || payload || {};
+  return {
+    verificationCode: getVerificationCode(payload),
+    verificationSessionId:
+      typeof body.verificationSessionId === "string" ? body.verificationSessionId : "",
+    verificationWindowExpiresAt:
+      typeof body.verificationWindowExpiresAt === "string" ? body.verificationWindowExpiresAt : "",
+    instructions: typeof body.instructions === "string" ? body.instructions : "",
+    forwardFromNumber,
+  };
+}
+
+export function mergePendingStatus(currentSession, payload, forwardFromNumber) {
+  return {
+    verificationCode: currentSession?.verificationCode || "",
+    verificationSessionId:
+      typeof payload?.verificationSessionId === "string"
+        ? payload.verificationSessionId
+        : currentSession?.verificationSessionId || "",
+    verificationWindowExpiresAt:
+      typeof payload?.verificationWindowExpiresAt === "string"
+        ? payload.verificationWindowExpiresAt
+        : currentSession?.verificationWindowExpiresAt || "",
+    instructions: currentSession?.instructions || "",
+    forwardFromNumber: currentSession?.forwardFromNumber || forwardFromNumber,
+  };
+}
+
+export function reconcileStatusSession(currentSession, payload, forwardFromNumber) {
+  const state = getServerState(payload);
+  if (state === "verified") return null;
+  if (state === "verification_in_progress") {
+    return mergePendingStatus(currentSession, payload, forwardFromNumber);
+  }
+  return currentSession;
+}
+
+export function requiresCodeRecovery(state, session) {
+  return (
+    state === "verification_in_progress" &&
+    Boolean(session?.verificationSessionId) &&
+    !session?.verificationCode
+  );
+}
+
+export function buildRestartPayload(session) {
+  if (!session?.verificationSessionId) return null;
+  return {
+    forwardFromNumber: session.forwardFromNumber,
+    restartVerification: true,
+    expectedVerificationSessionId: session.verificationSessionId,
+  };
+}
+
+function isExpired(value) {
+  if (!value) return false;
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) && timestamp <= Date.now();
+}
+
 export default function ForwardingVerifyScreen({ navigation }) {
   const { colors, resolvedTheme } = useTheme();
-  const { barber } = useContext(AuthContext);
   const { setLocalStep, onboardingData, updateStep } = useContext(OnboardingContext);
-  const [submitting, setSubmitting] = useState(false);
-  const [polling, setPolling] = useState(false);
+  const [starting, setStarting] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [restarting, setRestarting] = useState(false);
   const [error, setError] = useState("");
   const [statusPayload, setStatusPayload] = useState(null);
-  const pollRef = useRef(null);
-  const hasStartedRef = useRef(false);
+  const [activeSession, setActiveSession] = useState(null);
+  const operationInFlightRef = useRef("");
+
+  const normalizedForwardFromNumber = useMemo(
+    () => formatE164(onboardingData?.forwardFromNumber || onboardingData?.phoneNumber),
+    [onboardingData?.forwardFromNumber, onboardingData?.phoneNumber]
+  );
+  const serverState = getServerState(statusPayload);
+  const verified = serverState === "verified";
+  const pending = serverState === "verification_in_progress";
+  const expired = isExpired(
+    activeSession?.verificationWindowExpiresAt || statusPayload?.verificationWindowExpiresAt
+  );
+  const retryableFailure = [
+    "provisioning_failed_retryable",
+    "verification_failed_retryable",
+  ].includes(serverState);
+  const terminalFailure = serverState === "provisioning_failed_terminal";
+  const activeSessionId =
+    activeSession?.verificationSessionId ||
+    (typeof statusPayload?.verificationSessionId === "string"
+      ? statusPayload.verificationSessionId
+      : "");
+  const codeUnavailable = requiresCodeRecovery(serverState, {
+    ...activeSession,
+    verificationSessionId: activeSessionId,
+  });
+  const canRestart = Boolean(activeSessionId) && (pending || expired || retryableFailure);
 
   useEffect(() => {
     setLocalStep(STEPS.FORWARDING_VERIFICATION);
-    console.log("[FORWARDING_VERIFY] screen mounted");
-    loadStatus();
+  }, [setLocalStep]);
 
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
-    };
-  }, []);
+  function applyStatus(payload) {
+    const nextPayload = payload || {};
+    setStatusPayload(nextPayload);
 
-  useEffect(() => {
-    const subscription = AppState.addEventListener("change", (state) => {
-      console.log("[FORWARDING_VERIFY] app state:", state);
-
-      if (state === "active") {
-        if (hasStartedRef.current) return;
-        hasStartedRef.current = true;
-        console.log("[FORWARDING_VERIFY] app returned → starting verification");
-        runVerification();
-      }
-    });
-
-    return () => subscription.remove();
-  }, []);
-
-  async function loadStatus() {
-    console.log("[FORWARDING_VERIFY] loadStatus called");
-    try {
-      const response = await api.get("/phone/forwarding/status");
-      const payload = response.data || {};
-      console.log("[FORWARDING_STATUS] payload:", JSON.stringify(payload));
-      const status = getForwardingStatus(payload);
-      const verified = payload?.verified === true || ["verified", "complete", "completed"].includes(status);
-
-      setStatusPayload(payload);
-
-      if (verified) {
-        stopPolling();
-        console.log("[FORWARDING_VERIFY] verified — posting step and advancing");
-        try {
-          await updateStep("ai_intro");
-        } catch (e) {
-          console.log("[FORWARDING_VERIFY] step update failed:", e?.message);
-        }
-        navigation.replace("AIIntro");
-        return;
-      }
-
-      if (status === "activation_failed") {
-        stopPolling();
-        setPolling(false);
-        return payload;
-      }
-
-      if (isVerificationInProgress(status) && !pollRef.current) {
-        startPolling();
-      }
-
-      return payload;
-    } catch (e) {
-      console.log("[FORWARDING_VERIFY] loadStatus error:", e?.message);
-      setError(e?.response?.data?.message || "Failed to check forwarding status");
-      stopPolling();
-      setPolling(false);
-      return null;
-    }
+    setActiveSession((current) =>
+      reconcileStatusSession(current, nextPayload, normalizedForwardFromNumber)
+    );
   }
 
-  function stopPolling() {
-    if (pollRef.current) {
-      clearInterval(pollRef.current);
-      pollRef.current = null;
-    }
-  }
-
-  function startPolling() {
-    if (pollRef.current) return;
-
-    console.log("[FORWARDING_VERIFY] starting polling");
-    setPolling(true);
-    pollRef.current = setInterval(() => {
-      loadStatus();
-    }, 2000);
-  }
-
-  async function runVerification() {
-    console.log("[FORWARDING_VERIFY] runVerification called");
-    if (submitting) return;
-    setSubmitting(true);
+  async function refreshStatus() {
+    if (operationInFlightRef.current) return;
+    operationInFlightRef.current = "refresh";
+    setRefreshing(true);
     setError("");
     try {
-      const forwardFromNumber = onboardingData.forwardFromNumber;
-      if (!forwardFromNumber) {
-        setError("We couldn't find your business number. Go back and confirm your phone number first.");
-        setSubmitting(false);
-        return;
-      }
-      console.log("[VERIFY_TRIGGER] sending test request", onboardingData.forwardFromNumber);
-      const response = await api.post("/phone/forwarding/test", {
-        forwardFromNumber,
-      });
-      console.log("[FORWARDING_VERIFY] test response:", JSON.stringify(response?.data));
-      await loadStatus();
-    } catch (e) {
-      const code = e?.response?.data?.code;
-      if (e?.response?.status === 409 || code === "VERIFICATION_ALREADY_RUNNING") {
-        console.log("[FORWARDING_VERIFY] already running, switching to polling");
-        await loadStatus();
-        startPolling();
-      } else {
-        console.log("[FORWARDING_VERIFY] error:", e?.response?.data || e?.message);
-        setError(e?.response?.data?.message || "Failed to start verification");
-      }
+      const response = await api.get("/phone/forwarding/status");
+      applyStatus(response.data || {});
+    } catch {
+      setError("Failed to check verification status. Please try again.");
     } finally {
-      setSubmitting(false);
+      operationInFlightRef.current = "";
+      setRefreshing(false);
     }
   }
 
-  const status = getForwardingStatus(statusPayload);
-  const failed = status === "activation_failed";
-  const waiting = polling || submitting || isVerificationInProgress(status);
+  async function startVerification() {
+    if (operationInFlightRef.current) return;
+    if (!normalizedForwardFromNumber) {
+      setError("We couldn't find your business number. Go back and confirm it first.");
+      return;
+    }
+
+    operationInFlightRef.current = "start";
+    setStarting(true);
+    setError("");
+    try {
+      const response = await api.post("/phone/forwarding/test", {
+        forwardFromNumber: normalizedForwardFromNumber,
+      });
+      const nextSession = sessionFromTestResponse(response.data, normalizedForwardFromNumber);
+      if (!nextSession.verificationCode || !nextSession.verificationSessionId) {
+        throw new Error("Verification started without a displayable code or session.");
+      }
+      setActiveSession(nextSession);
+      setStatusPayload(response.data?.data || response.data || {});
+    } catch (requestError) {
+      const responseBody = requestError?.response?.data;
+      if (responseBody?.code === "VERIFICATION_ALREADY_RUNNING") {
+        applyStatus({
+          phoneSetupState: "verification_in_progress",
+          verificationSessionId: responseBody?.verificationSessionId,
+          verificationWindowExpiresAt: responseBody?.verificationWindowExpiresAt,
+        });
+        setError(
+          "Verification is already in progress, but this code can’t be shown again. Restart verification to generate a new code."
+        );
+      } else {
+        setError("Failed to start verification. Please try again.");
+      }
+    } finally {
+      operationInFlightRef.current = "";
+      setStarting(false);
+    }
+  }
+
+  async function restartVerification() {
+    if (operationInFlightRef.current) return;
+    const restartPayload = buildRestartPayload({
+      ...activeSession,
+      verificationSessionId: activeSessionId,
+      forwardFromNumber:
+        activeSession?.forwardFromNumber || normalizedForwardFromNumber,
+    });
+    if (!restartPayload?.expectedVerificationSessionId) {
+      setError("Check verification status before restarting.");
+      return;
+    }
+    if (!formatE164(restartPayload.forwardFromNumber)) {
+      setError("We couldn't find your business number. Go back and confirm it first.");
+      return;
+    }
+
+    operationInFlightRef.current = "restart";
+    setRestarting(true);
+    setError("");
+    try {
+      const response = await api.post("/phone/forwarding/test", restartPayload);
+      const nextSession = sessionFromTestResponse(
+        response.data,
+        restartPayload.forwardFromNumber
+      );
+      if (!nextSession.verificationCode || !nextSession.verificationSessionId) {
+        throw new Error("Verification restarted without a displayable code or session.");
+      }
+      setActiveSession(nextSession);
+      setStatusPayload(response.data?.data || response.data || {});
+    } catch {
+      setError("Could not restart verification. Check the current status and try again.");
+    } finally {
+      operationInFlightRef.current = "";
+      setRestarting(false);
+    }
+  }
+
+  async function continueOnboarding() {
+    try {
+      await updateStep("ai_intro");
+    } catch (stepError) {
+      setError(stepError?.message || "Failed to continue onboarding.");
+      return;
+    }
+    navigation.replace("AIIntro");
+  }
+
+  const busy = starting || refreshing || restarting;
+  const instructions =
+    activeSession?.instructions ||
+    "When the test call connects, enter these six digits using the phone keypad.";
 
   return (
     <ScrollView style={{ backgroundColor: colors.bg }} contentContainerStyle={styles.container}>
@@ -186,84 +284,130 @@ export default function ForwardingVerifyScreen({ navigation }) {
       <OnboardingHero
         stepLabel="Step 7 of 10"
         title="Verify forwarding"
-        subtitle="We’ll run a quick test to confirm your calls are reaching Glō."
+        subtitle="Run a secure test call, enter the six-digit code, then check the result."
       />
 
       <AppCard style={styles.statusCard}>
-        {waiting ? (
-          <>
-            <AppText style={styles.statusTitle}>Calling your number...</AppText>
-            <AppText style={[styles.statusText, { color: colors.textSecondary }]}>Verifying forwarding...</AppText>
-          </>
-        ) : failed ? (
-          <>
-            <AppText style={[styles.statusTitle, { color: colors.danger }]}>We couldn't verify forwarding yet.</AppText>
-            <AppText style={[styles.statusText, { color: colors.textSecondary }]}>
-              Please confirm forwarding is active and try again.
-            </AppText>
-          </>
-        ) : (
-          <>
-            <AppText style={styles.statusTitle}>Ready to test</AppText>
-            <AppText style={[styles.statusText, { color: colors.textSecondary }]}>
-              We’ll place a quick verification call and confirm it reaches Glō.
-            </AppText>
-          </>
-        )}
+        <AppText style={styles.statusTitle}>
+          {verified
+            ? "Forwarding verified"
+            : pending
+            ? "Verification in progress"
+            : terminalFailure
+            ? "Forwarding setup needs support"
+            : retryableFailure || expired
+            ? "Verification needs another try"
+            : serverState === "provisioning"
+            ? "Preparing your routing line"
+            : serverState === "awaiting_forwarding_setup"
+            ? "Ready for forwarding setup"
+            : "Ready to test"}
+        </AppText>
+        <AppText style={[styles.statusText, { color: colors.textSecondary }]}>
+          {verified
+            ? "Your calls are reaching Glō."
+            : terminalFailure
+            ? "Glō couldn't provision this routing line automatically. Contact support before retrying."
+            : pending
+            ? "Complete the test call, then check verification status."
+            : "Start a test when call forwarding is active."}
+        </AppText>
       </AppCard>
 
-      {failed ? (
-        <AppCard style={[styles.failedCard, { borderColor: colors.warning, backgroundColor: resolvedTheme === "dark" ? "#3a2a14" : "#fffbeb" }]}>
-          <AppText style={[styles.failedTitle, { color: colors.warning }]}>Need another pass?</AppText>
-          <AppText style={[styles.failedText, { color: colors.warning }]}>
-            Re-run the test after you confirm forwarding is active with your carrier.
+      {activeSession?.verificationCode ? (
+        <AppCard
+          style={[
+            styles.codeCard,
+            { borderColor: colors.accentBorder, backgroundColor: colors.surface },
+          ]}
+        >
+          <AppText style={[styles.codeLabel, { color: colors.textSecondary }]}>
+            Your verification code
+          </AppText>
+          <AppText
+            accessibilityLabel={`Verification code ${activeSession.verificationCode
+              .split("")
+              .join(" ")}`}
+            style={styles.codeValue}
+          >
+            {activeSession.verificationCode}
+          </AppText>
+          <AppText style={[styles.codeHelp, { color: colors.textSecondary }]}>
+            {instructions}
+          </AppText>
+        </AppCard>
+      ) : null}
+
+      {codeUnavailable ? (
+        <AppCard
+          style={[
+            styles.recoveryCard,
+            {
+              borderColor: colors.warning,
+              backgroundColor: resolvedTheme === "dark" ? "#3a2a14" : "#fffbeb",
+            },
+          ]}
+        >
+          <AppText style={[styles.recoveryText, { color: colors.warning }]}>
+            Verification is already in progress, but this code can’t be shown again. Restart verification to generate a new code.
           </AppText>
         </AppCard>
       ) : null}
 
       {!!error ? <AppText style={[styles.error, { color: colors.danger }]}>{error}</AppText> : null}
 
-      {!waiting ? (
+      {!activeSessionId && !verified ? (
         <AppButton
-          label={failed ? "Try again" : "Run test call"}
-          onPress={runVerification}
-          disabled={submitting}
+          label={starting ? "Starting verification..." : "Start verification call"}
+          onPress={startVerification}
+          disabled={busy}
           style={styles.primaryButton}
         />
       ) : null}
 
-      {!waiting && failed ? (
+      <AppButton
+        label={refreshing ? "Checking status..." : "Check verification status"}
+        variant={verified ? "secondary" : "primary"}
+        onPress={refreshStatus}
+        disabled={busy}
+        style={styles.secondaryButton}
+      />
+
+      {canRestart ? (
         <AppButton
-          label="Back to setup"
+          label={restarting ? "Restarting verification..." : "Restart verification"}
           variant="secondary"
-          onPress={() => navigation.navigate("ForwardingSetup")}
-          disabled={submitting}
+          onPress={restartVerification}
+          disabled={busy}
           style={styles.secondaryButton}
         />
       ) : null}
 
-      <AppButton
-        label="Skip for now — set up later"
-        variant="secondary"
-        onPress={async () => {
-          stopPolling();
+      {verified ? (
+        <AppButton
+          label="Continue"
+          onPress={continueOnboarding}
+          disabled={busy}
+          style={styles.primaryButton}
+        />
+      ) : null}
 
-          try {
-            await updateStep("ai_intro");
-          } catch (e) {
-            console.log("[FORWARDING_VERIFY] step update failed:", e?.message);
-          }
-
-          navigation.replace("AIIntro");
-        }}
-        style={[styles.secondaryButton, { marginTop: spacing.lg }]}
-      />
+      {!verified ? (
+        <AppButton
+          label="Back to setup"
+          variant="secondary"
+          onPress={() => navigation.navigate("ForwardingSetup")}
+          disabled={busy}
+          style={styles.secondaryButton}
+        />
+      ) : null}
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flexGrow: 1,
     padding: 24,
     justifyContent: "center",
   },
@@ -277,20 +421,39 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 14,
+    lineHeight: 20,
   },
-  failedCard: {
+  codeCard: {
+    alignItems: "center",
     borderWidth: 1,
     marginBottom: spacing.md,
   },
-  failedTitle: {
-    fontWeight: "800",
-    marginBottom: spacing.xs,
+  codeLabel: {
+    fontSize: 13,
+    fontWeight: "700",
+    marginBottom: spacing.sm,
   },
-  failedText: {
-    fontWeight: "600",
+  codeValue: {
+    fontSize: 30,
+    fontWeight: "900",
+    letterSpacing: 6,
+    marginBottom: spacing.sm,
+  },
+  codeHelp: {
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: "center",
+  },
+  recoveryCard: {
+    borderWidth: 1,
+    marginBottom: spacing.md,
+  },
+  recoveryText: {
+    fontWeight: "700",
+    lineHeight: 20,
   },
   primaryButton: {
-    marginTop: spacing.xs,
+    marginTop: spacing.sm,
   },
   secondaryButton: {
     marginTop: spacing.sm,

@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Linking, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Alert, Linking, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { OnboardingContext } from "../../onboarding/OnboardingContext";
 import api from "../../config/api";
 import OnboardingHeader from "../../onboarding/OnboardingHeader";
@@ -25,6 +25,14 @@ function formatPhoneNumber(value) {
   return `(${local.slice(0, 3)}) ${local.slice(3, 6)}-${local.slice(6)}`;
 }
 
+function formatE164(value) {
+  const digits = normalizeDigits(value);
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
+  if (digits.length >= 11 && digits.length <= 15) return `+${digits}`;
+  return "";
+}
+
 function getActivationParts(carrier) {
   switch (carrier) {
     case "Verizon":
@@ -39,22 +47,13 @@ function getActivationParts(carrier) {
 }
 
 function getForwardingStatus(payload) {
-  return String(
-    payload?.forwardingStatus ||
-      payload?.status ||
-      payload?.forwarding?.status ||
-      ""
-  ).toLowerCase();
+  return String(payload?.phoneSetupState || payload?.forwardingStatus || "").toLowerCase();
 }
 
 function getNextRouteFromStatus(status) {
   const normalized = String(status || "").toLowerCase();
-  if (["verified", "complete", "completed"].includes(normalized)) return "ForwardingSuccess";
-  if (
-    ["routing_ready", "activation_started", "verification_pending", "testing", "verifying", "activation_failed"].includes(
-      normalized
-    )
-  ) {
+  if (normalized === "verified") return "ForwardingSuccess";
+  if (["verification_in_progress", "verification_failed_retryable"].includes(normalized)) {
     return "ForwardingVerify";
   }
   return null;
@@ -65,7 +64,9 @@ export default function ForwardingSetupScreen({ navigation }) {
   const { onboardingData, updateData, setLocalStep, updateStep, navigateFromBackend } = useContext(OnboardingContext);
   const t = getStrings(normalizeLanguage(onboardingData?.preferredLanguage));
   const [carrier, setCarrier] = useState(onboardingData?.forwardingCarrier || "Verizon");
-  const [forwardNumber, setForwardNumber] = useState("");
+  const [forwardNumber, setForwardNumber] = useState(
+    onboardingData?.forwardFromNumber || onboardingData?.phoneNumber || ""
+  );
   const [loading, setLoading] = useState(true);
   const [activating, setActivating] = useState(false);
   const [skipping, setSkipping] = useState(false);
@@ -101,8 +102,6 @@ export default function ForwardingSetupScreen({ navigation }) {
     loadStatus();
   }, []);
 
-  console.log("[FORWARDING_SETUP] current forwardNumber:", forwardNumber);
-
   async function loadStatus(retryCount = 0) {
     setLoading(true);
     setError("");
@@ -110,13 +109,14 @@ export default function ForwardingSetupScreen({ navigation }) {
       const response = await api.get("/phone/forwarding/status");
       const payload = response.data || {};
       setStatusPayload(payload);
+      const savedFromNumber = payload?.forwardFromNumber || payload?.businessNumber;
+      if (savedFromNumber) setForwardNumber(savedFromNumber);
 
       const toNumber = payload?.forwardToNumber || payload?.destinationNumber || "";
       const digits = normalizeDigits(toNumber);
 
       // If no routing number yet, retry up to 3 times with 2 second delay
       if (!digits && retryCount < 3) {
-        console.log(`[FORWARDING_SETUP] no routing number yet, retry ${retryCount + 1}/3`);
         setTimeout(() => loadStatus(retryCount + 1), 2000);
         return;
       }
@@ -157,17 +157,20 @@ export default function ForwardingSetupScreen({ navigation }) {
     setActivating(true);
     setError("");
     try {
-      if (!forwardNumber || forwardNumber.trim() === "") {
-        console.warn("[FORWARDING_SETUP] ❌ Missing forwardNumber — blocking save");
+      const normalizedForwardNumber = formatE164(forwardNumber);
+      if (!normalizedForwardNumber) {
+        setError("Enter a valid business phone number, including the area code.");
         return;
       }
-
-      console.log("[FORWARDING_SETUP] saving forwardFromNumber:", forwardNumber);
-      console.log("[FORWARDING_SAVE] sending:", {
-        forwardFromNumber: forwardNumber,
-      });
+      const strategyPayload = {
+        strategy: "forward_existing",
+        forwardFromNumber: normalizedForwardNumber,
+        ...(carrier ? { forwardingCarrier: carrier } : {}),
+      };
+      await api.post("/phone/number-strategy", strategyPayload);
       await updateData({
-        forwardFromNumber: forwardNumber,
+        numberStrategy: "forward_existing",
+        forwardFromNumber: normalizedForwardNumber,
         forwardingCarrier: carrier,
       });
       await Linking.openURL(`tel:${encodeURIComponent(activationCodePreview)}`);
@@ -208,7 +211,16 @@ export default function ForwardingSetupScreen({ navigation }) {
       <AppCard style={styles.numberCard}>
         <View style={styles.numberRow}>
           <AppText style={styles.label}>Your business number</AppText>
-          <AppText style={styles.value}>{formatPhoneNumber(forwardFromNumber)}</AppText>
+          <TextInput
+            accessibilityLabel="Business phone number"
+            value={forwardNumber}
+            onChangeText={setForwardNumber}
+            placeholder="(555) 555-0123"
+            placeholderTextColor={colors.textMuted}
+            keyboardType="phone-pad"
+            textContentType="telephoneNumber"
+            style={[styles.phoneInput, { borderColor: colors.border, color: colors.textPrimary }]}
+          />
         </View>
         <View style={[styles.divider, { backgroundColor: colors.border }]} />
         <View style={styles.numberRow}>
@@ -302,6 +314,14 @@ const styles = StyleSheet.create({
   value: {
     fontSize: 24,
     fontWeight: "900",
+  },
+  phoneInput: {
+    borderWidth: 1,
+    borderRadius: 12,
+    fontSize: 20,
+    fontWeight: "800",
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
   divider: {
     height: 1,
