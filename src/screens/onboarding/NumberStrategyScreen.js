@@ -11,6 +11,14 @@ import { spacing } from "../../ui/tokens";
 import { useTheme } from "../../theme/ThemeContext";
 import { getStrings, normalizeLanguage } from "../../utils/i18n";
 
+function formatE164(value) {
+  const digits = String(value || "").replace(/[^\d]/g, "");
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
+  if (digits.length >= 11 && digits.length <= 15) return `+${digits}`;
+  return "";
+}
+
 export default function NumberStrategyScreen({ navigation }) {
   const { updateStep, onboardingData, navigateFromBackend } = useContext(OnboardingContext);
   const { colors } = useTheme();
@@ -42,8 +50,26 @@ export default function NumberStrategyScreen({ navigation }) {
     setSubmitting(true);
     setError("");
     try {
-      await api.post("/phone/number-strategy", { strategy: choice });
-      await updateStep(STEPS.NUMBER_STRATEGY, { numberStrategy: choice }, { analyticsProps: { numberStrategy: choice } });
+      const strategyPayload = { strategy: choice };
+      const stepData = { numberStrategy: choice };
+
+      if (choice === "forward_existing") {
+        const forwardFromNumber = formatE164(
+          onboardingData?.forwardFromNumber || onboardingData?.phoneNumber
+        );
+        if (!forwardFromNumber) {
+          setError("Enter a valid business phone number before setting up forwarding.");
+          return;
+        }
+        strategyPayload.forwardFromNumber = forwardFromNumber;
+        if (onboardingData?.forwardingCarrier) {
+          strategyPayload.forwardingCarrier = onboardingData.forwardingCarrier;
+        }
+        stepData.forwardFromNumber = forwardFromNumber;
+      }
+
+      await api.post("/phone/number-strategy", strategyPayload);
+      await updateStep(STEPS.NUMBER_STRATEGY, stepData, { analyticsProps: { numberStrategy: choice } });
       await navigateFromBackend(navigation);
     } catch (e) {
       setError(e?.response?.data?.message || t.failedToSave);
