@@ -10,6 +10,13 @@ import OnboardingHero from "../../components/onboarding/OnboardingHero";
 import { STEPS } from "../../onboarding/stepKeys";
 import { spacing } from "../../ui/tokens";
 import { useTheme } from "../../theme/ThemeContext";
+import {
+  beginExclusiveOperation,
+  buildVerificationStartBody,
+  endExclusiveOperation,
+  normalizeE164,
+  parseForwardingResponse,
+} from "../../phone/forwardingContract";
 
 const SUPPORTED_STATES = new Set([
   "provisioning",
@@ -21,13 +28,7 @@ const SUPPORTED_STATES = new Set([
   "verified",
 ]);
 
-export function formatE164(value) {
-  const digits = String(value || "").replace(/[^\d]/g, "");
-  if (digits.length === 10) return `+1${digits}`;
-  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
-  if (digits.length >= 11 && digits.length <= 15) return `+${digits}`;
-  return "";
-}
+export const formatE164 = normalizeE164;
 
 export function getVerificationCode(payload) {
   const value = payload?.verificationCode ?? payload?.data?.verificationCode;
@@ -57,7 +58,7 @@ export function getServerState(payload) {
   return "";
 }
 
-export function sessionFromTestResponse(payload, forwardFromNumber) {
+export function sessionFromTestResponse(payload, forwardFromNumber, forwardToNumber) {
   const body = payload?.data || payload || {};
   return {
     verificationCode: getVerificationCode(payload),
@@ -67,10 +68,13 @@ export function sessionFromTestResponse(payload, forwardFromNumber) {
       typeof body.verificationWindowExpiresAt === "string" ? body.verificationWindowExpiresAt : "",
     instructions: typeof body.instructions === "string" ? body.instructions : "",
     forwardFromNumber,
+    forwardToNumber,
   };
 }
 
-export function mergePendingStatus(currentSession, payload, forwardFromNumber) {
+export function mergePendingStatus(currentSession, payload, forwardFromNumber, forwardToNumber) {
+  const canonicalForwardToNumber = normalizeE164(forwardToNumber);
+  if (!canonicalForwardToNumber) return null;
   return {
     verificationCode: currentSession?.verificationCode || "",
     verificationSessionId:
@@ -83,14 +87,16 @@ export function mergePendingStatus(currentSession, payload, forwardFromNumber) {
         : currentSession?.verificationWindowExpiresAt || "",
     instructions: currentSession?.instructions || "",
     forwardFromNumber: currentSession?.forwardFromNumber || forwardFromNumber,
+    forwardToNumber: canonicalForwardToNumber,
   };
 }
 
-export function reconcileStatusSession(currentSession, payload, forwardFromNumber) {
+export function reconcileStatusSession(currentSession, payload, forwardFromNumber, forwardToNumber) {
+  if (!normalizeE164(forwardToNumber)) return null;
   const state = getServerState(payload);
   if (state === "verified") return null;
   if (state === "verification_in_progress") {
-    return mergePendingStatus(currentSession, payload, forwardFromNumber);
+    return mergePendingStatus(currentSession, payload, forwardFromNumber, forwardToNumber);
   }
   return currentSession;
 }
@@ -107,6 +113,7 @@ export function buildRestartPayload(session) {
   if (!session?.verificationSessionId) return null;
   return {
     forwardFromNumber: session.forwardFromNumber,
+    forwardToNumber: session.forwardToNumber,
     restartVerification: true,
     expectedVerificationSessionId: session.verificationSessionId,
   };
@@ -120,12 +127,17 @@ function isExpired(value) {
 
 export default function ForwardingVerifyScreen({ navigation }) {
   const { colors, resolvedTheme } = useTheme();
-  const { setLocalStep, onboardingData, updateStep } = useContext(OnboardingContext);
+  const {
+    setLocalStep,
+    onboardingData,
+    updateStep,
+    authenticatedForwardingStatus,
+    replaceAuthenticatedForwardingStatus,
+  } = useContext(OnboardingContext);
   const [starting, setStarting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [restarting, setRestarting] = useState(false);
   const [error, setError] = useState("");
-  const [statusPayload, setStatusPayload] = useState(null);
   const [activeSession, setActiveSession] = useState(null);
   const operationInFlightRef = useRef("");
 
@@ -133,11 +145,16 @@ export default function ForwardingVerifyScreen({ navigation }) {
     () => formatE164(onboardingData?.forwardFromNumber || onboardingData?.phoneNumber),
     [onboardingData?.forwardFromNumber, onboardingData?.phoneNumber]
   );
-  const serverState = getServerState(statusPayload);
+  const normalizedForwardToNumber = useMemo(
+    () => normalizeE164(authenticatedForwardingStatus?.forwardToNumber),
+    [authenticatedForwardingStatus?.forwardToNumber]
+  );
+  const serverState = getServerState(authenticatedForwardingStatus);
   const verified = serverState === "verified";
   const pending = serverState === "verification_in_progress";
   const expired = isExpired(
-    activeSession?.verificationWindowExpiresAt || statusPayload?.verificationWindowExpiresAt
+    activeSession?.verificationWindowExpiresAt ||
+      authenticatedForwardingStatus?.verificationWindowExpiresAt
   );
   const retryableFailure = [
     "provisioning_failed_retryable",
@@ -146,8 +163,8 @@ export default function ForwardingVerifyScreen({ navigation }) {
   const terminalFailure = serverState === "provisioning_failed_terminal";
   const activeSessionId =
     activeSession?.verificationSessionId ||
-    (typeof statusPayload?.verificationSessionId === "string"
-      ? statusPayload.verificationSessionId
+    (typeof authenticatedForwardingStatus?.verificationSessionId === "string"
+      ? authenticatedForwardingStatus.verificationSessionId
       : "");
   const codeUnavailable = requiresCodeRecovery(serverState, {
     ...activeSession,
@@ -161,56 +178,74 @@ export default function ForwardingVerifyScreen({ navigation }) {
 
   function applyStatus(payload) {
     const nextPayload = payload || {};
-    setStatusPayload(nextPayload);
+    replaceAuthenticatedForwardingStatus(nextPayload);
 
     setActiveSession((current) =>
-      reconcileStatusSession(current, nextPayload, normalizedForwardFromNumber)
+      reconcileStatusSession(
+        current,
+        nextPayload,
+        normalizedForwardFromNumber,
+        normalizeE164(nextPayload.forwardToNumber)
+      )
     );
   }
 
   async function refreshStatus() {
-    if (operationInFlightRef.current) return;
-    operationInFlightRef.current = "refresh";
+    if (!beginExclusiveOperation(operationInFlightRef, "refresh")) return;
     setRefreshing(true);
     setError("");
     try {
       const response = await api.get("/phone/forwarding/status");
-      applyStatus(response.data || {});
+      applyStatus(parseForwardingResponse(response));
     } catch {
       setError("Failed to check verification status. Please try again.");
     } finally {
-      operationInFlightRef.current = "";
+      endExclusiveOperation(operationInFlightRef, "refresh");
       setRefreshing(false);
     }
   }
 
   async function startVerification() {
-    if (operationInFlightRef.current) return;
+    if (!beginExclusiveOperation(operationInFlightRef, "start")) return;
     if (!normalizedForwardFromNumber) {
+      endExclusiveOperation(operationInFlightRef, "start");
       setError("We couldn't find your business number. Go back and confirm it first.");
       return;
     }
+    if (!normalizedForwardToNumber) {
+      endExclusiveOperation(operationInFlightRef, "start");
+      setError("Your dedicated Glō routing line is not ready. Return to setup and check its status.");
+      return;
+    }
 
-    operationInFlightRef.current = "start";
     setStarting(true);
     setError("");
     try {
-      const response = await api.post("/phone/forwarding/test", {
+      const requestBody = buildVerificationStartBody({
         forwardFromNumber: normalizedForwardFromNumber,
+        forwardToNumber: normalizedForwardToNumber,
       });
-      const nextSession = sessionFromTestResponse(response.data, normalizedForwardFromNumber);
+      if (!requestBody) return;
+      const response = await api.post("/phone/forwarding/test", requestBody);
+      const nextSession = sessionFromTestResponse(
+        response.data,
+        normalizedForwardFromNumber,
+        normalizedForwardToNumber
+      );
       if (!nextSession.verificationCode || !nextSession.verificationSessionId) {
         throw new Error("Verification started without a displayable code or session.");
       }
       setActiveSession(nextSession);
-      setStatusPayload(response.data?.data || response.data || {});
     } catch (requestError) {
       const responseBody = requestError?.response?.data;
       if (responseBody?.code === "VERIFICATION_ALREADY_RUNNING") {
-        applyStatus({
-          phoneSetupState: "verification_in_progress",
+        setActiveSession({
+          verificationCode: "",
           verificationSessionId: responseBody?.verificationSessionId,
           verificationWindowExpiresAt: responseBody?.verificationWindowExpiresAt,
+          instructions: "",
+          forwardFromNumber: normalizedForwardFromNumber,
+          forwardToNumber: normalizedForwardToNumber,
         });
         setError(
           "Verification is already in progress, but this code can’t be shown again. Restart verification to generate a new code."
@@ -219,46 +254,50 @@ export default function ForwardingVerifyScreen({ navigation }) {
         setError("Failed to start verification. Please try again.");
       }
     } finally {
-      operationInFlightRef.current = "";
+      endExclusiveOperation(operationInFlightRef, "start");
       setStarting(false);
     }
   }
 
   async function restartVerification() {
-    if (operationInFlightRef.current) return;
+    if (!beginExclusiveOperation(operationInFlightRef, "restart")) return;
     const restartPayload = buildRestartPayload({
       ...activeSession,
       verificationSessionId: activeSessionId,
-      forwardFromNumber:
-        activeSession?.forwardFromNumber || normalizedForwardFromNumber,
+      forwardFromNumber: normalizedForwardFromNumber,
+      forwardToNumber: normalizedForwardToNumber,
     });
     if (!restartPayload?.expectedVerificationSessionId) {
+      endExclusiveOperation(operationInFlightRef, "restart");
       setError("Check verification status before restarting.");
       return;
     }
-    if (!formatE164(restartPayload.forwardFromNumber)) {
-      setError("We couldn't find your business number. Go back and confirm it first.");
+    if (
+      !formatE164(restartPayload.forwardFromNumber) ||
+      !formatE164(restartPayload.forwardToNumber)
+    ) {
+      endExclusiveOperation(operationInFlightRef, "restart");
+      setError("Your forwarding numbers are incomplete. Return to setup and check the routing-line status.");
       return;
     }
 
-    operationInFlightRef.current = "restart";
     setRestarting(true);
     setError("");
     try {
       const response = await api.post("/phone/forwarding/test", restartPayload);
       const nextSession = sessionFromTestResponse(
         response.data,
-        restartPayload.forwardFromNumber
+        restartPayload.forwardFromNumber,
+        restartPayload.forwardToNumber
       );
       if (!nextSession.verificationCode || !nextSession.verificationSessionId) {
         throw new Error("Verification restarted without a displayable code or session.");
       }
       setActiveSession(nextSession);
-      setStatusPayload(response.data?.data || response.data || {});
     } catch {
       setError("Could not restart verification. Check the current status and try again.");
     } finally {
-      operationInFlightRef.current = "";
+      endExclusiveOperation(operationInFlightRef, "restart");
       setRestarting(false);
     }
   }

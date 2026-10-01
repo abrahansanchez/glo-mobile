@@ -13,6 +13,12 @@ import api from "../config/api";
 import { STEP_VALUES, STEPS } from "./stepKeys";
 import { track } from "../analytics/track";
 import { ONBOARDING_SCREEN_MAP } from "../navigation/onboardingScreenMap";
+import {
+  clearAuthenticatedForwardingState,
+  createAuthenticatedForwardingState,
+  sanitizeGenericOnboardingData,
+  selectAuthenticatedForwardingStatus,
+} from "../phone/forwardingContract";
 
 export const OnboardingContext = createContext(null);
 
@@ -167,25 +173,30 @@ export function OnboardingProvider({ children }) {
   const [onboardingStep, setStep] = useState(STEPS.WELCOME);
   const [onboardingStepMap, setOnboardingStepMap] = useState({});
   const [onboardingData, setData] = useState({});
+  const [authenticatedForwardingState, setAuthenticatedForwardingState] = useState(null);
   const { barber, refreshSession } = useContext(AuthContext);
   const barberId = barber?.id || barber?._id || null;
   const onboardingStepRef = useRef(STEPS.WELCOME);
   const onboardingDataRef = useRef({});
   const lastViewedStepRef = useRef(null);
+  const authenticatedBarberIdRef = useRef(barberId);
+  authenticatedBarberIdRef.current = barberId;
 
   const hydrateFromBackendStatus = useCallback(async (payload) => {
-    const cachedData = barberId ? await getOnboardingData(barberId) : {};
+    const cachedData = sanitizeGenericOnboardingData(
+      barberId ? await getOnboardingData(barberId) : {}
+    );
     const parsed = parseOnboardingStatus(payload);
     const preferredLanguage = resolvePreferredLanguage(payload, barber, cachedData);
     const phoneNumber = resolvePhoneNumber(payload, barber, cachedData);
-    const hydratedData = {
+    const hydratedData = sanitizeGenericOnboardingData({
       ...(cachedData || {}),
       ...(preferredLanguage ? { preferredLanguage } : {}),
       ...(phoneNumber ? { phoneNumber } : {}),
       ...(typeof payload?.setupCompletedViaCall === "boolean"
         ? { setupCompletedViaCall: payload.setupCompletedViaCall }
         : {}),
-    };
+    });
     const nextStep = resolveInitialStep(parsed.step, hydratedData, parsed.complete);
 
     setComplete(parsed.complete);
@@ -236,6 +247,10 @@ export function OnboardingProvider({ children }) {
   }, [onboardingData]);
 
   useEffect(() => {
+    setAuthenticatedForwardingState(clearAuthenticatedForwardingState());
+  }, [barberId]);
+
+  useEffect(() => {
     if (loading || onboardingComplete) return;
     if (!onboardingStep) return;
     if (lastViewedStepRef.current === onboardingStep) return;
@@ -259,11 +274,11 @@ export function OnboardingProvider({ children }) {
 
         try {
           await refreshFromBackend();
-        } catch (backendError) {
-          console.log("[ONBOARDING] backend status failed, using local cache", backendError?.message || backendError);
+        } catch {
+          console.log("[ONBOARDING] backend status failed, using local cache");
           const complete = await isComplete(barberId);
           const step = normalizeStep(await getStoredStep(barberId));
-          const data = await getOnboardingData(barberId);
+          const data = sanitizeGenericOnboardingData(await getOnboardingData(barberId));
           const preferredLanguage = resolvePreferredLanguage(null, barber, data);
           const hydratedData = preferredLanguage
             ? { ...(data || {}), preferredLanguage }
@@ -287,15 +302,15 @@ export function OnboardingProvider({ children }) {
       const response = await api.post("/onboarding/step", {
         step,
         completed: true,
-        data: onboardingData || {},
+        data: sanitizeGenericOnboardingData(onboardingData),
       });
       console.log(`[ONBOARDING_STEP] posted step=${step} ok=true`);
       const parsed = await hydrateFromBackendStatus(response.data);
       track("onboarding_step_completed", { step, ...analyticsProps });
       return parsed;
-    } catch (error) {
+    } catch {
       console.log(`[ONBOARDING_STEP] posted step=${step} ok=false`);
-      console.log("[ONBOARDING] step post failed", { step, error: error?.response?.data || error?.message || error });
+      console.log("[ONBOARDING] step post failed", { step });
       return null;
     }
   }, [barberId, hydrateFromBackendStatus, onboardingData]);
@@ -306,8 +321,8 @@ export function OnboardingProvider({ children }) {
       track("onboarding_completed", { step: onboardingStepRef.current || STEPS.TRIAL_START });
       try {
         await refreshSession?.("onboarding_completed");
-      } catch (error) {
-        console.log("[ONBOARDING] refreshSession after complete failed", error?.message || error);
+      } catch {
+        console.log("[ONBOARDING] refreshSession after complete failed");
       }
     }
     return status;
@@ -318,14 +333,16 @@ export function OnboardingProvider({ children }) {
       if (__DEV__) console.log("[Onboarding] skipping updateData — barberId not yet available");
       return;
     }
-    const updated = { ...(onboardingDataRef.current || {}), ...(newData || {}) };
+    const updated = sanitizeGenericOnboardingData({
+      ...(onboardingDataRef.current || {}),
+      ...(newData || {}),
+    });
     setData(updated);
     onboardingDataRef.current = updated;
     try {
-      if (__DEV__) console.log(`Onboarding:updateData ${barberId}`);
+      if (__DEV__) console.log("Onboarding:updateData");
     } catch (e) {}
     try {
-      console.log("[API_REQUEST_BODY]", updated);
       await api.post("/onboarding/step", {
         step: onboardingStepRef.current || STEPS.WELCOME,
         data: {
@@ -334,8 +351,8 @@ export function OnboardingProvider({ children }) {
           forwardingCarrier: updated.forwardingCarrier,
         },
       });
-    } catch (error) {
-      console.log("[ONBOARDING] updateData sync failed", error?.response?.data || error?.message || error);
+    } catch {
+      console.log("[ONBOARDING] updateData sync failed");
     }
     await persistData(barberId, updated);
   }, [barberId]);
@@ -360,7 +377,7 @@ export function OnboardingProvider({ children }) {
     setStep(step);
     try {
       // DEV-only condensed log
-      if (__DEV__) console.log(`Onboarding:updateStep ${barberId} -> ${step}`);
+      if (__DEV__) console.log(`Onboarding:updateStep -> ${step}`);
     } catch (e) {}
     await persistStep(barberId, step);
     if (Object.keys(data || {}).length > 0) {
@@ -376,6 +393,26 @@ export function OnboardingProvider({ children }) {
   const setLocalStep = useCallback(async (step) => {
     setStep(step);
   }, []);
+
+  const replaceAuthenticatedForwardingStatus = useCallback((statusPayload) => {
+    const ownerAtRequest = barberId;
+    if (!ownerAtRequest || authenticatedBarberIdRef.current !== ownerAtRequest) {
+      return false;
+    }
+    setAuthenticatedForwardingState(
+      createAuthenticatedForwardingState(ownerAtRequest, statusPayload)
+    );
+    return true;
+  }, [barberId]);
+
+  const clearAuthenticatedForwardingStatus = useCallback(() => {
+    setAuthenticatedForwardingState(clearAuthenticatedForwardingState());
+  }, []);
+
+  const authenticatedForwardingStatus = selectAuthenticatedForwardingStatus(
+    authenticatedForwardingState,
+    barberId
+  );
 
   const navigateFromBackend = useCallback(async (navigation) => {
     const response = await api.get("/onboarding/status");
@@ -424,7 +461,7 @@ export function OnboardingProvider({ children }) {
     setData({});
     try {
       if (__DEV__)
-        console.log(`Onboarding:reset ${barberId} (clearing local keys)`);
+        console.log("Onboarding:reset (clearing local keys)");
     } catch (e) {}
     await persistReset(barberId);
   }, [barberId]);
@@ -444,6 +481,9 @@ export function OnboardingProvider({ children }) {
       updateStep,
       setLocalStep,
       updateData,
+      authenticatedForwardingStatus,
+      replaceAuthenticatedForwardingStatus,
+      clearAuthenticatedForwardingStatus,
       reset,
     }),
     [
@@ -460,6 +500,9 @@ export function OnboardingProvider({ children }) {
       updateStep,
       setLocalStep,
       updateData,
+      authenticatedForwardingStatus,
+      replaceAuthenticatedForwardingStatus,
+      clearAuthenticatedForwardingStatus,
       reset,
     ]
   );

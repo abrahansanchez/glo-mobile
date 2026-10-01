@@ -28,13 +28,12 @@ api.interceptors.response.use(
       error.response?.data?.error ||
       error.response?.data?.code;
 
-    // Log all error details for debugging
+    // Fixed-shape diagnostics only; never include bodies, headers, tokens, or PII.
     console.log("[SUB_GUARD]", {
       url: error?.config?.url,
       method: error?.config?.method,
       status: error?.response?.status,
       code: errorCode,
-      message: error?.response?.data?.message,
     });
     try {
       const Analytics = require("../utils/Analytics").default;
@@ -59,7 +58,10 @@ api.interceptors.response.use(
       try {
         const barber = await getBarber();
         const barberId = barber?.id || barber?._id;
-        console.log("[SUB_GUARD] emitting subscription event for code:", errorCode, { barberId });
+        console.log("[SUB_GUARD] emitting subscription event", {
+          code: errorCode,
+          hasAuthenticatedBarber: Boolean(barberId),
+        });
         emitSubscriptionRequired(errorCode);
       } catch (e) {}
     }

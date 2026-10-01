@@ -1,4 +1,4 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useRef, useState } from "react";
 import { View, Pressable, StyleSheet } from "react-native";
 import { OnboardingContext } from "../../onboarding/OnboardingContext";
 import api from "../../config/api";
@@ -10,17 +10,18 @@ import OnboardingHero from "../../components/onboarding/OnboardingHero";
 import { spacing } from "../../ui/tokens";
 import { useTheme } from "../../theme/ThemeContext";
 import { getStrings, normalizeLanguage } from "../../utils/i18n";
-
-function formatE164(value) {
-  const digits = String(value || "").replace(/[^\d]/g, "");
-  if (digits.length === 10) return `+1${digits}`;
-  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
-  if (digits.length >= 11 && digits.length <= 15) return `+${digits}`;
-  return "";
-}
+import {
+  buildNumberStrategyPayload,
+  parseForwardingResponse,
+} from "../../phone/forwardingContract";
 
 export default function NumberStrategyScreen({ navigation }) {
-  const { updateStep, onboardingData, navigateFromBackend } = useContext(OnboardingContext);
+  const {
+    updateStep,
+    onboardingData,
+    navigateFromBackend,
+    replaceAuthenticatedForwardingStatus,
+  } = useContext(OnboardingContext);
   const { colors } = useTheme();
   const t = getStrings(normalizeLanguage(onboardingData?.preferredLanguage));
   const [choice, setChoice] = useState(
@@ -30,6 +31,7 @@ export default function NumberStrategyScreen({ navigation }) {
   );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const submitInFlightRef = useRef(false);
 
   const OPTIONS = [
     {
@@ -47,33 +49,48 @@ export default function NumberStrategyScreen({ navigation }) {
   ];
 
   async function handleContinue() {
+    if (submitInFlightRef.current) return;
+    submitInFlightRef.current = true;
     setSubmitting(true);
     setError("");
     try {
-      const strategyPayload = { strategy: choice };
+      const strategyPayload = buildNumberStrategyPayload({
+        strategy: choice,
+        forwardFromNumber:
+          onboardingData?.forwardFromNumber || onboardingData?.phoneNumber,
+        forwardingCarrier: onboardingData?.forwardingCarrier,
+      });
       const stepData = { numberStrategy: choice };
 
       if (choice === "forward_existing") {
-        const forwardFromNumber = formatE164(
-          onboardingData?.forwardFromNumber || onboardingData?.phoneNumber
-        );
-        if (!forwardFromNumber) {
+        if (!strategyPayload) {
           setError("Enter a valid business phone number before setting up forwarding.");
           return;
         }
-        strategyPayload.forwardFromNumber = forwardFromNumber;
-        if (onboardingData?.forwardingCarrier) {
-          strategyPayload.forwardingCarrier = onboardingData.forwardingCarrier;
+        stepData.forwardFromNumber = strategyPayload.forwardFromNumber;
+        if (strategyPayload.forwardingCarrier) {
+          stepData.forwardingCarrier = strategyPayload.forwardingCarrier;
         }
-        stepData.forwardFromNumber = forwardFromNumber;
       }
 
       await api.post("/phone/number-strategy", strategyPayload);
+      if (choice === "forward_existing") {
+        const statusResponse = await api.get("/phone/forwarding/status");
+        const forwardingState = parseForwardingResponse(statusResponse);
+        replaceAuthenticatedForwardingStatus(forwardingState);
+        if (forwardingState.forwardFromNumber) {
+          stepData.forwardFromNumber = forwardingState.forwardFromNumber;
+        }
+        if (forwardingState.forwardingCarrier) {
+          stepData.forwardingCarrier = forwardingState.forwardingCarrier;
+        }
+      }
       await updateStep(STEPS.NUMBER_STRATEGY, stepData, { analyticsProps: { numberStrategy: choice } });
       await navigateFromBackend(navigation);
     } catch (e) {
       setError(e?.response?.data?.message || t.failedToSave);
     } finally {
+      submitInFlightRef.current = false;
       setSubmitting(false);
     }
   }

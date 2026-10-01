@@ -11,6 +11,14 @@ import { STEPS } from "../../onboarding/stepKeys";
 import { spacing } from "../../ui/tokens";
 import { useTheme } from "../../theme/ThemeContext";
 import { getStrings, normalizeLanguage } from "../../utils/i18n";
+import {
+  buildCarrierActivationCode,
+  beginExclusiveOperation,
+  endExclusiveOperation,
+  getForwardingSetupControls,
+  normalizeE164,
+  parseForwardingResponse,
+} from "../../phone/forwardingContract";
 
 const CARRIER_OPTIONS = ["Verizon", "AT&T", "T-Mobile", "Other"];
 
@@ -25,33 +33,7 @@ function formatPhoneNumber(value) {
   return `(${local.slice(0, 3)}) ${local.slice(3, 6)}-${local.slice(6)}`;
 }
 
-function formatE164(value) {
-  const digits = normalizeDigits(value);
-  if (digits.length === 10) return `+1${digits}`;
-  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
-  if (digits.length >= 11 && digits.length <= 15) return `+${digits}`;
-  return "";
-}
-
-function getActivationParts(carrier) {
-  switch (carrier) {
-    case "Verizon":
-      return { prefix: "*72", suffix: "" };
-    case "AT&T":
-      return { prefix: "*21*", suffix: "#" };
-    case "T-Mobile":
-      return { prefix: "**21*1", suffix: "#" };
-    default:
-      return null;
-  }
-}
-
-function getForwardingStatus(payload) {
-  return String(payload?.phoneSetupState || payload?.forwardingStatus || "").toLowerCase();
-}
-
-function getNextRouteFromStatus(status) {
-  const normalized = String(status || "").toLowerCase();
+function getNextRouteFromStatus(normalized) {
   if (normalized === "verified") return "ForwardingSuccess";
   if (["verification_in_progress", "verification_failed_retryable"].includes(normalized)) {
     return "ForwardingVerify";
@@ -61,7 +43,15 @@ function getNextRouteFromStatus(status) {
 
 export default function ForwardingSetupScreen({ navigation }) {
   const { colors, resolvedTheme } = useTheme();
-  const { onboardingData, updateData, setLocalStep, updateStep, navigateFromBackend } = useContext(OnboardingContext);
+  const {
+    onboardingData,
+    updateData,
+    setLocalStep,
+    updateStep,
+    navigateFromBackend,
+    authenticatedForwardingStatus,
+    replaceAuthenticatedForwardingStatus,
+  } = useContext(OnboardingContext);
   const t = getStrings(normalizeLanguage(onboardingData?.preferredLanguage));
   const [carrier, setCarrier] = useState(onboardingData?.forwardingCarrier || "Verizon");
   const [forwardNumber, setForwardNumber] = useState(
@@ -70,17 +60,22 @@ export default function ForwardingSetupScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [activating, setActivating] = useState(false);
   const [skipping, setSkipping] = useState(false);
-  const [statusPayload, setStatusPayload] = useState(null);
   const [error, setError] = useState("");
   const hasNavigatedRef = useRef(false);
+  const operationInFlightRef = useRef("");
 
-  const forwardFromNumber = statusPayload?.forwardFromNumber || statusPayload?.businessNumber || "";
-  const forwardToNumber = statusPayload?.forwardToNumber || statusPayload?.destinationNumber || "";
-  const activationParts = useMemo(() => getActivationParts(carrier), [carrier]);
-  const activationNumber = normalizeDigits(forwardToNumber);
-  const activationCodePreview = activationParts
-    ? `${activationParts.prefix}${activationNumber}${activationParts.suffix}`
-    : "";
+  const forwardToNumber = authenticatedForwardingStatus?.forwardToNumber || "";
+  const activationCodePreview = useMemo(
+    () => buildCarrierActivationCode(carrier, forwardToNumber),
+    [carrier, forwardToNumber]
+  );
+  const controls = getForwardingSetupControls(authenticatedForwardingStatus);
+  const {
+    destinationReady,
+    provisioningPending,
+    provisioningRetryable,
+    provisioningTerminal,
+  } = controls;
 
   useEffect(() => {
     setLocalStep(STEPS.FORWARDING_SETUP);
@@ -93,44 +88,72 @@ export default function ForwardingSetupScreen({ navigation }) {
   }, [onboardingData?.forwardingCarrier]);
 
   useEffect(() => {
-    if (onboardingData?.phoneNumber) {
-      setForwardNumber(onboardingData.phoneNumber);
+    const savedForwardFrom =
+      onboardingData?.forwardFromNumber || onboardingData?.phoneNumber;
+    if (savedForwardFrom) {
+      setForwardNumber(savedForwardFrom);
     }
-  }, [onboardingData]);
+  }, [onboardingData?.forwardFromNumber, onboardingData?.phoneNumber]);
 
   useEffect(() => {
     loadStatus();
   }, []);
 
-  async function loadStatus(retryCount = 0) {
+  async function loadStatus() {
+    if (!beginExclusiveOperation(operationInFlightRef, "status")) return;
     setLoading(true);
     setError("");
     try {
       const response = await api.get("/phone/forwarding/status");
-      const payload = response.data || {};
-      setStatusPayload(payload);
-      const savedFromNumber = payload?.forwardFromNumber || payload?.businessNumber;
+      const payload = parseForwardingResponse(response);
+      replaceAuthenticatedForwardingStatus(payload);
+      const savedFromNumber = payload.forwardFromNumber;
       if (savedFromNumber) setForwardNumber(savedFromNumber);
+      await updateData({
+        forwardFromNumber: savedFromNumber || normalizeE164(forwardNumber),
+        forwardingCarrier: payload.forwardingCarrier || carrier,
+      });
 
-      const toNumber = payload?.forwardToNumber || payload?.destinationNumber || "";
-      const digits = normalizeDigits(toNumber);
-
-      // If no routing number yet, retry up to 3 times with 2 second delay
-      if (!digits && retryCount < 3) {
-        setTimeout(() => loadStatus(retryCount + 1), 2000);
-        return;
-      }
-
-      const nextRoute = getNextRouteFromStatus(getForwardingStatus(payload));
-      if (nextRoute && !hasNavigatedRef.current) {
+      const nextRoute = getNextRouteFromStatus(payload.phoneSetupState);
+      if (
+        nextRoute &&
+        (payload.phoneSetupState === "verified" || payload.forwardToNumber) &&
+        !hasNavigatedRef.current
+      ) {
         hasNavigatedRef.current = true;
         await navigateFromBackend(navigation);
       }
     } catch (e) {
       setError(e?.response?.data?.message || "Failed to load forwarding details");
     } finally {
+      endExclusiveOperation(operationInFlightRef, "status");
       setLoading(false);
     }
+  }
+
+  async function retryProvisioning() {
+    if (!beginExclusiveOperation(operationInFlightRef, "provisioning")) return;
+    const normalizedForwardNumber = normalizeE164(forwardNumber);
+    if (!normalizedForwardNumber) {
+      endExclusiveOperation(operationInFlightRef, "provisioning");
+      setError("Enter a valid business phone number, including the area code.");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      await api.post("/phone/number-strategy", {
+        strategy: "forward_existing",
+        forwardFromNumber: normalizedForwardNumber,
+        ...(carrier ? { forwardingCarrier: carrier } : {}),
+      });
+    } catch (e) {
+      setError(e?.response?.data?.message || "Could not retry routing-line setup.");
+    } finally {
+      endExclusiveOperation(operationInFlightRef, "provisioning");
+      setLoading(false);
+    }
+    await loadStatus();
   }
 
   async function handleCarrierSelect(nextCarrier) {
@@ -139,12 +162,15 @@ export default function ForwardingSetupScreen({ navigation }) {
   }
 
   async function handleActivate() {
-    if (!activationNumber) {
+    if (!beginExclusiveOperation(operationInFlightRef, "activation")) return;
+    if (!destinationReady || !activationCodePreview) {
+      endExclusiveOperation(operationInFlightRef, "activation");
       setError("Forwarding line is still being set up. Please wait a moment and try again.");
       return;
     }
 
-    if (!activationParts) {
+    if (carrier === "Other") {
+      endExclusiveOperation(operationInFlightRef, "activation");
       Alert.alert(
         "Carrier-specific setup",
         `Carrier forwarding codes vary. Call your carrier and forward calls to ${formatPhoneNumber(
@@ -157,17 +183,11 @@ export default function ForwardingSetupScreen({ navigation }) {
     setActivating(true);
     setError("");
     try {
-      const normalizedForwardNumber = formatE164(forwardNumber);
+      const normalizedForwardNumber = normalizeE164(forwardNumber);
       if (!normalizedForwardNumber) {
         setError("Enter a valid business phone number, including the area code.");
         return;
       }
-      const strategyPayload = {
-        strategy: "forward_existing",
-        forwardFromNumber: normalizedForwardNumber,
-        ...(carrier ? { forwardingCarrier: carrier } : {}),
-      };
-      await api.post("/phone/number-strategy", strategyPayload);
       await updateData({
         numberStrategy: "forward_existing",
         forwardFromNumber: normalizedForwardNumber,
@@ -182,11 +202,16 @@ export default function ForwardingSetupScreen({ navigation }) {
     } catch (e) {
       setError(e?.message || "Could not open the dialer");
     } finally {
+      endExclusiveOperation(operationInFlightRef, "activation");
       setActivating(false);
     }
   }
 
   async function handleSkip() {
+    if (!destinationReady) {
+      setError("Your dedicated Glō routing line must be ready before verification.");
+      return;
+    }
     setSkipping(true);
     setError("");
     try {
@@ -244,7 +269,7 @@ export default function ForwardingSetupScreen({ navigation }) {
               >
                 <AppText style={styles.carrierTitle}>{option}</AppText>
                 <AppText style={[styles.carrierSubtitle, { color: colors.textSecondary }]}>
-                  {selected && activationParts
+                  {selected && activationCodePreview
                     ? `Dial ${activationCodePreview}`
                     : option === "Other"
                     ? "We’ll show the Glō line to forward to."
@@ -272,24 +297,66 @@ export default function ForwardingSetupScreen({ navigation }) {
         </AppCard>
       ) : null}
 
-      {loading && !statusPayload && (
+      {loading && !authenticatedForwardingStatus && (
         <AppText style={[styles.error, { color: colors.textSecondary }]}>
           Setting up your forwarding line...
         </AppText>
       )}
+      {provisioningPending ? (
+        <AppText style={[styles.error, { color: colors.textSecondary }]}>
+          Your dedicated Glō routing line is still being provisioned.
+        </AppText>
+      ) : null}
+      {provisioningRetryable ? (
+        <>
+          <AppText style={[styles.error, { color: colors.warning }]}>
+            Routing-line setup needs another attempt. Retrying is safe and will reuse the same assignment.
+          </AppText>
+          <AppButton
+            label={loading ? "Retrying..." : "Retry routing-line setup"}
+            variant="secondary"
+            onPress={retryProvisioning}
+            disabled={loading || activating}
+            style={styles.secondaryButton}
+          />
+        </>
+      ) : null}
+      {provisioningTerminal ? (
+        <AppText style={[styles.error, { color: colors.danger }]}>
+          We couldn’t create your routing line. Contact support before continuing.
+        </AppText>
+      ) : null}
       {!!error ? <AppText style={[styles.error, { color: colors.danger }]}>{error}</AppText> : null}
+
+      {provisioningPending ? (
+        <AppButton
+          label={loading ? "Checking..." : "Check routing-line status"}
+          variant="secondary"
+          onPress={loadStatus}
+          disabled={loading || activating}
+          style={styles.secondaryButton}
+        />
+      ) : null}
 
       <AppButton
         label={activating ? "Opening dialer..." : "Activate forwarding"}
         onPress={handleActivate}
-        disabled={activating || loading || !forwardNumber}
+        disabled={
+          activating ||
+          loading ||
+          !normalizeE164(forwardNumber) ||
+          !destinationReady ||
+          provisioningPending ||
+          provisioningRetryable ||
+          provisioningTerminal
+        }
         style={styles.primaryButton}
       />
       <AppButton
         label={skipping ? "Saving..." : "I’ll do this later"}
         variant="secondary"
         onPress={handleSkip}
-        disabled={skipping}
+        disabled={skipping || loading || !destinationReady}
         style={styles.secondaryButton}
       />
     </ScrollView>
