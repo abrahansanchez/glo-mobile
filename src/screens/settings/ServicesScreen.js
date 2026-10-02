@@ -11,8 +11,9 @@ import { useTheme } from "../../theme/ThemeContext";
 import AppText from "../../components/ui/AppText";
 import AppButton from "../../components/ui/AppButton";
 import api from "../../config/api";
+import { returnFromSetupServiceSave } from "../../setup/setupModeContract";
 
-export default function ServicesScreen({ navigation }) {
+export default function ServicesScreen({ navigation, route }) {
   const { colors } = useTheme();
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -53,6 +54,7 @@ export default function ServicesScreen({ navigation }) {
       setNewName("");
       setNewPrice("");
       setNewDuration("");
+      returnFromSetupServiceSave(route, navigation);
     } catch (e) {
       Alert.alert("Error", "Failed to add service. Please try again.");
     } finally {

@@ -10,7 +10,7 @@ import { spacing } from "../../ui/tokens";
 import { useTheme } from "../../theme/ThemeContext";
 import { getStrings, normalizeLanguage } from "../../utils/i18n";
 
-export default function AIIntroScreen({ navigation }) {
+export default function AIIntroScreen({ navigation, route }) {
   const { updateStep, navigateFromBackend, onboardingData, setLocalStep } = useContext(OnboardingContext);
   const { colors } = useTheme();
   const t = getStrings(normalizeLanguage(onboardingData?.preferredLanguage));
@@ -39,7 +39,8 @@ export default function AIIntroScreen({ navigation }) {
       await api.post("/onboarding/demo-call");
       await new Promise(resolve => setTimeout(resolve, 20000));
       await updateStep(STEPS.AI_INTRO);
-      await navigateFromBackend(navigation);
+      if (route?.params?.setupMode) navigation.goBack();
+      else await navigateFromBackend(navigation);
     } catch (e) {
       setError(t.aiIntroError);
       setCalling(false);
@@ -76,7 +77,8 @@ export default function AIIntroScreen({ navigation }) {
       <Pressable
         onPress={async () => {
           await updateStep(STEPS.AI_INTRO);
-          await navigateFromBackend(navigation);
+          if (route?.params?.setupMode) navigation.goBack();
+          else await navigateFromBackend(navigation);
         }}
         style={styles.skipBtn}
       >

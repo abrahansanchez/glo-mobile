@@ -5,11 +5,16 @@ import { useCallback, useEffect, useState } from "react";
 const ELITE_FLAG_KEY = "glo_ff_elite_onboarding";
 
 const configFlag = Constants?.expoConfig?.extra?.featureFlags?.ELITE_ONBOARDING;
+const setupModeConfigFlag = Constants?.expoConfig?.extra?.featureFlags?.SETUP_MODE_FOUNDATION;
 const productionDefaultElite = typeof configFlag === "boolean" ? configFlag : false;
 
 export const FEATURE_FLAGS = Object.freeze({
   // Default false in production unless explicitly set in Expo extra.featureFlags.
   ELITE_ONBOARDING: productionDefaultElite,
+  // The authenticated readiness endpoint remains authoritative after this
+  // client-side rollout gate permits the new contract.
+  SETUP_MODE_FOUNDATION:
+    typeof setupModeConfigFlag === "boolean" ? setupModeConfigFlag : true,
 });
 
 function parseStoredBool(value) {

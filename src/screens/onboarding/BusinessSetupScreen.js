@@ -20,7 +20,7 @@ import { spacing } from "../../ui/tokens";
 import { useTheme } from "../../theme/ThemeContext";
 import { getStrings, normalizeLanguage } from "../../utils/i18n";
 
-export default function BusinessSetupScreen({ navigation }) {
+export default function BusinessSetupScreen({ navigation, route }) {
   const { updateStep, setLocalStep, updateData, onboardingData, navigateFromBackend } =
     useContext(OnboardingContext);
   const { colors } = useTheme();
@@ -53,7 +53,8 @@ export default function BusinessSetupScreen({ navigation }) {
 
       // Update local context after successful post
       await updateData({ barberName: trimmed, shopName: trimmed });
-      await navigateFromBackend(navigation);
+      if (route?.params?.setupMode) navigation.goBack();
+      else await navigateFromBackend(navigation);
     } catch (e) {
       console.log("[BUSINESS_SNAPSHOT] post failed:", e?.message);
       setError("Something went wrong. Please try again.");

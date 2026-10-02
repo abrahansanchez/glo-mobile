@@ -1,7 +1,6 @@
-import React, { useState } from "react";
+import React, { useContext, useRef, useState } from "react";
 import { View, StyleSheet, Alert, ActivityIndicator } from "react-native";
 import { useStripe, CardField } from "@stripe/stripe-react-native";
-import { useContext } from "react";
 import { OnboardingContext } from "../../onboarding/OnboardingContext";
 import { STEPS } from "../../onboarding/stepKeys";
 import api from "../../config/api";
@@ -12,14 +11,20 @@ import OnboardingHeader from "../../onboarding/OnboardingHeader";
 import { useTheme } from "../../theme/ThemeContext";
 import { spacing } from "../../ui/tokens";
 import { getStrings, normalizeLanguage } from "../../utils/i18n";
+import { SetupModeContext } from "../../setup/SetupModeContext";
+import { completeTrialSetupTransition } from "../../setup/setupModeContract";
 
 export default function TrialStartScreen({ navigation }) {
   const { confirmSetupIntent } = useStripe();
   const { updateStep, navigateFromBackend, onboardingData } = useContext(OnboardingContext);
+  const setupMode = useContext(SetupModeContext);
   const { colors } = useTheme();
   const t = getStrings(normalizeLanguage(onboardingData?.preferredLanguage));
   const [loading, setLoading] = useState(false);
   const [cardComplete, setCardComplete] = useState(false);
+  const trialIdempotencyKeyRef = useRef(
+    `mobile-trial-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`
+  );
 
   const handleStartTrial = async () => {
     if (!cardComplete) {
@@ -38,10 +43,14 @@ export default function TrialStartScreen({ navigation }) {
       });
       if (error) throw new Error(error.message);
 
-      await api.post("/billing/trial/start");
+      await api.post(
+        "/billing/trial/start",
+        { idempotencyKey: trialIdempotencyKeyRef.current },
+        { headers: { "Idempotency-Key": trialIdempotencyKeyRef.current } }
+      );
 
       await updateStep(STEPS.TRIAL_START);
-      await navigateFromBackend(navigation);
+      await completeTrialSetupTransition({ setupMode, navigation, navigateFromBackend });
     } catch (err) {
       Alert.alert("Error", err.message || "Something went wrong. Please try again.");
     } finally {
