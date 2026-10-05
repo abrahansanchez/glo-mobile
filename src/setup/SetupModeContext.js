@@ -40,6 +40,7 @@ export function SetupModeProvider({ children }) {
     readiness,
     loading: effectiveLoading,
     phoneSetupIntentId,
+    invalidateSession: coordinator.invalidateSession,
     refreshReadiness: coordinator.refreshReadiness,
     startPhoneSetup: coordinator.startPhoneSetup,
   }), [coordinator, effectiveLoading, phoneSetupIntentId, readiness]);

@@ -230,6 +230,71 @@ async function test(name, fn) { await fn(); passed += 1; console.log(`PASS ${pas
     assert.strictEqual(ownedReadiness(coordinator, "account-a"), null);
     assert.strictEqual(coordinator.snapshot().loading, false);
   });
+  await test("Setup Mode sign out delegates once, clears ownership, and returns unauthenticated", async () => {
+    const calls = [];
+    let authenticated = true;
+    const coordinator = contract.createSetupModeCoordinator({ apiClient: {
+      get: async (url) => { calls.push(["GET", url]); return { data: enabled() }; },
+      post: async (url) => { calls.push(["POST", url]); throw new Error("unexpected mutation"); },
+    } });
+    await coordinator.activateSession(true, "account-a");
+    assert.ok(ownedReadiness(coordinator, "account-a"));
+    let logoutCalls = 0;
+    const controller = contract.createSetupModeSignOutController({
+      invalidateSetupSession: coordinator.invalidateSession,
+      logout: async () => {
+        logoutCalls += 1;
+        authenticated = false;
+      },
+    });
+    const first = controller.signOut();
+    const second = controller.signOut();
+    await Promise.all([first, second]);
+    assert.strictEqual(logoutCalls, 1);
+    assert.strictEqual(ownedReadiness(coordinator, "account-a"), null);
+    assert.strictEqual(ownedIntent(coordinator, "account-a"), "");
+    assert.strictEqual(contract.selectAuthenticationDestination(authenticated), "unauthenticated");
+    assert.deepStrictEqual(calls, [["GET", "/phone/setup/readiness"]]);
+  });
+  await test("late readiness cannot restore a signed-out Setup Mode account", async () => {
+    const heldReadiness = deferred();
+    const coordinator = contract.createSetupModeCoordinator({ apiClient: {
+      get: async () => heldReadiness.promise,
+      post: async () => { throw new Error("unexpected mutation"); },
+    } });
+    const pendingReadiness = coordinator.activateSession(true, "account-a");
+    let logoutCalls = 0;
+    await contract.createSetupModeSignOutController({
+      invalidateSetupSession: coordinator.invalidateSession,
+      logout: async () => { logoutCalls += 1; },
+    }).signOut();
+    heldReadiness.resolve({ data: enabled() });
+    await pendingReadiness;
+    assert.strictEqual(logoutCalls, 1);
+    assert.strictEqual(ownedReadiness(coordinator, "account-a"), null);
+    assert.strictEqual(coordinator.snapshot().loading, false);
+  });
+  await test("late setup-start cannot restore intent after Setup Mode sign out", async () => {
+    const heldStart = deferred();
+    const calls = [];
+    const coordinator = contract.createSetupModeCoordinator({ apiClient: {
+      get: async (url) => { calls.push(["GET", url]); return { data: enabled({ actions: { canStartPhoneSetup: true } }) }; },
+      post: async (url) => { calls.push(["POST", url]); return heldStart.promise; },
+    } });
+    await coordinator.activateSession(true, "account-a");
+    const pendingStart = coordinator.startPhoneSetup();
+    await contract.createSetupModeSignOutController({
+      invalidateSetupSession: coordinator.invalidateSession,
+      logout: async () => {},
+    }).signOut();
+    heldStart.resolve({ data: { phoneSetupIntentId: "intent-a" } });
+    await assert.rejects(pendingStart, /PHONE_SETUP_OWNER_CHANGED/);
+    assert.strictEqual(ownedIntent(coordinator, "account-a"), "");
+    assert.deepStrictEqual(calls, [
+      ["GET", "/phone/setup/readiness"],
+      ["POST", "/phone/setup/start"],
+    ]);
+  });
   await test("account switch rejects A readiness while accepting B readiness", async () => {
     const heldA = deferred();
     const calls = [];

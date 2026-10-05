@@ -1,7 +1,11 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useMemo, useState } from "react";
 import { Linking, StyleSheet, View } from "react-native";
+import { AuthContext } from "../../auth/authContext";
 import { SetupModeContext } from "../../setup/SetupModeContext";
-import { createAuthorizedSetupActionController } from "../../setup/setupModeContract";
+import {
+  createAuthorizedSetupActionController,
+  createSetupModeSignOutController,
+} from "../../setup/setupModeContract";
 import AppButton from "../../components/ui/AppButton";
 import AppCard from "../../components/ui/AppCard";
 import AppText from "../../components/ui/AppText";
@@ -10,8 +14,10 @@ import { useTheme } from "../../theme/ThemeContext";
 
 export default function PhoneSetupRecoveryScreen({ navigation }) {
   const { colors } = useTheme();
-  const { readiness, refreshReadiness } = useContext(SetupModeContext);
+  const { logout } = useContext(AuthContext);
+  const { readiness, invalidateSession, refreshReadiness } = useContext(SetupModeContext);
   const [busy, setBusy] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const state = readiness?.phone?.recoveryState || readiness?.phone?.setupState || readiness?.clientSetupState || "recovery_required";
   const forwarding = readiness?.phone?.strategy === "forward_existing";
   const actionController = createAuthorizedSetupActionController({
@@ -20,11 +26,24 @@ export default function PhoneSetupRecoveryScreen({ navigation }) {
     openSupport: () => Linking.openURL("mailto:support@gloai.com"),
   });
   const { authorized } = actionController;
+  const signOutController = useMemo(() => createSetupModeSignOutController({
+    invalidateSetupSession: invalidateSession,
+    logout,
+  }), [invalidateSession, logout]);
 
   async function refresh() {
     if (busy) return;
     setBusy(true);
     try { await refreshReadiness(); } finally { setBusy(false); }
+  }
+
+  async function signOut() {
+    setSigningOut(true);
+    try {
+      await signOutController.signOut();
+    } finally {
+      setSigningOut(false);
+    }
   }
 
   return (
@@ -39,6 +58,12 @@ export default function PhoneSetupRecoveryScreen({ navigation }) {
       {authorized.canViewForwardingStatus && state === "verification_restart_required" ? <AppButton label="Verification recovery" onPress={() => actionController.openForwardingStatus("ForwardingVerification")} /> : null}
       <AppButton label={busy ? "Refreshing…" : "Refresh status"} variant="secondary" disabled={busy} onPress={refresh} />
       {authorized.canContactSupport ? <AppButton label="Contact support" variant="secondary" onPress={actionController.contactSupport} /> : null}
+      <AppButton
+        label={signingOut ? "Signing out…" : "Sign out"}
+        variant="danger"
+        disabled={signingOut}
+        onPress={signOut}
+      />
     </View>
   );
 }

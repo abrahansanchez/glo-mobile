@@ -12,7 +12,10 @@ import SubscriptionGateScreen from "../screens/SubscriptionGateScreen";
 import IncomingCallScreen from "../screens/call/IncomingCallScreen";
 import LoadingState from "../components/LoadingState";
 import { SetupModeContext } from "../setup/SetupModeContext";
-import { selectSetupModeRoute } from "../setup/setupModeContract";
+import {
+  selectAuthenticationDestination,
+  selectSetupModeRoute,
+} from "../setup/setupModeContract";
 import SetupModeScreen from "../screens/setup/SetupModeScreen";
 import PhoneSetupChoiceScreen from "../screens/setup/PhoneSetupChoiceScreen";
 import TrialStartScreen from "../screens/onboarding/TrialStartScreen";
@@ -77,6 +80,7 @@ export default function AppNavigator() {
     readiness: setupMode?.readiness,
     onboardingComplete,
   });
+  const authenticationDestination = selectAuthenticationDestination(authenticated);
 
   useEffect(() => {
     if (!authenticated) return;
@@ -104,7 +108,7 @@ export default function AppNavigator() {
 
   return (
     <NavigationContainer>
-      {!authenticated ? (
+      {authenticationDestination === "unauthenticated" ? (
         <AuthNavigator />
       ) : setupRoute === "setup_payment" ? (
         <SetupModeNavigator key="setup-payment" initialRouteName="SetupPayment" />

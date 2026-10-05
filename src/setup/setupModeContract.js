@@ -220,7 +220,29 @@ export function createSetupModeCoordinator({ apiClient, clientEnabled = true, on
     return wrappedFlight;
   }
 
-  return Object.freeze({ activateSession, refreshReadiness, startPhoneSetup, snapshot });
+  const invalidateSession = () => activateSession(false, null);
+
+  return Object.freeze({
+    activateSession,
+    invalidateSession,
+    refreshReadiness,
+    startPhoneSetup,
+    snapshot,
+  });
+}
+
+export function createSetupModeSignOutController({ invalidateSetupSession, logout }) {
+  const signOutSingleFlight = createSingleFlight();
+  return Object.freeze({
+    signOut: () => signOutSingleFlight(async () => {
+      await invalidateSetupSession();
+      return logout();
+    }),
+  });
+}
+
+export function selectAuthenticationDestination(authenticated) {
+  return authenticated === true ? "authenticated" : "unauthenticated";
 }
 
 export function getAuthorizedSetupActions(readiness) {

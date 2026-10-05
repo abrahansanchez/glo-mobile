@@ -1,9 +1,11 @@
 import React, { useContext, useMemo, useRef, useState } from "react";
 import { Linking, ScrollView, StyleSheet, View } from "react-native";
 import { SetupModeContext } from "../../setup/SetupModeContext";
+import { AuthContext } from "../../auth/authContext";
 import {
   createAuthorizedSetupActionController,
   createSetupModeActionController,
+  createSetupModeSignOutController,
   getSetupChecklist,
 } from "../../setup/setupModeContract";
 import AppButton from "../../components/ui/AppButton";
@@ -14,8 +16,10 @@ import { useTheme } from "../../theme/ThemeContext";
 
 export default function SetupModeScreen({ navigation }) {
   const { colors } = useTheme();
-  const { readiness, refreshReadiness, startPhoneSetup } = useContext(SetupModeContext);
+  const { logout } = useContext(AuthContext);
+  const { readiness, invalidateSession, refreshReadiness, startPhoneSetup } = useContext(SetupModeContext);
   const [busy, setBusy] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const [error, setError] = useState("");
   const actionRef = useRef(false);
   const actionController = useMemo(() => createAuthorizedSetupActionController({
@@ -28,6 +32,10 @@ export default function SetupModeScreen({ navigation }) {
     startPhoneSetup,
     navigate: (route) => navigation.navigate(route),
   }), [navigation, startPhoneSetup]);
+  const signOutController = useMemo(() => createSetupModeSignOutController({
+    invalidateSetupSession: invalidateSession,
+    logout,
+  }), [invalidateSession, logout]);
   const checklist = useMemo(() => getSetupChecklist(readiness), [readiness]);
   const checklistRoutes = {
     business_profile: "BusinessProfile",
@@ -66,6 +74,18 @@ export default function SetupModeScreen({ navigation }) {
     } finally {
       actionRef.current = false;
       setBusy(false);
+    }
+  }
+
+  async function handleSignOut() {
+    setSigningOut(true);
+    setError("");
+    try {
+      await signOutController.signOut();
+    } catch {
+      setError("Could not sign out. Please try again.");
+    } finally {
+      setSigningOut(false);
     }
   }
 
@@ -115,6 +135,12 @@ export default function SetupModeScreen({ navigation }) {
       {authorized.canContactSupport ? (
         <AppButton label="Contact support" variant="secondary" onPress={actionController.contactSupport} />
       ) : null}
+      <AppButton
+        label={signingOut ? "Signing out…" : "Sign out"}
+        variant="danger"
+        disabled={signingOut}
+        onPress={handleSignOut}
+      />
     </ScrollView>
   );
 }
