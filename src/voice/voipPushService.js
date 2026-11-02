@@ -1,5 +1,5 @@
 import TwilioVoice from "react-native-twilio-programmable-voice";
-import { AppState, Platform } from "react-native";
+import { AppState, NativeModules, Platform } from "react-native";
 import { fetchVoiceToken } from "./voiceTokenService";
 import { getBarber } from "../auth/barberStorage";
 
@@ -18,6 +18,7 @@ let ownershipBlockDiagnosticTimer = null;
 const queuedInvites = [];
 const incomingInviteSubscribers = new Set();
 const inviteCancelledSubscribers = new Set();
+const inviteRejectedSubscribers = new Set();
 
 function resolveCallSid(payload) {
   return payload?.call_sid || payload?.callSid || payload?.CallSid || null;
@@ -169,6 +170,16 @@ function emitInviteCancelled(payload) {
   });
 }
 
+function emitInviteRejected(payload) {
+  inviteRejectedSubscribers.forEach((subscriber) => {
+    try {
+      subscriber(payload);
+    } catch (error) {
+      console.log("[VOIP] rejected subscriber error", errorDiagnostic(error));
+    }
+  });
+}
+
 function attachTwilioVoipListenersOnce() {
   if (listenersAttached) {
     return;
@@ -280,6 +291,14 @@ function attachTwilioVoipListenersOnce() {
     });
     logVoipDiag({ payload, hasInvite: false });
     emitInviteCancelled(payload);
+  });
+
+  TwilioVoice.addEventListener("callRejected", (payload) => {
+    console.log("[VOIP] incoming invite rejected", {
+      callRef: correlationId(resolveCallSid(payload)),
+    });
+    logVoipDiag({ payload, hasInvite: false });
+    emitInviteRejected(payload);
   });
 }
 
@@ -494,15 +513,37 @@ export function onVoipInviteCancelled(handler) {
   };
 }
 
+export function onVoipInviteRejected(handler) {
+  inviteRejectedSubscribers.add(handler);
+
+  return () => {
+    inviteRejectedSubscribers.delete(handler);
+  };
+}
+
 export async function acceptIncomingInvite() {
   return Promise.resolve(TwilioVoice.accept());
 }
 
-export async function rejectOrIgnoreIncomingInvite() {
-  try {
-    return await Promise.resolve(TwilioVoice.reject());
-  } catch (rejectError) {
-    console.log("[VOIP] reject failed, trying ignore", errorDiagnostic(rejectError));
-    return Promise.resolve(TwilioVoice.ignore());
+export async function rejectRingingIncomingInvite(expectedCallSid) {
+  if (!expectedCallSid) {
+    return { rejected: false, reason: "missing_call_sid" };
   }
+
+  const nativeInvite = await Promise.resolve(TwilioVoice.getCallInvite?.());
+  const nativeCallSid = resolveCallSid(nativeInvite);
+  if (!nativeCallSid || String(nativeCallSid) !== String(expectedCallSid)) {
+    return { rejected: false, reason: "stale_invite" };
+  }
+
+  if (Platform.OS === "ios") {
+    const nativeVoice = NativeModules.RNTwilioVoice;
+    if (typeof nativeVoice?.rejectCallInvite !== "function") {
+      throw new Error("Native call-invite rejection is unavailable in this build");
+    }
+    return nativeVoice.rejectCallInvite(String(expectedCallSid));
+  }
+
+  await Promise.resolve(TwilioVoice.reject());
+  return { rejected: true };
 }

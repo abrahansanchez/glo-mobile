@@ -1,56 +1,35 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { useCallManager } from "../../voice/CallManager";
 
-export default function IncomingCallScreen({ navigation, route }) {
-  // Mock data for now (later comes from push / backend)
-  const caller = route?.params?.caller ?? "Unknown Caller";
-
-  function handleManualAnswer() {
-    console.log("[CALL] Answer manually clicked");
-
-    // ✅ CORRECT: Navigate through Dashboard → CallFlow → CallEnded
-    navigation.replace("Dashboard", {
-      screen: "CallFlow",
-      params: {
-        screen: "CallEnded",
-        params: { outcome: "manual" },
-      },
-    });
-  }
-
-  function handleAIHandle() {
-    console.log("[CALL] Let AI handle clicked");
-
-    // ✅ CORRECT: Navigate through Dashboard → CallFlow → CallEnded
-    navigation.replace("Dashboard", {
-      screen: "CallFlow",
-      params: {
-        screen: "CallEnded",
-        params: { outcome: "ai" },
-      },
-    });
-  }
+export default function IncomingCallScreen() {
+  const { incomingInvite, actionInProgress, answerIncomingCall, letAiHandleIncomingCall } = useCallManager();
+  const caller = incomingInvite?.call_from || incomingInvite?.from || "Unknown Caller";
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Incoming Call</Text>
       <Text style={styles.caller}>{caller}</Text>
 
-      <View style={styles.actions}>
+      {!incomingInvite ? (
+        <Text style={styles.unavailable}>This call is no longer ringing.</Text>
+      ) : <View style={styles.actions}>
         <TouchableOpacity
           style={[styles.button, styles.answer]}
-          onPress={handleManualAnswer}
+          onPress={answerIncomingCall}
+          disabled={actionInProgress}
         >
           <Text style={styles.buttonText}>Answer Manually</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={[styles.button, styles.ai]}
-          onPress={handleAIHandle}
+          onPress={letAiHandleIncomingCall}
+          disabled={actionInProgress}
         >
           <Text style={styles.buttonText}>Let AI Handle</Text>
         </TouchableOpacity>
-      </View>
+      </View>}
     </View>
   );
 }
@@ -74,6 +53,7 @@ const styles = StyleSheet.create({
     color: "#bbb",
     marginBottom: 40,
   },
+  unavailable: { color: "#bbb", fontSize: 16 },
   actions: {
     width: "100%",
   },
@@ -95,4 +75,3 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 });
-``

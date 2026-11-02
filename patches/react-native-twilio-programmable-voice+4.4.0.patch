@@ -2,10 +2,49 @@ diff --git a/node_modules/react-native-twilio-programmable-voice/ios/RNTwilioVoi
 index df4c381..58e7206 100644
 --- a/node_modules/react-native-twilio-programmable-voice/ios/RNTwilioVoice/RNTwilioVoice.m
 +++ b/node_modules/react-native-twilio-programmable-voice/ios/RNTwilioVoice/RNTwilioVoice.m
-@@ -227,11 +227,13 @@ - (void)pushRegistry:(PKPushRegistry *)registry didUpdatePushCredentials:(PKPush
-   NSLog(@"pushRegistry:didUpdatePushCredentials:forType");
- 
-   if ([type isEqualToString:PKPushTypeVoIP]) {
+@@ -10,0 +11 @@
++static NSMutableSet<NSString *> *PendingInviteRejectionUUIDs;
+@@ -207,0 +209,39 @@
++RCT_REMAP_METHOD(rejectCallInvite,
++                 rejectCallInviteWithCallSid:(NSString *)callSid
++                 rejectCallInviteResolver:(RCTPromiseResolveBlock)resolve
++                 rejectCallInviteRejecter:(RCTPromiseRejectBlock)reject) {
++    TVOCallInvite *matchingInvite = nil;
++    for (NSString *activeCallInviteId in self.activeCallInvites) {
++        TVOCallInvite *candidate = [self.activeCallInvites objectForKey:activeCallInviteId];
++        if ([candidate.callSid isEqualToString:callSid]) {
++            matchingInvite = candidate;
++            break;
++        }
++    }
++
++    if (!matchingInvite) {
++        resolve(@{ @"rejected": @NO, @"reason": @"invite_not_found" });
++        return;
++    }
++
++    NSUUID *inviteUUID = matchingInvite.uuid;
++    @synchronized ([RNTwilioVoice class]) {
++        if (!PendingInviteRejectionUUIDs) {
++            PendingInviteRejectionUUIDs = [NSMutableSet set];
++        }
++        [PendingInviteRejectionUUIDs addObject:inviteUUID.UUIDString];
++    }
++    CXEndCallAction *endCallAction = [[CXEndCallAction alloc] initWithCallUUID:inviteUUID];
++    CXTransaction *transaction = [[CXTransaction alloc] initWithAction:endCallAction];
++    [self.callKitCallController requestTransaction:transaction completion:^(NSError *error) {
++        if (error) {
++            @synchronized ([RNTwilioVoice class]) {
++                [PendingInviteRejectionUUIDs removeObject:inviteUUID.UUIDString];
++            }
++            reject(@"CALLKIT_REJECT_FAILED", [error localizedDescription], error);
++            return;
++        }
++        resolve(@{ @"rejected": @YES });
++    }];
++}
++
+@@ -230,5 +270,7 @@
 -    const unsigned *tokenBytes = [credentials.token bytes];
 -    NSString *deviceTokenString = [NSString stringWithFormat:@"<%08x %08x %08x %08x %08x %08x %08x %08x>",
 -                                                        ntohl(tokenBytes[0]), ntohl(tokenBytes[1]), ntohl(tokenBytes[2]),
@@ -18,44 +57,32 @@ index df4c381..58e7206 100644
 +    }
 +    // Force refresh registration after token format fix
 +    [[NSUserDefaults standardUserDefaults] removeObjectForKey:kCachedDeviceToken];
-     NSString *accessToken = [self fetchAccessToken];
-     NSString *cachedDeviceToken = [[NSUserDefaults standardUserDefaults] objectForKey:kCachedDeviceToken];
-     if (![cachedDeviceToken isEqualToString:deviceTokenString]) {
-@@ -308,6 +310,7 @@ - (void)pushRegistry:(PKPushRegistry *)registry
-              forType:(PKPushType)type
- withCompletionHandler:(void (^)(void))completion {
-     NSLog(@"pushRegistry:didReceiveIncomingPushWithPayload:forType:withCompletionHandler");
+@@ -310,0 +353 @@
 +    NSLog(@"[VOICE_NATIVE] didReceiveIncomingPushWithPayload fired");
--
-+
-     // Save for later when the notification is properly handled.
-     self.incomingPushCompletionCallback = completion;
-@@ -645,8 +648,6 @@ - (void)provider:(CXProvider *)provider performAnswerCallAction:(CXAnswerCallAct
-       [action fail];
-     }
-   }];
+@@ -648,2 +690,0 @@
 -
 -  [action fulfill];
- }
--
-+
- - (void)provider:(CXProvider *)provider performEndCallAction:(CXEndCallAction *)action {
-@@ -791,12 +792,12 @@ - (void)performAnswerVoiceCallWithUUID:(NSUUID *)uuid
--
-+
-     TVOCall *call = [callInvite acceptWithOptions:acceptOptions delegate:self];
--
-+
+@@ -656,0 +698,5 @@
++    BOOL inviteRejectionRequested = NO;
++    @synchronized ([RNTwilioVoice class]) {
++        inviteRejectionRequested = [PendingInviteRejectionUUIDs containsObject:action.callUUID.UUIDString];
++        [PendingInviteRejectionUUIDs removeObject:action.callUUID.UUIDString];
++    }
+@@ -660 +706,5 @@
+-        [self sendEventWithName:@"callRejected" body:@"callRejected"];
++        NSMutableDictionary *params = [[NSMutableDictionary alloc] init];
++        if (callInvite.callSid) {
++            [params setObject:callInvite.callSid forKey:@"call_sid"];
++        }
++        [self sendEventWithName:@"callRejected" body:params];
+@@ -661,0 +712,2 @@
++    } else if (inviteRejectionRequested) {
++        NSLog(@"Invite-only rejection ignored because the invite is no longer ringing");
+@@ -794,3 +846 @@
 -    if (!call) {
 -        completionHandler(NO);
 -    } else {
 +    if (call) {
-         self.callKitCompletionCallback = completionHandler;
-         self.activeCall = call;
-         self.activeCalls[call.uuid.UUIDString] = call;
+@@ -799,0 +850,2 @@
 +    } else {
 +        completionHandler(NO);
-     }
--
-+
-     [self.activeCallInvites removeObjectForKey:callInvite.uuid.UUIDString];
